@@ -1,822 +1,600 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 import {
-  addCoursesBulk,
-  addLecture,
-  addProgram,
-  addSemester,
-  addUnit,
+  Course,
+  Lecture,
+  Semester,
+  Unit,
   getCourses,
   getCurrentSemester,
+  getDueLectures,
   getLectures,
-  getPrograms,
-  getSemesters,
+  getReviewIntervalDays,
   getUnits,
-  Lecture,
-  Program,
-  Semester,
-  Course,
-  Unit,
   scheduleReview,
   ReviewRating,
 } from "@/lib/studyStorage";
 
+const SESSION_OPTIONS = [
+  { minutes: 15, lectures: 2 },
+  { minutes: 30, lectures: 4 },
+  { minutes: 45, lectures: 6 },
+  { minutes: 60, lectures: 8 },
+];
+
 export default function StudyPage() {
-  const [programs, setPrograms] = useState<Program[]>([]);
   const [currentSemester, setCurrentSemester] =
     useState<Semester | null>(null);
-  const [semesters, setSemesters] = useState<Semester[]>([]);
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [lectures, setLectures] = useState<Lecture[]>([]);
 
-  const [programName, setProgramName] = useState("");
-  const [semesterName, setSemesterName] = useState("");
-  const [semesterProgramId, setSemesterProgramId] = useState("");
-
-  const [courseName, setCourseName] = useState("");
-
-  const [unitName, setUnitName] = useState("");
-  const [unitCourseId, setUnitCourseId] = useState("");
-
-  const [lectureName, setLectureName] = useState("");
-  const [lecturePrompt, setLecturePrompt] = useState("");
-  const [lectureAnswer, setLectureAnswer] = useState("");
-  const [lectureUnitId, setLectureUnitId] = useState("");
-
   const [currentLectureId, setCurrentLectureId] =
     useState<number | null>(null);
 
-  const [revealed, setRevealed] = useState(false);
-  const [now, setNow] = useState<number | null>(null);
+  const [sessionReviewedIds, setSessionReviewedIds] =
+    useState<number[]>([]);
 
-  useEffect(() => {
-    setPrograms(getPrograms());
-    setSemesters(getSemesters());
+  const [sessionTargetCount, setSessionTargetCount] =
+    useState(0);
+
+  const [sessionActive, setSessionActive] =
+    useState(false);
+
+  const [selectedMinutes, setSelectedMinutes] =
+    useState(30);
+
+  function refresh() {
+    setCurrentSemester(getCurrentSemester());
     setCourses(getCourses());
     setUnits(getUnits());
     setLectures(getLectures());
-    setCurrentSemester(getCurrentSemester());
+  }
 
-    setNow(Date.now());
+  useEffect(() => {
+    refresh();
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 60_000);
+  const currentLecture = lectures.find(
+    (lecture) => lecture.id === currentLectureId,
+  );
 
-    return () => clearInterval(interval);
-  }, []);
+  const unitById = useMemo(
+    () =>
+      new Map(
+        units.map((unit) => [unit.id, unit]),
+      ),
+    [units],
+  );
 
-  useEffect(() => {
-    if (programs.length > 0 && !semesterProgramId) {
-      setSemesterProgramId(String(programs[0].id));
-    }
-  }, [programs, semesterProgramId]);
+  const courseById = useMemo(
+    () =>
+      new Map(
+        courses.map((course) => [course.id, course]),
+      ),
+    [courses],
+  );
 
-  useEffect(() => {
-    if (courses.length > 0 && !unitCourseId) {
-      setUnitCourseId(String(courses[0].id));
-    }
-  }, [courses, unitCourseId]);
-
-  useEffect(() => {
-    if (units.length > 0 && !lectureUnitId) {
-      setLectureUnitId(String(units[0].id));
-    }
-  }, [units, lectureUnitId]);
-
-  const dueLectures = useMemo(() => {
-    if (now === null) {
-      return [];
-    }
-
-    return lectures.filter(
-      (lecture) =>
-        new Date(lecture.nextReviewAt).getTime() <= now,
-    );
-  }, [lectures, now]);
-
-  const currentLecture = useMemo(() => {
-    if (currentLectureId === null) {
-      return dueLectures[0] ?? null;
-    }
-
+  function getCourseIdForLecture(
+    lecture: Lecture,
+  ) {
     return (
-      lectures.find(
-        (lecture) => lecture.id === currentLectureId,
-      ) ?? null
+      unitById.get(lecture.unitId)?.courseId ?? null
     );
-  }, [currentLectureId, dueLectures, lectures]);
-
-  const upcomingCount =
-    now === null
-      ? 0
-      : lectures.filter(
-          (lecture) =>
-            new Date(lecture.nextReviewAt).getTime() > now,
-        ).length;
-
-  function refreshStudyData() {
-    setPrograms(getPrograms());
-    setSemesters(getSemesters());
-    setCourses(getCourses());
-    setUnits(getUnits());
-    setLectures(getLectures());
-    setCurrentSemester(getCurrentSemester());
   }
 
-  function handleAddProgram(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const semesterCourseIds = useMemo(
+    () =>
+      currentSemester
+        ? new Set(
+            courses
+              .filter(
+                (course) =>
+                  course.semesterId ===
+                  currentSemester.id,
+              )
+              .map((course) => course.id),
+          )
+        : new Set<number>(),
+    [courses, currentSemester],
+  );
 
-    if (!programName.trim()) {
-      return;
-    }
+  const semesterUnitIds = useMemo(
+    () =>
+      new Set(
+        units
+          .filter((unit) =>
+            semesterCourseIds.has(unit.courseId),
+          )
+          .map((unit) => unit.id),
+      ),
+    [units, semesterCourseIds],
+  );
 
-    addProgram(programName);
-    setProgramName("");
-    refreshStudyData();
-  }
+  const semesterLectures = useMemo(
+    () =>
+      lectures.filter((lecture) =>
+        semesterUnitIds.has(lecture.unitId),
+      ),
+    [lectures, semesterUnitIds],
+  );
 
-  function handleAddSemester(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const dueLectures = useMemo(
+    () =>
+      currentSemester
+        ? getDueLectures(currentSemester.id)
+        : [],
+    [currentSemester, lectures],
+  );
 
-    if (!semesterName.trim() || !semesterProgramId) {
-      return;
-    }
+  const newCount = semesterLectures.filter(
+    (lecture) =>
+      lecture.box === 1 &&
+      lecture.reviewCount === 0,
+  ).length;
 
-    addSemester(
-      Number(semesterProgramId),
-      semesterName,
-    );
+  const remainingSessionCount = Math.max(
+    0,
+    sessionTargetCount - sessionReviewedIds.length,
+  );
 
-    setSemesterName("");
-    refreshStudyData();
-  }
+  const progressCount = Math.min(
+    sessionReviewedIds.length,
+    sessionTargetCount,
+  );
 
-  function handleAddUnit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!unitName.trim() || !unitCourseId) {
-      return;
-    }
-
-    addUnit(Number(unitCourseId), unitName);
-
-    setUnitName("");
-    refreshStudyData();
-  }
-
-  function handleAddLecture(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (
-      !lectureName.trim() ||
-      !lecturePrompt.trim() ||
-      !lectureAnswer.trim() ||
-      !lectureUnitId
-    ) {
-      return;
-    }
-
-    addLecture(
-      Number(lectureUnitId),
-      lectureName,
-      lecturePrompt,
-      lectureAnswer,
+  function chooseNextLecture(
+    sourceLectures: Lecture[],
+    previousCourseId: number | null,
+    reviewedIds: number[],
+  ) {
+    const remaining = sourceLectures.filter(
+      (lecture) =>
+        !reviewedIds.includes(lecture.id),
     );
 
-    setLectureName("");
-    setLecturePrompt("");
-    setLectureAnswer("");
-    refreshStudyData();
+    if (remaining.length === 0) {
+      return null;
+    }
+
+    const sorted = [...remaining].sort((a, b) => {
+      const aTime = new Date(
+        a.nextReviewAt,
+      ).getTime();
+
+      const bTime = new Date(
+        b.nextReviewAt,
+      ).getTime();
+
+      return aTime - bTime;
+    });
+
+    if (previousCourseId !== null) {
+      const differentCourse = sorted.find(
+        (lecture) =>
+          getCourseIdForLecture(lecture) !==
+          previousCourseId,
+      );
+
+      if (differentCourse) {
+        return differentCourse;
+      }
+    }
+
+    return sorted[0];
   }
 
-  function handleReview(rating: ReviewRating) {
-    if (!currentLecture) {
+  function startSession() {
+    if (!currentSemester) {
       return;
     }
 
-    const reviewedLectureId = currentLecture.id;
-    const reviewedCourseId =
-      getLectureCourseId(currentLecture);
+    const currentDue = getDueLectures(
+      currentSemester.id,
+    );
+
+    if (currentDue.length === 0) {
+      return;
+    }
+
+    const selectedOption =
+      SESSION_OPTIONS.find(
+        (option) =>
+          option.minutes === selectedMinutes,
+      ) ?? SESSION_OPTIONS[1];
+
+    const targetCount = Math.min(
+      selectedOption.lectures,
+      currentDue.length,
+    );
+
+    const nextLecture = chooseNextLecture(
+      currentDue,
+      null,
+      [],
+    );
+
+    setSessionReviewedIds([]);
+    setSessionTargetCount(targetCount);
+    setCurrentLectureId(
+      nextLecture?.id ?? null,
+    );
+    setSessionActive(Boolean(nextLecture));
+  }
+
+  function finishSession() {
+    setCurrentLectureId(null);
+    setSessionActive(false);
+    setSessionReviewedIds([]);
+    setSessionTargetCount(0);
+  }
+
+  function handleReview(
+    rating: ReviewRating,
+  ) {
+    if (!currentLecture || !currentSemester) {
+      return;
+    }
+
+    const previousCourseId =
+      getCourseIdForLecture(currentLecture);
 
     const updatedLecture = scheduleReview(
       currentLecture,
       rating,
     );
 
-    const updatedLectures = lectures.map((lecture) =>
-      lecture.id === updatedLecture.id
-        ? updatedLecture
-        : lecture,
+    const updatedLectures = lectures.map(
+      (lecture) =>
+        lecture.id === updatedLecture.id
+          ? updatedLecture
+          : lecture,
     );
+
+    const nextReviewedIds = [
+      ...sessionReviewedIds,
+      currentLecture.id,
+    ];
 
     setLectures(updatedLectures);
+    setSessionReviewedIds(nextReviewedIds);
 
-    const remainingDueLectures = updatedLectures.filter(
-      (lecture) =>
-        lecture.id !== reviewedLectureId &&
-        new Date(lecture.nextReviewAt).getTime() <=
-          Date.now(),
+    const sessionFinished =
+      nextReviewedIds.length >= sessionTargetCount;
+
+    if (sessionFinished) {
+      setCurrentLectureId(null);
+      return;
+    }
+
+    const remainingDue = getDueLectures(
+      currentSemester.id,
     );
 
-    const differentCourseLecture =
-      remainingDueLectures.find(
-        (lecture) =>
-          getLectureCourseId(lecture) !==
-          reviewedCourseId,
-      );
+    const nextLecture = chooseNextLecture(
+      remainingDue,
+      previousCourseId,
+      nextReviewedIds,
+    );
 
-    const nextLecture =
-      differentCourseLecture ??
-      remainingDueLectures[0] ??
-      null;
-
-    setCurrentLectureId(nextLecture?.id ?? null);
-    setRevealed(false);
-  }
-
-  function getCourseName(courseId: number) {
-    return (
-      courses.find((course) => course.id === courseId)?.name ??
-      "Unknown course"
+    setCurrentLectureId(
+      nextLecture?.id ?? null,
     );
   }
 
-  function getUnitName(unitId: number) {
-    return (
-      units.find((unit) => unit.id === unitId)?.name ??
-      "Unknown unit"
-    );
+  function getNextBox(
+    rating: ReviewRating,
+    box: number,
+  ) {
+    if (rating === "Again") {
+      return Math.max(1, box - 1);
+    }
+
+    if (rating === "Good") {
+      return Math.min(5, box + 1);
+    }
+
+    return Math.min(5, box + 2);
   }
 
-  function getLectureCourseId(lecture: Lecture) {
-    const unit = units.find(
-      (unit) => unit.id === lecture.unitId,
-    );
+  const courseName = currentLecture
+    ? courseById.get(
+        getCourseIdForLecture(currentLecture) ??
+          -1,
+      )?.name
+    : null;
 
-    return unit?.courseId ?? null;
-  }
-
-  function formatReviewDate(dateString: string) {
-    const date = new Date(dateString);
-
-    return date.toLocaleDateString(undefined, {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  }
+  const unitName = currentLecture
+    ? unitById.get(currentLecture.unitId)?.name
+    : null;
 
   return (
-    <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
-      <div className="mb-8">
-        <p className="text-sm font-medium text-slate-500">
-          Study
-        </p>
+    <main className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-slate-500">
+            Study
+          </p>
 
-        <h1 className="mt-1 text-3xl font-semibold text-slate-900">
-          Your academic structure
-        </h1>
+          <h1 className="mt-1 text-3xl font-semibold text-slate-900">
+            {currentSemester
+              ? currentSemester.name
+              : "Study"}
+          </h1>
 
-        <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          Program → Semester → Course → Unit → Lecture.
-        </p>
+          <p className="mt-2 text-sm text-slate-500">
+            Work through what is due, with spacing and
+            interleaving handled automatically.
+          </p>
+        </div>
+
+        <Link
+          href="/study/manage"
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          Manage
+        </Link>
       </div>
 
-      <section className="mb-8 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">Reviews due</p>
-
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
-            {dueLectures.length}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">Upcoming</p>
-
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
-            {upcomingCount}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-sm text-slate-500">Lectures</p>
-
-          <p className="mt-2 text-3xl font-semibold text-slate-900">
-            {lectures.length}
-          </p>
-        </div>
-      </section>
-
-      <section className="mb-10 rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="mb-5">
+      {!currentSemester ? (
+        <section className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
           <h2 className="text-lg font-semibold text-slate-900">
-            Academic setup
+            Set up your semester first
           </h2>
 
-          <p className="mt-1 text-sm text-slate-500">
-            Set up the semester once, then add courses and units with
-            as little friction as possible.
+          <p className="mt-2 text-sm text-slate-500">
+            Your academic setup is managed separately.
           </p>
-        </div>
 
-        <div className="grid gap-8 lg:grid-cols-2">
-          <form
-            onSubmit={handleAddProgram}
-            className="rounded-xl border border-slate-200 p-4"
+          <Link
+            href="/study/manage"
+            className="mt-5 inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
           >
-            <h3 className="font-medium text-slate-900">
-              1. Program
-            </h3>
+            Open Study Manager
+          </Link>
+        </section>
+      ) : (
+        <>
+          <section className="mb-8 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="text-sm text-slate-500">
+                Due now
+              </div>
 
-            <input
-              value={programName}
-              onChange={(event) =>
-                setProgramName(event.target.value)
-              }
-              placeholder="e.g. Bachelor of Medicine"
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
-            />
-
-            <button className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              Add program
-            </button>
-          </form>
-
-          <form
-            onSubmit={handleAddSemester}
-            className="rounded-xl border border-slate-200 p-4"
-          >
-            <h3 className="font-medium text-slate-900">
-              2. New semester
-            </h3>
-
-            <select
-              value={semesterProgramId}
-              onChange={(event) =>
-                setSemesterProgramId(event.target.value)
-              }
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              disabled={programs.length === 0}
-            >
-              <option value="">
-                Select program
-              </option>
-
-              {programs.map((program) => (
-                <option
-                  key={program.id}
-                  value={program.id}
-                >
-                  {program.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              value={semesterName}
-              onChange={(event) =>
-                setSemesterName(event.target.value)
-              }
-              placeholder="e.g. Semester 2 2026"
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-
-            <button
-              disabled={programs.length === 0}
-              className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Start semester
-            </button>
-          </form>
-
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-
-              if (!currentSemester) {
-                return;
-              }
-
-              const names = courseName
-                .split("\n")
-                .map((name) => name.trim())
-                .filter(Boolean);
-
-              if (names.length === 0) {
-                return;
-              }
-
-              addCoursesBulk(
-                currentSemester.id,
-                names,
-              );
-
-              setCourseName("");
-              refreshStudyData();
-            }}
-            className="rounded-xl border border-slate-200 p-4"
-          >
-            <h3 className="font-medium text-slate-900">
-              3. Courses
-            </h3>
-
-            <p className="mt-1 text-xs text-slate-500">
-              {currentSemester
-                ? `Adding to ${currentSemester.name}`
-                : "Create a semester first"}
-            </p>
-
-            <textarea
-              value={courseName}
-              onChange={(event) =>
-                setCourseName(event.target.value)
-              }
-              placeholder={
-                "One course per line\nAnatomy\nPhysiology\nBiochemistry\nPharmacology"
-              }
-              rows={6}
-              disabled={!currentSemester}
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-50"
-            />
-
-            <p className="mt-2 text-xs text-slate-400">
-              Enter one course per line.
-            </p>
-
-            <button
-              disabled={!currentSemester}
-              className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Add courses
-            </button>
-          </form>
-
-          <form
-            onSubmit={handleAddUnit}
-            className="rounded-xl border border-slate-200 p-4"
-          >
-            <h3 className="font-medium text-slate-900">
-              4. Units
-            </h3>
-
-            <select
-              value={unitCourseId}
-              onChange={(event) =>
-                setUnitCourseId(event.target.value)
-              }
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              disabled={courses.length === 0}
-            >
-              <option value="">
-                Select course
-              </option>
-
-              {courses.map((course) => (
-                <option
-                  key={course.id}
-                  value={course.id}
-                >
-                  {course.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              value={unitName}
-              onChange={(event) =>
-                setUnitName(event.target.value)
-              }
-              placeholder="e.g. Unit 1 — Cells"
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-
-            <button
-              disabled={courses.length === 0}
-              className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Add unit
-            </button>
-          </form>
-
-          <form
-            onSubmit={handleAddLecture}
-            className="rounded-xl border border-slate-200 p-4 lg:col-span-2"
-          >
-            <h3 className="font-medium text-slate-900">
-              5. Lecture
-            </h3>
-
-            <select
-              value={lectureUnitId}
-              onChange={(event) =>
-                setLectureUnitId(event.target.value)
-              }
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              disabled={units.length === 0}
-            >
-              <option value="">
-                Select unit
-              </option>
-
-              {units.map((unit) => (
-                <option
-                  key={unit.id}
-                  value={unit.id}
-                >
-                  {getCourseName(unit.courseId)} — {unit.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              value={lectureName}
-              onChange={(event) =>
-                setLectureName(event.target.value)
-              }
-              placeholder="Lecture title"
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-
-            <textarea
-              value={lecturePrompt}
-              onChange={(event) =>
-                setLecturePrompt(event.target.value)
-              }
-              placeholder="Recall prompt"
-              rows={3}
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-
-            <textarea
-              value={lectureAnswer}
-              onChange={(event) =>
-                setLectureAnswer(event.target.value)
-              }
-              placeholder="Answer"
-              rows={4}
-              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-
-            <button
-              disabled={units.length === 0}
-              className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Add lecture
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <section className="mb-10">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Academic structure
-          </h2>
-        </div>
-
-        {programs.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-            Add your program to start building your study structure.
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {programs.map((program) => {
-              const programSemesters = semesters.filter(
-                (semester) =>
-                  semester.programId === program.id,
-              );
-
-              return (
-                <div
-                  key={program.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-6"
-                >
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    {program.name}
-                  </h3>
-
-                  <div className="mt-5 space-y-5">
-                    {programSemesters.map((semester) => {
-                      const semesterCourses =
-                        courses.filter(
-                          (course) =>
-                            course.semesterId === semester.id,
-                        );
-
-                      return (
-                        <div
-                          key={semester.id}
-                          className="border-l-2 border-slate-200 pl-5"
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-medium text-slate-800">
-                              {semester.name}
-                            </h4>
-
-                            {currentSemester?.id === semester.id && (
-                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-                                Current
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="mt-4 space-y-4">
-                            {semesterCourses.map((course) => {
-                              const courseUnits =
-                                units.filter(
-                                  (unit) =>
-                                    unit.courseId === course.id,
-                                );
-
-                              return (
-                                <div
-                                  key={course.id}
-                                  className="rounded-xl bg-slate-50 p-4"
-                                >
-                                  <p className="font-medium text-slate-900">
-                                    {course.name}
-                                  </p>
-
-                                  <div className="mt-3 space-y-3">
-                                    {courseUnits.map((unit) => {
-                                      const unitLectures =
-                                        lectures.filter(
-                                          (lecture) =>
-                                            lecture.unitId ===
-                                            unit.id,
-                                        );
-
-                                      return (
-                                        <div
-                                          key={unit.id}
-                                          className="rounded-lg border border-slate-200 bg-white p-3"
-                                        >
-                                          <p className="text-sm font-medium text-slate-800">
-                                            {unit.name}
-                                          </p>
-
-                                          {unitLectures.length ===
-                                          0 ? (
-                                            <p className="mt-2 text-xs text-slate-400">
-                                              No lectures yet.
-                                            </p>
-                                          ) : (
-                                            <div className="mt-2 space-y-2">
-                                              {unitLectures.map(
-                                                (lecture) => (
-                                                  <div
-                                                    key={lecture.id}
-                                                    className="rounded-lg border border-slate-100 bg-slate-50 p-3"
-                                                  >
-                                                    <p className="text-sm font-medium text-slate-800">
-                                                      {lecture.name}
-                                                    </p>
-
-                                                    <div className="mt-2 space-y-1 text-xs text-slate-500">
-                                                      <p>
-                                                        {lecture.reviewCount ===
-                                                        0
-                                                          ? "Not reviewed yet"
-                                                          : `${lecture.reviewCount} review${
-                                                              lecture.reviewCount ===
-                                                              1
-                                                                ? ""
-                                                                : "s"
-                                                            }`}
-                                                      </p>
-
-                                                      <p>
-                                                        Next review:{" "}
-                                                        {formatReviewDate(
-                                                          lecture.nextReviewAt,
-                                                        )}
-                                                      </p>
-                                                    </div>
-                                                  </div>
-                                                ),
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-6">
-        <div className="mb-5">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Review
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Your review system now works on individual lectures.
-          </p>
-        </div>
-
-        {!currentLecture ? (
-          <div className="rounded-xl bg-slate-50 p-6 text-sm text-slate-500">
-            {lectures.length === 0
-              ? "Add a lecture first."
-              : "Nothing is due right now."}
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-slate-200 p-6">
-            <div className="mb-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                {getCourseName(
-                  units.find(
-                    (unit) =>
-                      unit.id === currentLecture.unitId,
-                  )?.courseId ?? 0,
-                )}
-              </p>
-
-              <h3 className="mt-1 text-xl font-semibold text-slate-900">
-                {currentLecture.name}
-              </h3>
-
-              <p className="mt-2 text-sm text-slate-500">
-                {getUnitName(currentLecture.unitId)}
-              </p>
+              <div className="mt-2 text-3xl font-semibold text-slate-900">
+                {dueLectures.length}
+              </div>
             </div>
 
-            <div className="rounded-xl bg-slate-50 p-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Recall
-              </p>
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="text-sm text-slate-500">
+                New lectures
+              </div>
 
-              <p className="mt-2 text-base text-slate-900">
-                {currentLecture.prompt}
-              </p>
+              <div className="mt-2 text-3xl font-semibold text-slate-900">
+                {newCount}
+              </div>
+            </div>
 
-              {revealed && (
-                <div className="mt-5 border-t border-slate-200 pt-5">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                    Answer
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <div className="text-sm text-slate-500">
+                Courses
+              </div>
+
+              <div className="mt-2 text-3xl font-semibold text-slate-900">
+                {semesterCourseIds.size}
+              </div>
+            </div>
+          </section>
+
+          {!sessionActive ? (
+            <section className="rounded-2xl border border-slate-200 bg-white p-8">
+              {dueLectures.length === 0 ? (
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold text-slate-900">
+                    Nothing is due right now
+                  </h2>
+
+                  <p className="mt-2 text-sm text-slate-500">
+                    You’re caught up for this semester.
                   </p>
 
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                    {currentLecture.answer}
+                  <Link
+                    href="/study/manage"
+                    className="mt-5 inline-flex rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+                  >
+                    Manage lectures
+                  </Link>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <h2 className="text-2xl font-semibold text-slate-900">
+                    Ready to study?
+                  </h2>
+
+                  <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
+                    You have {dueLectures.length}{" "}
+                    {dueLectures.length === 1
+                      ? "lecture"
+                      : "lectures"}{" "}
+                    due. Choose how much time you have,
+                    and the system will size the session
+                    for you.
                   </p>
+
+                  <div className="mx-auto mt-6 grid max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
+                    {SESSION_OPTIONS.map((option) => (
+                      <button
+                        key={option.minutes}
+                        type="button"
+                        onClick={() =>
+                          setSelectedMinutes(
+                            option.minutes,
+                          )
+                        }
+                        className={`rounded-lg border px-3 py-3 text-sm transition ${
+                          selectedMinutes ===
+                          option.minutes
+                            ? "border-slate-900 bg-slate-900 text-white"
+                            : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="font-medium">
+                          {option.minutes} min
+                        </div>
+
+                        <div
+                          className={`mt-1 text-xs ${
+                            selectedMinutes ===
+                            option.minutes
+                              ? "text-slate-300"
+                              : "text-slate-400"
+                          }`}
+                        >
+                          ~{option.lectures} lectures
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={startSession}
+                    className="mt-6 rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white"
+                  >
+                    Start studying
+                  </button>
                 </div>
               )}
-            </div>
+            </section>
+          ) : currentLecture ? (
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+              <div className="mb-8 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">
+                    {courseName ?? "Course"}
+                  </p>
 
-            {!revealed ? (
-              <button
-                onClick={() => setRevealed(true)}
-                className="mt-5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-              >
-                Reveal answer
-              </button>
-            ) : (
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  onClick={() => handleReview("Hard")}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800"
-                >
-                  Hard
-                </button>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {unitName ?? "Unit"}
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <div className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
+                    Box {currentLecture.box} / 5
+                  </div>
+
+                  <p className="mt-2 text-xs text-slate-400">
+                    {progressCount} /{" "}
+                    {sessionTargetCount}
+                  </p>
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-semibold text-slate-900">
+                {currentLecture.name}
+              </h2>
+
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500">
+                Study this lecture from your normal
+                learning material. When you are finished,
+                rate how well you know it.
+              </p>
+
+              <div className="mt-10 grid gap-3 sm:grid-cols-3">
+                {(
+                  ["Again", "Good", "Easy"] as ReviewRating[]
+                ).map((rating) => {
+                  const nextBox = getNextBox(
+                    rating,
+                    currentLecture.box,
+                  );
+
+                  const intervalDays =
+                    getReviewIntervalDays(nextBox);
+
+                  return (
+                    <button
+                      key={rating}
+                      type="button"
+                      onClick={() =>
+                        handleReview(rating)
+                      }
+                      className="rounded-xl border border-slate-300 px-4 py-4 text-left transition hover:border-slate-500 hover:bg-slate-50"
+                    >
+                      <div className="font-medium text-slate-900">
+                        {rating}
+                      </div>
+
+                      <div className="mt-1 text-xs text-slate-500">
+                        Box {nextBox} ·{" "}
+                        {intervalDays}{" "}
+                        {intervalDays === 1
+                          ? "day"
+                          : "days"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
+                <div className="text-xs text-slate-400">
+                  {remainingSessionCount} remaining in
+                  this session
+                </div>
 
                 <button
-                  onClick={() => handleReview("Okay")}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800"
+                  type="button"
+                  onClick={finishSession}
+                  className="text-sm font-medium text-slate-500 hover:text-slate-900"
                 >
-                  Okay
-                </button>
-
-                <button
-                  onClick={() => handleReview("Easy")}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-                >
-                  Easy
+                  Finish session
                 </button>
               </div>
-            )}
-          </div>
-        )}
-      </section>
+            </section>
+          ) : (
+            <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+              <h2 className="text-xl font-semibold text-slate-900">
+                Session complete
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-500">
+                You completed {progressCount}{" "}
+                {progressCount === 1
+                  ? "lecture"
+                  : "lectures"}{" "}
+                in this session.
+              </p>
+
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                {dueLectures.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={startSession}
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                  >
+                    Start another {selectedMinutes} min
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={finishSession}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+                >
+                  Finish
+                </button>
+              </div>
+            </section>
+          )}
+        </>
+      )}
     </main>
   );
 }
