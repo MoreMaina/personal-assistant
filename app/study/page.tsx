@@ -29,9 +29,14 @@ export default function StudyPage() {
   const [currentSemester, setCurrentSemester] =
     useState<Semester | null>(null);
 
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [lectures, setLectures] = useState<Lecture[]>([]);
+  const [courses, setCourses] =
+    useState<Course[]>([]);
+
+  const [units, setUnits] =
+    useState<Unit[]>([]);
+
+  const [lectures, setLectures] =
+    useState<Lecture[]>([]);
 
   const [currentLectureId, setCurrentLectureId] =
     useState<number | null>(null);
@@ -48,6 +53,9 @@ export default function StudyPage() {
   const [selectedMinutes, setSelectedMinutes] =
     useState(30);
 
+  const [autoStartLectureId, setAutoStartLectureId] =
+    useState<number | null>(null);
+
   function refresh() {
     setCurrentSemester(getCurrentSemester());
     setCourses(getCourses());
@@ -59,14 +67,96 @@ export default function StudyPage() {
     refresh();
   }, []);
 
-  const currentLecture = lectures.find(
-    (lecture) => lecture.id === currentLectureId,
-  );
+  useEffect(() => {
+    const params =
+      new URLSearchParams(
+        window.location.search,
+      );
+
+    const lectureIdParam =
+      params.get("lectureId");
+
+    if (!lectureIdParam) {
+      return;
+    }
+
+    const lectureId =
+      Number(lectureIdParam);
+
+    if (
+      Number.isFinite(lectureId)
+    ) {
+      setAutoStartLectureId(
+        lectureId,
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      autoStartLectureId === null ||
+      !currentSemester ||
+      lectures.length === 0
+    ) {
+      return;
+    }
+
+    const requestedLecture =
+      lectures.find(
+        (lecture) =>
+          lecture.id ===
+          autoStartLectureId,
+      );
+
+    if (!requestedLecture) {
+      return;
+    }
+
+    const dueLectureIds =
+      new Set(
+        getDueLectures(
+          currentSemester.id,
+        ).map(
+          (lecture) =>
+            lecture.id,
+        ),
+      );
+
+    if (
+      !dueLectureIds.has(
+        autoStartLectureId,
+      )
+    ) {
+      return;
+    }
+
+    setSessionReviewedIds([]);
+    setSessionTargetCount(1);
+    setCurrentLectureId(
+      autoStartLectureId,
+    );
+    setSessionActive(true);
+    setAutoStartLectureId(null);
+  }, [
+    autoStartLectureId,
+    currentSemester,
+    lectures,
+  ]);
+
+  const currentLecture =
+    lectures.find(
+      (lecture) =>
+        lecture.id ===
+        currentLectureId,
+    );
 
   const unitById = useMemo(
     () =>
       new Map(
-        units.map((unit) => [unit.id, unit]),
+        units.map((unit) => [
+          unit.id,
+          unit,
+        ]),
       ),
     [units],
   );
@@ -74,7 +164,10 @@ export default function StudyPage() {
   const courseById = useMemo(
     () =>
       new Map(
-        courses.map((course) => [course.id, course]),
+        courses.map((course) => [
+          course.id,
+          course,
+        ]),
       ),
     [courses],
   );
@@ -83,7 +176,9 @@ export default function StudyPage() {
     lecture: Lecture,
   ) {
     return (
-      unitById.get(lecture.unitId)?.courseId ?? null
+      unitById.get(
+        lecture.unitId,
+      )?.courseId ?? null
     );
   }
 
@@ -97,7 +192,10 @@ export default function StudyPage() {
                   course.semesterId ===
                   currentSemester.id,
               )
-              .map((course) => course.id),
+              .map(
+                (course) =>
+                  course.id,
+              ),
           )
         : new Set<number>(),
     [courses, currentSemester],
@@ -108,9 +206,14 @@ export default function StudyPage() {
       new Set(
         units
           .filter((unit) =>
-            semesterCourseIds.has(unit.courseId),
+            semesterCourseIds.has(
+              unit.courseId,
+            ),
           )
-          .map((unit) => unit.id),
+          .map(
+            (unit) =>
+              unit.id,
+          ),
       ),
     [units, semesterCourseIds],
   );
@@ -118,7 +221,9 @@ export default function StudyPage() {
   const semesterLectures = useMemo(
     () =>
       lectures.filter((lecture) =>
-        semesterUnitIds.has(lecture.unitId),
+        semesterUnitIds.has(
+          lecture.unitId,
+        ),
       ),
     [lectures, semesterUnitIds],
   );
@@ -126,59 +231,76 @@ export default function StudyPage() {
   const dueLectures = useMemo(
     () =>
       currentSemester
-        ? getDueLectures(currentSemester.id)
+        ? getDueLectures(
+            currentSemester.id,
+          )
         : [],
     [currentSemester, lectures],
   );
 
-  const newCount = semesterLectures.filter(
-    (lecture) =>
-      lecture.box === 1 &&
-      lecture.reviewCount === 0,
-  ).length;
+  const newCount =
+    semesterLectures.filter(
+      (lecture) =>
+        lecture.box === 1 &&
+        lecture.reviewCount === 0,
+    ).length;
 
-  const remainingSessionCount = Math.max(
-    0,
-    sessionTargetCount - sessionReviewedIds.length,
-  );
+  const remainingSessionCount =
+    Math.max(
+      0,
+      sessionTargetCount -
+        sessionReviewedIds.length,
+    );
 
-  const progressCount = Math.min(
-    sessionReviewedIds.length,
-    sessionTargetCount,
-  );
+  const progressCount =
+    Math.min(
+      sessionReviewedIds.length,
+      sessionTargetCount,
+    );
 
   function chooseNextLecture(
     sourceLectures: Lecture[],
     previousCourseId: number | null,
     reviewedIds: number[],
   ) {
-    const remaining = sourceLectures.filter(
-      (lecture) =>
-        !reviewedIds.includes(lecture.id),
-    );
+    const remaining =
+      sourceLectures.filter(
+        (lecture) =>
+          !reviewedIds.includes(
+            lecture.id,
+          ),
+      );
 
     if (remaining.length === 0) {
       return null;
     }
 
-    const sorted = [...remaining].sort((a, b) => {
-      const aTime = new Date(
-        a.nextReviewAt,
-      ).getTime();
+    const sorted = [...remaining].sort(
+      (a, b) => {
+        const aTime =
+          new Date(
+            a.nextReviewAt,
+          ).getTime();
 
-      const bTime = new Date(
-        b.nextReviewAt,
-      ).getTime();
+        const bTime =
+          new Date(
+            b.nextReviewAt,
+          ).getTime();
 
-      return aTime - bTime;
-    });
+        return aTime - bTime;
+      },
+    );
 
-    if (previousCourseId !== null) {
-      const differentCourse = sorted.find(
-        (lecture) =>
-          getCourseIdForLecture(lecture) !==
-          previousCourseId,
-      );
+    if (
+      previousCourseId !== null
+    ) {
+      const differentCourse =
+        sorted.find(
+          (lecture) =>
+            getCourseIdForLecture(
+              lecture,
+            ) !== previousCourseId,
+        );
 
       if (differentCourse) {
         return differentCourse;
@@ -193,9 +315,10 @@ export default function StudyPage() {
       return;
     }
 
-    const currentDue = getDueLectures(
-      currentSemester.id,
-    );
+    const currentDue =
+      getDueLectures(
+        currentSemester.id,
+      );
 
     if (currentDue.length === 0) {
       return;
@@ -204,26 +327,34 @@ export default function StudyPage() {
     const selectedOption =
       SESSION_OPTIONS.find(
         (option) =>
-          option.minutes === selectedMinutes,
-      ) ?? SESSION_OPTIONS[1];
+          option.minutes ===
+          selectedMinutes,
+      ) ??
+      SESSION_OPTIONS[1];
 
-    const targetCount = Math.min(
-      selectedOption.lectures,
-      currentDue.length,
-    );
+    const targetCount =
+      Math.min(
+        selectedOption.lectures,
+        currentDue.length,
+      );
 
-    const nextLecture = chooseNextLecture(
-      currentDue,
-      null,
-      [],
-    );
+    const nextLecture =
+      chooseNextLecture(
+        currentDue,
+        null,
+        [],
+      );
 
     setSessionReviewedIds([]);
-    setSessionTargetCount(targetCount);
+    setSessionTargetCount(
+      targetCount,
+    );
     setCurrentLectureId(
       nextLecture?.id ?? null,
     );
-    setSessionActive(Boolean(nextLecture));
+    setSessionActive(
+      Boolean(nextLecture),
+    );
   }
 
   function finishSession() {
@@ -236,50 +367,66 @@ export default function StudyPage() {
   function handleReview(
     rating: ReviewRating,
   ) {
-    if (!currentLecture || !currentSemester) {
+    if (
+      !currentLecture ||
+      !currentSemester
+    ) {
       return;
     }
 
     const previousCourseId =
-      getCourseIdForLecture(currentLecture);
+      getCourseIdForLecture(
+        currentLecture,
+      );
 
-    const updatedLecture = scheduleReview(
-      currentLecture,
-      rating,
-    );
+    const updatedLecture =
+      scheduleReview(
+        currentLecture,
+        rating,
+      );
 
-    const updatedLectures = lectures.map(
-      (lecture) =>
-        lecture.id === updatedLecture.id
-          ? updatedLecture
-          : lecture,
-    );
+    const updatedLectures =
+      lectures.map(
+        (lecture) =>
+          lecture.id ===
+          updatedLecture.id
+            ? updatedLecture
+            : lecture,
+      );
 
     const nextReviewedIds = [
       ...sessionReviewedIds,
       currentLecture.id,
     ];
 
-    setLectures(updatedLectures);
-    setSessionReviewedIds(nextReviewedIds);
+    setLectures(
+      updatedLectures,
+    );
+
+    setSessionReviewedIds(
+      nextReviewedIds,
+    );
 
     const sessionFinished =
-      nextReviewedIds.length >= sessionTargetCount;
+      nextReviewedIds.length >=
+      sessionTargetCount;
 
     if (sessionFinished) {
       setCurrentLectureId(null);
       return;
     }
 
-    const remainingDue = getDueLectures(
-      currentSemester.id,
-    );
+    const remainingDue =
+      getDueLectures(
+        currentSemester.id,
+      );
 
-    const nextLecture = chooseNextLecture(
-      remainingDue,
-      previousCourseId,
-      nextReviewedIds,
-    );
+    const nextLecture =
+      chooseNextLecture(
+        remainingDue,
+        previousCourseId,
+        nextReviewedIds,
+      );
 
     setCurrentLectureId(
       nextLecture?.id ?? null,
@@ -291,26 +438,40 @@ export default function StudyPage() {
     box: number,
   ) {
     if (rating === "Again") {
-      return Math.max(1, box - 1);
+      return Math.max(
+        1,
+        box - 1,
+      );
     }
 
     if (rating === "Good") {
-      return Math.min(5, box + 1);
+      return Math.min(
+        5,
+        box + 1,
+      );
     }
 
-    return Math.min(5, box + 2);
+    return Math.min(
+      5,
+      box + 2,
+    );
   }
 
-  const courseName = currentLecture
-    ? courseById.get(
-        getCourseIdForLecture(currentLecture) ??
-          -1,
-      )?.name
-    : null;
+  const courseName =
+    currentLecture
+      ? courseById.get(
+          getCourseIdForLecture(
+            currentLecture,
+          ) ?? -1,
+        )?.name
+      : null;
 
-  const unitName = currentLecture
-    ? unitById.get(currentLecture.unitId)?.name
-    : null;
+  const unitName =
+    currentLecture
+      ? unitById.get(
+          currentLecture.unitId,
+        )?.name
+      : null;
 
   return (
     <main className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
@@ -427,38 +588,40 @@ export default function StudyPage() {
                   </p>
 
                   <div className="mx-auto mt-6 grid max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
-                    {SESSION_OPTIONS.map((option) => (
-                      <button
-                        key={option.minutes}
-                        type="button"
-                        onClick={() =>
-                          setSelectedMinutes(
-                            option.minutes,
-                          )
-                        }
-                        className={`rounded-lg border px-3 py-3 text-sm transition ${
-                          selectedMinutes ===
-                          option.minutes
-                            ? "border-slate-900 bg-slate-900 text-white"
-                            : "border-slate-300 text-slate-700 hover:bg-slate-50"
-                        }`}
-                      >
-                        <div className="font-medium">
-                          {option.minutes} min
-                        </div>
-
-                        <div
-                          className={`mt-1 text-xs ${
+                    {SESSION_OPTIONS.map(
+                      (option) => (
+                        <button
+                          key={option.minutes}
+                          type="button"
+                          onClick={() =>
+                            setSelectedMinutes(
+                              option.minutes,
+                            )
+                          }
+                          className={`rounded-lg border px-3 py-3 text-sm transition ${
                             selectedMinutes ===
                             option.minutes
-                              ? "text-slate-300"
-                              : "text-slate-400"
+                              ? "border-slate-900 bg-slate-900 text-white"
+                              : "border-slate-300 text-slate-700 hover:bg-slate-50"
                           }`}
                         >
-                          ~{option.lectures} lectures
-                        </div>
-                      </button>
-                    ))}
+                          <div className="font-medium">
+                            {option.minutes} min
+                          </div>
+
+                          <div
+                            className={`mt-1 text-xs ${
+                              selectedMinutes ===
+                              option.minutes
+                                ? "text-slate-300"
+                                : "text-slate-400"
+                            }`}
+                          >
+                            ~{option.lectures} lectures
+                          </div>
+                        </button>
+                      ),
+                    )}
                   </div>
 
                   <button
@@ -476,7 +639,8 @@ export default function StudyPage() {
               <div className="mb-8 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium text-slate-500">
-                    {courseName ?? "Course"}
+                    {courseName ??
+                      "Course"}
                   </p>
 
                   <p className="mt-1 text-sm text-slate-400">
@@ -486,7 +650,9 @@ export default function StudyPage() {
 
                 <div className="text-right">
                   <div className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
-                    Box {currentLecture.box} / 5
+                    Box{" "}
+                    {currentLecture.box}{" "}
+                    / 5
                   </div>
 
                   <p className="mt-2 text-xs text-slate-400">
@@ -508,22 +674,31 @@ export default function StudyPage() {
 
               <div className="mt-10 grid gap-3 sm:grid-cols-3">
                 {(
-                  ["Again", "Good", "Easy"] as ReviewRating[]
+                  [
+                    "Again",
+                    "Good",
+                    "Easy",
+                  ] as ReviewRating[]
                 ).map((rating) => {
-                  const nextBox = getNextBox(
-                    rating,
-                    currentLecture.box,
-                  );
+                  const nextBox =
+                    getNextBox(
+                      rating,
+                      currentLecture.box,
+                    );
 
                   const intervalDays =
-                    getReviewIntervalDays(nextBox);
+                    getReviewIntervalDays(
+                      nextBox,
+                    );
 
                   return (
                     <button
                       key={rating}
                       type="button"
                       onClick={() =>
-                        handleReview(rating)
+                        handleReview(
+                          rating,
+                        )
                       }
                       className="rounded-xl border border-slate-300 px-4 py-4 text-left transition hover:border-slate-500 hover:bg-slate-50"
                     >
@@ -532,7 +707,8 @@ export default function StudyPage() {
                       </div>
 
                       <div className="mt-1 text-xs text-slate-500">
-                        Box {nextBox} ·{" "}
+                        Box{" "}
+                        {nextBox} ·{" "}
                         {intervalDays}{" "}
                         {intervalDays === 1
                           ? "day"
@@ -545,13 +721,15 @@ export default function StudyPage() {
 
               <div className="mt-6 flex items-center justify-between gap-3 border-t border-slate-100 pt-5">
                 <div className="text-xs text-slate-400">
-                  {remainingSessionCount} remaining in
-                  this session
+                  {remainingSessionCount}{" "}
+                  remaining in this session
                 </div>
 
                 <button
                   type="button"
-                  onClick={finishSession}
+                  onClick={
+                    finishSession
+                  }
                   className="text-sm font-medium text-slate-500 hover:text-slate-900"
                 >
                   Finish session
@@ -565,7 +743,8 @@ export default function StudyPage() {
               </h2>
 
               <p className="mt-2 text-sm text-slate-500">
-                You completed {progressCount}{" "}
+                You completed{" "}
+                {progressCount}{" "}
                 {progressCount === 1
                   ? "lecture"
                   : "lectures"}{" "}
@@ -573,19 +752,26 @@ export default function StudyPage() {
               </p>
 
               <div className="mt-5 flex flex-wrap justify-center gap-3">
-                {dueLectures.length > 0 && (
+                {dueLectures.length >
+                  0 && (
                   <button
                     type="button"
-                    onClick={startSession}
+                    onClick={
+                      startSession
+                    }
                     className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
                   >
-                    Start another {selectedMinutes} min
+                    Start another{" "}
+                    {selectedMinutes}{" "}
+                    min
                   </button>
                 )}
 
                 <button
                   type="button"
-                  onClick={finishSession}
+                  onClick={
+                    finishSession
+                  }
                   className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
                 >
                   Finish

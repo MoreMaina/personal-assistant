@@ -1,6 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from "react";
+
 import {
   addProject,
   ContextType,
@@ -25,26 +30,113 @@ const contexts: ContextType[] = [
 ];
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [projects, setProjects] =
+    useState<Project[]>([]);
 
-  const [name, setName] = useState("");
-  const [purpose, setPurpose] = useState("");
-  const [nextAction, setNextAction] = useState("");
+  const [showForm, setShowForm] =
+    useState(false);
+
+  const [name, setName] =
+    useState("");
+
+  const [purpose, setPurpose] =
+    useState("");
+
+  const [nextAction, setNextAction] =
+    useState("");
+
   const [estimatedMinutes, setEstimatedMinutes] =
     useState("30");
-  const [importance, setImportance] = useState<
-    "Low" | "Medium" | "High"
-  >("Medium");
+
+  const [importance, setImportance] =
+    useState<
+      "Low" | "Medium" | "High"
+    >("Medium");
+
   const [energy, setEnergy] =
     useState<EnergyLevel>("Medium");
+
   const [context, setContext] =
     useState<ContextType>("Anywhere");
-  const [deadline, setDeadline] = useState("");
+
+  const [deadline, setDeadline] =
+    useState("");
+
+  const [highlightedProjectId, setHighlightedProjectId] =
+    useState<number | null>(null);
+
+  const [launchHandled, setLaunchHandled] =
+    useState(false);
 
   useEffect(() => {
     setProjects(getProjects());
   }, []);
+
+  useEffect(() => {
+    if (
+      launchHandled ||
+      projects.length === 0
+    ) {
+      return;
+    }
+
+    const params =
+      new URLSearchParams(
+        window.location.search,
+      );
+
+    const projectIdValue =
+      params.get("projectId");
+
+    if (!projectIdValue) {
+      setLaunchHandled(true);
+      return;
+    }
+
+    const projectId =
+      Number(projectIdValue);
+
+    if (!Number.isFinite(projectId)) {
+      setLaunchHandled(true);
+      return;
+    }
+
+    const project = projects.find(
+      (item) =>
+        item.id === projectId,
+    );
+
+    if (!project) {
+      setLaunchHandled(true);
+      return;
+    }
+
+    setHighlightedProjectId(
+      project.id,
+    );
+
+    window.history.replaceState(
+      {},
+      "",
+      "/projects",
+    );
+
+    window.setTimeout(() => {
+      document
+        .getElementById(
+          `project-${project.id}`,
+        )
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+    }, 0);
+
+    setLaunchHandled(true);
+  }, [
+    launchHandled,
+    projects,
+  ]);
 
   const handleSubmit = (
     event: FormEvent<HTMLFormElement>,
@@ -59,24 +151,33 @@ export default function ProjectsPage() {
       return;
     }
 
-    const minutes = Number(estimatedMinutes);
+    const minutes =
+      Number(estimatedMinutes);
 
-    if (!minutes || minutes < 1) {
+    if (
+      !minutes ||
+      minutes < 1
+    ) {
       return;
     }
 
     const project = addProject({
       name: name.trim(),
       purpose: purpose.trim(),
-      nextAction: nextAction.trim(),
+      nextAction:
+        nextAction.trim(),
       estimatedMinutes: minutes,
       importance,
       energy,
       context,
-      deadline: deadline || undefined,
+      deadline:
+        deadline || undefined,
     });
 
-    setProjects((current) => [...current, project]);
+    setProjects((current) => [
+      ...current,
+      project,
+    ]);
 
     setName("");
     setPurpose("");
@@ -89,38 +190,50 @@ export default function ProjectsPage() {
     setShowForm(false);
   };
 
-  const markWorkedOn = (project: Project) => {
+  const markWorkedOn = (
+    project: Project,
+  ) => {
     const updated: Project = {
       ...project,
-      lastWorkedOn: new Date().toISOString(),
+      lastWorkedOn:
+        new Date().toISOString(),
     };
 
     updateProject(updated);
 
     setProjects((current) =>
       current.map((item) =>
-        item.id === project.id ? updated : item,
+        item.id === project.id
+          ? updated
+          : item,
       ),
     );
   };
 
-  const completeProject = (project: Project) => {
+  const completeProject = (
+    project: Project,
+  ) => {
     const updated: Project = {
       ...project,
       status: "Completed",
-      lastWorkedOn: new Date().toISOString(),
+      lastWorkedOn:
+        new Date().toISOString(),
     };
 
     updateProject(updated);
 
     setProjects((current) =>
       current.map((item) =>
-        item.id === project.id ? updated : item,
+        item.id === project.id
+          ? updated
+          : item,
       ),
     );
   };
 
-  const reopenProject = (project: Project) => {
+  const reopenProject = (
+    project: Project,
+  ) => {
     const updated: Project = {
       ...project,
       status: "Active",
@@ -130,25 +243,34 @@ export default function ProjectsPage() {
 
     setProjects((current) =>
       current.map((item) =>
-        item.id === project.id ? updated : item,
+        item.id === project.id
+          ? updated
+          : item,
       ),
     );
   };
 
-  const activeProjects = projects.filter(
-    (project) => project.status === "Active",
-  );
+  const activeProjects =
+    projects.filter(
+      (project) =>
+        project.status ===
+        "Active",
+    );
 
-  const completedProjects = projects.filter(
-    (project) => project.status === "Completed",
-  );
+  const completedProjects =
+    projects.filter(
+      (project) =>
+        project.status ===
+        "Completed",
+    );
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
         <header className="mb-8">
           <p className="text-sm font-medium text-slate-500">
-            Things you want to move forward
+            Things you want to move
+            forward
           </p>
 
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
@@ -156,8 +278,10 @@ export default function ProjectsPage() {
           </h1>
 
           <p className="mt-2 text-slate-600">
-            Keep the big picture separate from the individual
-            things you need to do.
+            Keep the big picture
+            separate from the
+            individual things you
+            need to do.
           </p>
         </header>
 
@@ -168,13 +292,16 @@ export default function ProjectsPage() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              {activeProjects.length} active
+              {activeProjects.length}{" "}
+              active
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() => setShowForm(true)}
+            onClick={() =>
+              setShowForm(true)
+            }
             className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white"
           >
             + Add project
@@ -199,7 +326,9 @@ export default function ProjectsPage() {
                 <input
                   value={name}
                   onChange={(event) =>
-                    setName(event.target.value)
+                    setName(
+                      event.target.value,
+                    )
                   }
                   placeholder="e.g. Build my website"
                   className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
@@ -214,7 +343,9 @@ export default function ProjectsPage() {
                 <textarea
                   value={purpose}
                   onChange={(event) =>
-                    setPurpose(event.target.value)
+                    setPurpose(
+                      event.target.value,
+                    )
                   }
                   placeholder="A brief description of what you're trying to accomplish."
                   className="mt-2 min-h-24 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
@@ -229,15 +360,19 @@ export default function ProjectsPage() {
                 <input
                   value={nextAction}
                   onChange={(event) =>
-                    setNextAction(event.target.value)
+                    setNextAction(
+                      event.target.value,
+                    )
                   }
                   placeholder="e.g. Write the homepage introduction"
                   className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                 />
 
                 <p className="mt-2 text-xs text-slate-500">
-                  Make this something you can actually do, not
-                  another vague project goal.
+                  Make this something
+                  you can actually do,
+                  not another vague
+                  project goal.
                 </p>
               </div>
 
@@ -251,10 +386,15 @@ export default function ProjectsPage() {
                     <input
                       type="number"
                       min="1"
-                      value={estimatedMinutes}
-                      onChange={(event) =>
+                      value={
+                        estimatedMinutes
+                      }
+                      onChange={(
+                        event,
+                      ) =>
                         setEstimatedMinutes(
-                          event.target.value,
+                          event.target
+                            .value,
                         )
                       }
                       className="w-full rounded-2xl border border-slate-200 px-4 py-3"
@@ -272,10 +412,13 @@ export default function ProjectsPage() {
                   </label>
 
                   <select
-                    value={importance}
+                    value={
+                      importance
+                    }
                     onChange={(event) =>
                       setImportance(
-                        event.target.value as
+                        event.target
+                          .value as
                           | "Low"
                           | "Medium"
                           | "High",
@@ -283,9 +426,15 @@ export default function ProjectsPage() {
                     }
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
                   >
-                    <option>Low</option>
-                    <option>Medium</option>
-                    <option>High</option>
+                    <option>
+                      Low
+                    </option>
+                    <option>
+                      Medium
+                    </option>
+                    <option>
+                      High
+                    </option>
                   </select>
                 </div>
 
@@ -298,14 +447,21 @@ export default function ProjectsPage() {
                     value={energy}
                     onChange={(event) =>
                       setEnergy(
-                        event.target.value as EnergyLevel,
+                        event.target
+                          .value as EnergyLevel,
                       )
                     }
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
                   >
-                    {energyLevels.map((level) => (
-                      <option key={level}>{level}</option>
-                    ))}
+                    {energyLevels.map(
+                      (level) => (
+                        <option
+                          key={level}
+                        >
+                          {level}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </div>
 
@@ -318,14 +474,21 @@ export default function ProjectsPage() {
                     value={context}
                     onChange={(event) =>
                       setContext(
-                        event.target.value as ContextType,
+                        event.target
+                          .value as ContextType,
                       )
                     }
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3"
                   >
-                    {contexts.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
+                    {contexts.map(
+                      (item) => (
+                        <option
+                          key={item}
+                        >
+                          {item}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </div>
 
@@ -338,7 +501,9 @@ export default function ProjectsPage() {
                     type="date"
                     value={deadline}
                     onChange={(event) =>
-                      setDeadline(event.target.value)
+                      setDeadline(
+                        event.target.value,
+                      )
                     }
                     className="mt-2 rounded-2xl border border-slate-200 bg-white px-4 py-3"
                   />
@@ -349,7 +514,9 @@ export default function ProjectsPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() =>
+                  setShowForm(false)
+                }
                 className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium"
               >
                 Cancel
@@ -366,146 +533,197 @@ export default function ProjectsPage() {
         )}
 
         <div className="space-y-4">
-          {activeProjects.length === 0 ? (
+          {activeProjects.length ===
+          0 ? (
             <div className="rounded-3xl bg-white p-8 text-center ring-1 ring-slate-200">
               <p className="font-medium">
                 No active projects yet.
               </p>
 
               <p className="mt-2 text-sm text-slate-500">
-                Add one and give it a concrete next action.
+                Add one and give it a
+                concrete next action.
               </p>
             </div>
           ) : (
-            activeProjects.map((project) => (
-              <article
-                key={project.id}
-                className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
-              >
-                <div className="flex flex-col gap-5">
-                  <div className="flex flex-col justify-between gap-3 sm:flex-row">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-xl font-semibold">
-                          {project.name}
-                        </h2>
+            activeProjects.map(
+              (project) => {
+                const highlighted =
+                  highlightedProjectId ===
+                  project.id;
 
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium">
-                          {project.importance} importance
-                        </span>
+                return (
+                  <article
+                    key={project.id}
+                    id={`project-${project.id}`}
+                    className={`rounded-3xl bg-white p-6 shadow-sm ring-1 transition ${
+                      highlighted
+                        ? "ring-2 ring-[var(--accent)] shadow-[0_5px_0_var(--accent-dark)]"
+                        : "ring-slate-200"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-5">
+                      {highlighted && (
+                        <div className="rounded-2xl bg-[var(--yellow-soft)] px-4 py-3 text-sm font-extrabold text-[var(--primary-dark)]">
+                          Recommended
+                          for right
+                          now
+                        </div>
+                      )}
+
+                      <div className="flex flex-col justify-between gap-3 sm:flex-row">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-xl font-semibold">
+                              {project.name}
+                            </h2>
+
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium">
+                              {
+                                project.importance
+                              }{" "}
+                              importance
+                            </span>
+                          </div>
+
+                          <p className="mt-2 text-sm leading-6 text-slate-600">
+                            {
+                              project.purpose
+                            }
+                          </p>
+                        </div>
                       </div>
 
-                      <p className="mt-2 text-sm leading-6 text-slate-600">
-                        {project.purpose}
-                      </p>
-                    </div>
-                  </div>
+                      <div className="rounded-2xl bg-slate-50 p-5">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                          Next action
+                        </p>
 
-                  <div className="rounded-2xl bg-slate-50 p-5">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                      Next action
-                    </p>
+                        <p className="mt-2 font-medium">
+                          {
+                            project.nextAction
+                          }
+                        </p>
 
-                    <p className="mt-2 font-medium">
-                      {project.nextAction}
-                    </p>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium ring-1 ring-slate-200">
-                        {project.estimatedMinutes} min
-                      </span>
-
-                      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium ring-1 ring-slate-200">
-                        {project.energy} energy
-                      </span>
-
-                      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium ring-1 ring-slate-200">
-                        {project.context}
-                      </span>
-
-                      {project.deadline && (
-                        <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium ring-1 ring-slate-200">
-                          Due{" "}
-                          {new Date(
-                            `${project.deadline}T00:00:00`,
-                          ).toLocaleDateString(
-                            "en-US",
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium ring-1 ring-slate-200">
                             {
-                              month: "short",
-                              day: "numeric",
-                            },
+                              project.estimatedMinutes
+                            }{" "}
+                            min
+                          </span>
+
+                          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium ring-1 ring-slate-200">
+                            {
+                              project.energy
+                            }{" "}
+                            energy
+                          </span>
+
+                          <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium ring-1 ring-slate-200">
+                            {
+                              project.context
+                            }
+                          </span>
+
+                          {project.deadline && (
+                            <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium ring-1 ring-slate-200">
+                              Due{" "}
+                              {new Date(
+                                `${project.deadline}T00:00:00`,
+                              ).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month:
+                                    "short",
+                                  day: "numeric",
+                                },
+                              )}
+                            </span>
                           )}
-                        </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            markWorkedOn(
+                              project,
+                            )
+                          }
+                          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                        >
+                          I worked on this
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            completeProject(
+                              project,
+                            )
+                          }
+                          className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium"
+                        >
+                          Complete project
+                        </button>
+                      </div>
+
+                      {project.lastWorkedOn && (
+                        <p className="text-xs text-slate-400">
+                          Last worked on{" "}
+                          {new Date(
+                            project.lastWorkedOn,
+                          ).toLocaleString()}
+                        </p>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() =>
-                        markWorkedOn(project)
-                      }
-                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-                    >
-                      I worked on this
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        completeProject(project)
-                      }
-                      className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium"
-                    >
-                      Complete project
-                    </button>
-                  </div>
-
-                  {project.lastWorkedOn && (
-                    <p className="text-xs text-slate-400">
-                      Last worked on{" "}
-                      {new Date(
-                        project.lastWorkedOn,
-                      ).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              </article>
-            ))
+                  </article>
+                );
+              },
+            )
           )}
         </div>
 
-        {completedProjects.length > 0 && (
+        {completedProjects.length >
+          0 && (
           <section className="mt-10">
             <h2 className="mb-4 text-lg font-semibold">
               Completed
             </h2>
 
             <div className="space-y-3">
-              {completedProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className="flex items-center justify-between rounded-2xl bg-white p-4 ring-1 ring-slate-200"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {project.name}
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                      Project completed
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() =>
-                      reopenProject(project)
-                    }
-                    className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium"
+              {completedProjects.map(
+                (project) => (
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between rounded-2xl bg-white p-4 ring-1 ring-slate-200"
                   >
-                    Reopen
-                  </button>
-                </div>
-              ))}
+                    <div>
+                      <p className="font-medium">
+                        {project.name}
+                      </p>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        Project completed
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        reopenProject(
+                          project,
+                        )
+                      }
+                      className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium"
+                    >
+                      Reopen
+                    </button>
+                  </div>
+                ),
+              )}
             </div>
           </section>
         )}

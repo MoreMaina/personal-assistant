@@ -1,392 +1,503 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+
 import {
-  cancelClass,
-  getCancelledClassIds,
-  getClasses,
-  restoreClass,
-} from "@/lib/classStorage";
-import { ClassItem } from "@/lib/classes";
+  getFreeWindows,
+  getTodayRecommendation,
+  scoreTask,
+  type FixedEvent,
+  type TodayTask,
+} from "@/lib/today-engine";
 
-const WEEKDAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+import { getTodayData } from "@/lib/today-data";
 
-function timeToMinutes(time: string) {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
+function formatTime(date: Date | string) {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(date));
 }
 
-function minutesToLabel(minutes: number) {
+function formatDuration(minutes: number) {
+  if (minutes < 60) {
+    return `${minutes} min`;
+  }
+
   const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+  const remainder = minutes % 60;
 
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHour = hours % 12 || 12;
+  if (remainder === 0) {
+    return `${hours} hr`;
+  }
 
-  return `${displayHour}:${mins
-    .toString()
-    .padStart(2, "0")} ${period}`;
+  return `${hours} hr ${remainder} min`;
 }
 
-function Donut({
-  value,
-  label,
-}: {
-  value: number;
-  label: string;
-}) {
-  const safeValue = Math.min(Math.max(value, 0), 100);
+function getTypeLabel(type: TodayTask["type"]) {
+  if (type === "study") {
+    return "Study";
+  }
 
-  return (
-    <div className="flex items-center gap-4">
-      <div
-        className="relative grid h-20 w-20 place-items-center rounded-full"
-        style={{
-          background: `conic-gradient(#0f172a ${safeValue}%, #e2e8f0 ${safeValue}% 100%)`,
-        }}
-      >
-        <div className="grid h-14 w-14 place-items-center rounded-full bg-white">
-          <span className="text-sm font-semibold">
-            {safeValue}%
-          </span>
-        </div>
-      </div>
+  if (type === "reading") {
+    return "Reading";
+  }
 
-      <div>
-        <p className="font-medium">{label}</p>
-        <p className="mt-1 text-sm text-slate-500">
-          of the school day is available
-        </p>
-      </div>
-    </div>
-  );
+  return "Project";
 }
 
-export default function Home() {
-  const [allClasses, setAllClasses] = useState<ClassItem[]>([]);
-  const [cancelledIds, setCancelledIds] = useState<number[]>([]);
-  const [today, setToday] = useState<Date | null>(null);
+function getTaskHref(task: TodayTask) {
+  const taskId = task.id.toString();
+
+  if (task.type === "study") {
+    const lectureId = taskId.replace(
+      "study-",
+      "",
+    );
+
+    return `/study?lectureId=${lectureId}`;
+  }
+
+  if (task.type === "reading") {
+    if (taskId.startsWith("book-")) {
+      const bookId = taskId.replace(
+        "book-",
+        "",
+      );
+
+      return `/reading?bookId=${bookId}`;
+    }
+
+    if (taskId.startsWith("essay-")) {
+      const essayId = taskId.replace(
+        "essay-",
+        "",
+      );
+
+      return `/reading?essayId=${essayId}`;
+    }
+
+    return "/reading";
+  }
+
+  if (task.type === "project") {
+    const projectId = taskId.replace(
+      "project-",
+      "",
+    );
+
+    return `/projects?projectId=${projectId}`;
+  }
+
+  return "/";
+}
+
+export default function TodayPage() {
+  const [now, setNow] =
+    useState<Date | null>(null);
+
+  const [fixedEvents, setFixedEvents] =
+    useState<FixedEvent[]>([]);
+
+  const [tasks, setTasks] =
+    useState<TodayTask[]>([]);
 
   useEffect(() => {
-    setToday(new Date());
-    setAllClasses(getClasses());
-    setCancelledIds(getCancelledClassIds());
-}, []);
+    const current = new Date();
 
-const todayName = today
-  ? WEEKDAYS[today.getDay()]
-  : "";
+    setNow(current);
 
-const dateLabel = today
-  ? today.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    })
-  : "Today";
+    const data =
+      getTodayData(current);
 
+    setFixedEvents(
+      data.fixedEvents,
+    );
 
-  const todaysClasses = useMemo(() => {
-    return allClasses
-      .filter((item) => item.day === todayName)
-      .sort(
-        (a, b) =>
-          timeToMinutes(a.start) -
-          timeToMinutes(b.start),
-      );
-  }, [allClasses, todayName]);
+    setTasks(data.tasks);
+  }, []);
 
-  const activeClasses = todaysClasses.filter(
-    (item) => !cancelledIds.includes(item.id),
-  );
+  const freeWindows = useMemo(() => {
+    if (!now) {
+      return [];
+    }
 
-  const availableWindows = useMemo(() => {
-    const windows: {
-      start: string;
-      end: string;
-      minutes: number;
-    }[] = [];
+    return getFreeWindows(
+      fixedEvents,
+      now,
+    );
+  }, [fixedEvents, now]);
 
-    let cursor = 7 * 60;
-    const schoolEnd = 17 * 60;
-
-    for (const item of activeClasses) {
-      const classStart = timeToMinutes(item.start);
-      const classEnd = timeToMinutes(item.end);
-
-      if (classStart > cursor) {
-        windows.push({
-          start: minutesToLabel(cursor),
-          end: minutesToLabel(classStart),
-          minutes: classStart - cursor,
-        });
+  const recommendation =
+    useMemo(() => {
+      if (!now) {
+        return null;
       }
 
-      cursor = Math.max(cursor, classEnd);
+      return getTodayRecommendation(
+        fixedEvents,
+        tasks,
+        now,
+      );
+    }, [
+      fixedEvents,
+      tasks,
+      now,
+    ]);
+
+  const upNext = useMemo(() => {
+    if (!now) {
+      return [];
     }
 
-    if (cursor < schoolEnd) {
-      windows.push({
-        start: minutesToLabel(cursor),
-        end: minutesToLabel(schoolEnd),
-        minutes: schoolEnd - cursor,
-      });
+    const candidates: Array<{
+      task: TodayTask;
+      score: number;
+    }> = [];
+
+    for (const task of tasks) {
+      if (
+        recommendation &&
+        task.id ===
+          recommendation.task.id
+      ) {
+        continue;
+      }
+
+      let bestScore =
+        Number.NEGATIVE_INFINITY;
+
+      for (const window of freeWindows) {
+        if (
+          task.durationMinutes >
+          window.durationMinutes
+        ) {
+          continue;
+        }
+
+        const score = scoreTask(
+          task,
+          window,
+          now,
+        );
+
+        bestScore = Math.max(
+          bestScore,
+          score,
+        );
+      }
+
+      if (
+        Number.isFinite(bestScore)
+      ) {
+        candidates.push({
+          task,
+          score: bestScore,
+        });
+      }
     }
 
-    return windows;
-  }, [activeClasses]);
+    return candidates
+      .sort(
+        (a, b) =>
+          b.score - a.score,
+      )
+      .slice(0, 3);
+  }, [
+    tasks,
+    freeWindows,
+    recommendation,
+    now,
+  ]);
 
-  const totalAvailableMinutes = availableWindows.reduce(
-    (total, window) => total + window.minutes,
-    0,
-  );
-
-  const availabilityPercentage = Math.round(
-    (totalAvailableMinutes / (10 * 60)) * 100,
-  );
-
-  const cancelTodayClass = (id: number) => {
-    cancelClass(id);
-
-    setCancelledIds((current) =>
-      current.includes(id) ? current : [...current, id],
+  const totalFreeMinutes =
+    freeWindows.reduce(
+      (total, window) =>
+        total +
+        window.durationMinutes,
+      0,
     );
-  };
 
-  const restoreTodayClass = (id: number) => {
-    restoreClass(id);
+  if (!now) {
+    return (
+      <main>
+        <div className="rounded-[24px] border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-8 text-center shadow-[0_4px_0_var(--primary-dark)]">
+          <h1 className="text-2xl">
+            Getting today ready...
+          </h1>
 
-    setCancelledIds((current) =>
-      current.filter((item) => item !== id),
+          <p className="mt-2 text-[var(--ink-soft)]">
+            Loading your schedule and
+            priorities.
+          </p>
+        </div>
+      </main>
     );
-  };
+  }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
-        <header className="mb-8">
-          <p className="text-sm font-medium text-slate-500">
-            {dateLabel}
-          </p>
+    <main>
+      <div className="mb-8">
+        <p className="text-sm font-extrabold uppercase tracking-[0.08em] text-[var(--muted)]">
+          Today
+        </p>
 
-          <div className="mt-1 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight">
-                Good morning
-              </h1>
+        <h1 className="mt-2 text-4xl sm:text-5xl">
+          {new Intl.DateTimeFormat(
+            "en-US",
+            {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            },
+          ).format(now)}
+        </h1>
 
-              <p className="mt-2 text-slate-600">
-                Here&apos;s what your day looks like.
-              </p>
-            </div>
+        <p className="mt-3 text-[var(--ink-soft)]">
+          Your day, reduced to the next
+          useful thing.
+        </p>
+      </div>
 
-            <div className="rounded-full bg-white px-4 py-2 text-sm font-medium shadow-sm ring-1 ring-slate-200">
-              School day
-            </div>
+      <section className="card bg-[var(--surface)] p-6 sm:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="stat-label">
+              Right now
+            </p>
+
+            <h2 className="mt-2 text-2xl sm:text-3xl">
+              {recommendation
+                ? recommendation.task.title
+                : "Nothing urgent"}
+            </h2>
           </div>
-        </header>
 
-        <section className="mb-6 rounded-3xl bg-slate-900 p-6 text-white shadow-sm">
-          <p className="text-sm font-medium text-slate-400">
-            TODAY
-          </p>
-
-          {activeClasses.length > 0 ? (
-            <>
-              <h2 className="mt-2 text-2xl font-semibold">
-                {activeClasses.length} class
-                {activeClasses.length === 1 ? "" : "es"} scheduled
-              </h2>
-
-              <p className="mt-2 text-slate-300">
-                You have {totalAvailableMinutes} minutes of open
-                time during the school day.
-              </p>
-            </>
-          ) : (
-            <>
-              <h2 className="mt-2 text-2xl font-semibold">
-                No classes today
-              </h2>
-
-              <p className="mt-2 text-slate-300">
-                This could be a useful day for study, reading,
-                projects, or rest.
-              </p>
-            </>
+          {recommendation && (
+            <span className="rounded-full border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-3 py-1 text-sm font-extrabold text-[var(--primary-dark)]">
+              {getTypeLabel(
+                recommendation.task.type,
+              )}
+            </span>
           )}
-        </section>
+        </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">
-                  Today&apos;s classes
-                </h2>
+        {recommendation ? (
+          <>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-[16px] bg-[var(--primary-soft)] p-4">
+                <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary)]">
+                  Time
+                </div>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  {todayName}
-                </p>
+                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary)]">
+                  {formatDuration(
+                    recommendation
+                      .task
+                      .durationMinutes,
+                  )}
+                </div>
               </div>
 
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium">
-                {todaysClasses.length}
-              </span>
+              <div className="rounded-[16px] bg-[var(--accent-soft)] p-4">
+                <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--accent-dark)]">
+                  Window
+                </div>
+
+                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--accent-dark)]">
+                  {formatDuration(
+                    recommendation
+                      .window
+                      .durationMinutes,
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[16px] bg-[var(--yellow-soft)] p-4">
+                <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary-dark)]">
+                  Start
+                </div>
+
+                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary-dark)]">
+                  {formatTime(
+                    recommendation
+                      .window
+                      .startAt,
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="mt-5 space-y-3">
-              {todaysClasses.length === 0 ? (
-                <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-                  No classes are scheduled for today.
-                </p>
-              ) : (
-                todaysClasses.map((item) => {
-                  const cancelled =
-                    cancelledIds.includes(item.id);
+            <div className="mt-6 rounded-[16px] border-2 border-[var(--border)] bg-white/60 p-4">
+              <p className="text-sm font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
+                Why this?
+              </p>
 
-                  return (
-                    <div
-                      key={item.id}
-                      className={`rounded-2xl border p-4 ${
-                        cancelled
-                          ? "border-dashed border-slate-300 bg-slate-50"
-                          : "border-slate-200"
-                      }`}
-                    >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p
-                              className={`font-medium ${
-                                cancelled
-                                  ? "text-slate-400 line-through"
-                                  : ""
-                              }`}
-                            >
-                              {item.name}
-                            </p>
+              <p className="mt-1 text-[var(--ink-soft)]">
+                {
+                  recommendation.explanation
+                }
+              </p>
+            </div>
 
-                            {cancelled && (
-                              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-500">
-                                Cancelled
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="mt-1 text-sm text-slate-500">
-                            {item.type} · {item.start}–
-                            {item.end}
-                          </p>
-                        </div>
-
-                        {cancelled ? (
-                          <button
-                            onClick={() =>
-                              restoreTodayClass(item.id)
-                            }
-                            className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium"
-                          >
-                            Restore
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              cancelTodayClass(item.id)
-                            }
-                            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
+            <Link
+              href={getTaskHref(
+                recommendation.task,
               )}
-            </div>
-          </section>
-
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <h2 className="text-lg font-semibold">
-              Available time
-            </h2>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Your exact open windows today.
+              className="mt-6 inline-flex min-h-[52px] items-center justify-center rounded-[16px] border-2 border-[var(--accent-dark)] bg-[var(--accent)] px-6 text-base font-black uppercase tracking-[0.03em] text-white shadow-[0_4px_0_var(--accent-dark)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-none"
+            >
+              Start
+            </Link>
+          </>
+        ) : (
+          <div className="mt-6 rounded-[16px] bg-[var(--primary-soft)] p-5">
+            <p className="font-semibold text-[var(--ink-soft)]">
+              Nothing fits your current
+              schedule. You are caught up
+              for now.
             </p>
+          </div>
+        )}
+      </section>
 
-            <div className="mt-6">
-              <Donut
-                value={availabilityPercentage}
-                label={`${totalAvailableMinutes} minutes available`}
-              />
-            </div>
+      <section className="mt-8">
+        <div className="mb-4">
+          <p className="stat-label">
+            Up next
+          </p>
 
-            <div className="mt-6 space-y-3">
-              {availableWindows.length > 0 ? (
-                availableWindows.map((window) => (
-                  <div
-                    key={`${window.start}-${window.end}`}
-                    className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3"
-                  >
-                    <span className="font-medium">
-                      {window.start}–{window.end}
-                    </span>
-
-                    <span className="text-sm text-slate-500">
-                      {window.minutes} min
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-                  No open time during school hours.
-                </p>
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Reading</h2>
-
-              <span className="text-sm text-slate-500">
-                Coming next
-              </span>
-            </div>
-
-            <p className="mt-4 text-sm leading-6 text-slate-500">
-              We&apos;ll build your reading system next so the
-              app can track what you read, when you read, and how
-              much you read.
-            </p>
-          </section>
-
-          <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Projects</h2>
-
-              <span className="text-sm text-slate-500">
-                Coming later
-              </span>
-            </div>
-
-            <p className="mt-4 text-sm leading-6 text-slate-500">
-              Your projects will eventually feed into the same
-              daily picture as your classes, study, and reading.
-            </p>
-          </section>
+          <h2 className="mt-1 text-2xl">
+            Other good options
+          </h2>
         </div>
-      </div>
+
+        {upNext.length > 0 ? (
+          <div className="grid gap-4">
+            {upNext.map(
+              ({ task }) => (
+                <Link
+                  key={task.id}
+                  href={getTaskHref(task)}
+                  className="card flex items-center justify-between gap-4 bg-[var(--surface)] p-5 transition hover:-translate-y-1"
+                >
+                  <div>
+                    <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
+                      {getTypeLabel(
+                        task.type,
+                      )}{" "}
+                      ·{" "}
+                      {formatDuration(
+                        task.durationMinutes,
+                      )}
+                    </div>
+
+                    <h3 className="mt-1 text-xl">
+                      {task.title}
+                    </h3>
+                  </div>
+
+                  <span className="shrink-0 text-2xl text-[var(--primary)]">
+                    →
+                  </span>
+                </Link>
+              ),
+            )}
+          </div>
+        ) : (
+          <div className="rounded-[16px] bg-[var(--surface-soft)] p-5 text-[var(--ink-soft)]">
+            Nothing else fits into
+            today's available
+            windows.
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div>
+            <p className="stat-label">
+              Your day
+            </p>
+
+            <h2 className="mt-1 text-2xl">
+              What the day looks like
+            </h2>
+          </div>
+
+          <div className="text-right">
+            <div className="font-[var(--font-heading)] text-2xl font-bold text-[var(--primary)]">
+              {formatDuration(
+                totalFreeMinutes,
+              )}
+            </div>
+
+            <div className="text-xs font-bold text-[var(--muted)]">
+              available today
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {fixedEvents.map(
+            (event) => (
+              <div
+                key={event.id}
+                className="rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--primary)] p-4 text-[var(--surface)] shadow-[0_3px_0_var(--primary-dark)]"
+              >
+                <div className="text-xs font-extrabold uppercase tracking-[0.06em] opacity-75">
+                  Class
+                </div>
+
+                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold">
+                  {event.title}
+                </div>
+
+                <div className="mt-1 text-sm font-bold opacity-80">
+                  {formatTime(
+                    event.startAt,
+                  )}{" "}
+                  —{" "}
+                  {formatTime(
+                    event.endAt,
+                  )}
+                </div>
+              </div>
+            ),
+          )}
+
+          {freeWindows
+            .slice(0, 4)
+            .map(
+              (window, index) => (
+                <div
+                  key={`${window.startAt.toISOString()}-${index}`}
+                  className="rounded-[16px] border-2 border-[var(--border)] bg-[var(--surface)] p-4"
+                >
+                  <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
+                    Free
+                  </div>
+
+                  <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary)]">
+                    {formatTime(
+                      window.startAt,
+                    )}{" "}
+                    —{" "}
+                    {formatTime(
+                      window.endAt,
+                    )}
+                  </div>
+
+                  <div className="mt-1 text-sm font-bold text-[var(--ink-soft)]">
+                    {formatDuration(
+                      window.durationMinutes,
+                    )}
+                  </div>
+                </div>
+              ),
+            )}
+        </div>
+      </section>
     </main>
   );
 }

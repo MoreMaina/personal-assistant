@@ -1,22 +1,31 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
+import type { Metadata, Viewport } from "next";
+import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
+import Navigation from "./components/Navigation";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fredoka = Fredoka({
   subsets: ["latin"],
+  variable: "--font-heading",
+  weight: ["500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const nunito = Nunito({
   subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
   title: "Personal Assistant",
   description:
     "My personal study, reading, projects and life assistant",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#23412F",
 };
 
 export default function RootLayout({
@@ -27,57 +36,41 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${fredoka.variable} ${nunito.variable}`}
       >
-        <nav className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-6xl items-center gap-6 px-5 py-4 sm:px-8">
-            <Link
-              href="/"
-              className="text-sm font-semibold text-slate-900"
-            >
+        <Navigation />
+
+        <div className="app-frame">
+          <header className="topbar">
+            <div className="topbar__brand">
               Personal Assistant
-            </Link>
-
-            <div className="flex gap-5 text-sm text-slate-500">
-              <Link
-                href="/"
-                className="transition hover:text-slate-900"
-              >
-                Today
-              </Link>
-
-              <Link
-                href="/classes"
-                className="transition hover:text-slate-900"
-              >
-                Classes
-              </Link>
-
-              <Link
-                href="/study"
-                className="transition hover:text-slate-900"
-              >
-                Study
-              </Link>
-
-              <Link
-                href="/reading"
-                className="transition hover:text-slate-900"
-              >
-                Reading
-              </Link>
-
-              <Link
-                href="/projects"
-                className="transition hover:text-slate-900"
-              >
-                Projects
-              </Link>
             </div>
-          </div>
-        </nav>
 
-        {children}
+            <div className="topbar__actions">
+              <button
+                type="button"
+                className="topbar__icon-button"
+                aria-label="Notifications"
+              >
+                ♧
+              </button>
+
+              <button
+                type="button"
+                className="profile-dot"
+                aria-label="Profile"
+              >
+                P
+              </button>
+            </div>
+          </header>
+
+          <main className="app-content">
+            <div className="page-shell">
+              {children}
+            </div>
+          </main>
+        </div>
       </body>
     </html>
   );
