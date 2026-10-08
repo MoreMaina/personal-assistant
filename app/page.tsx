@@ -13,20 +13,31 @@ import {
 
 import { getTodayData } from "@/lib/today-data";
 
-function formatTime(date: Date | string) {
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(date));
+function formatTime(
+  date: Date | string,
+) {
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      hour: "numeric",
+      minute: "2-digit",
+    },
+  ).format(new Date(date));
 }
 
-function formatDuration(minutes: number) {
+function formatDuration(
+  minutes: number,
+) {
   if (minutes < 60) {
     return `${minutes} min`;
   }
 
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
+  const hours = Math.floor(
+    minutes / 60,
+  );
+
+  const remainder =
+    minutes % 60;
 
   if (remainder === 0) {
     return `${hours} hr`;
@@ -35,7 +46,9 @@ function formatDuration(minutes: number) {
   return `${hours} hr ${remainder} min`;
 }
 
-function getTypeLabel(type: TodayTask["type"]) {
+function getTypeLabel(
+  type: TodayTask["type"],
+) {
   if (type === "study") {
     return "Study";
   }
@@ -47,33 +60,47 @@ function getTypeLabel(type: TodayTask["type"]) {
   return "Project";
 }
 
-function getTaskHref(task: TodayTask) {
-  const taskId = task.id.toString();
+function getTaskHref(
+  task: TodayTask,
+) {
+  const taskId =
+    task.id.toString();
 
   if (task.type === "study") {
-    const lectureId = taskId.replace(
-      "study-",
-      "",
-    );
+    const lectureId =
+      taskId.replace(
+        "study-",
+        "",
+      );
 
     return `/study?lectureId=${lectureId}`;
   }
 
   if (task.type === "reading") {
-    if (taskId.startsWith("book-")) {
-      const bookId = taskId.replace(
+    if (
+      taskId.startsWith(
         "book-",
-        "",
-      );
+      )
+    ) {
+      const bookId =
+        taskId.replace(
+          "book-",
+          "",
+        );
 
       return `/reading?bookId=${bookId}`;
     }
 
-    if (taskId.startsWith("essay-")) {
-      const essayId = taskId.replace(
+    if (
+      taskId.startsWith(
         "essay-",
-        "",
-      );
+      )
+    ) {
+      const essayId =
+        taskId.replace(
+          "essay-",
+          "",
+        );
 
       return `/reading?essayId=${essayId}`;
     }
@@ -82,10 +109,11 @@ function getTaskHref(task: TodayTask) {
   }
 
   if (task.type === "project") {
-    const projectId = taskId.replace(
-      "project-",
-      "",
-    );
+    const projectId =
+      taskId.replace(
+        "project-",
+        "",
+      );
 
     return `/projects?projectId=${projectId}`;
   }
@@ -104,30 +132,70 @@ export default function TodayPage() {
     useState<TodayTask[]>([]);
 
   useEffect(() => {
-    const current = new Date();
+    function refreshToday() {
+      const current =
+        new Date();
 
-    setNow(current);
+      setNow(current);
 
-    const data =
-      getTodayData(current);
+      const data =
+        getTodayData(current);
 
-    setFixedEvents(
-      data.fixedEvents,
-    );
+      setFixedEvents(
+        data.fixedEvents,
+      );
 
-    setTasks(data.tasks);
-  }, []);
-
-  const freeWindows = useMemo(() => {
-    if (!now) {
-      return [];
+      setTasks(data.tasks);
     }
 
-    return getFreeWindows(
+    refreshToday();
+
+    const interval =
+      window.setInterval(
+        refreshToday,
+        30_000,
+      );
+
+    function handleVisibilityChange() {
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        refreshToday();
+      }
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
+    return () => {
+      window.clearInterval(
+        interval,
+      );
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
+    };
+  }, []);
+
+  const freeWindows =
+    useMemo(() => {
+      if (!now) {
+        return [];
+      }
+
+      return getFreeWindows(
+        fixedEvents,
+        now,
+      );
+    }, [
       fixedEvents,
       now,
-    );
-  }, [fixedEvents, now]);
+    ]);
 
   const recommendation =
     useMemo(() => {
@@ -176,20 +244,24 @@ export default function TodayPage() {
           continue;
         }
 
-        const score = scoreTask(
-          task,
-          window,
-          now,
-        );
+        const score =
+          scoreTask(
+            task,
+            window,
+            now,
+          );
 
-        bestScore = Math.max(
-          bestScore,
-          score,
-        );
+        bestScore =
+          Math.max(
+            bestScore,
+            score,
+          );
       }
 
       if (
-        Number.isFinite(bestScore)
+        Number.isFinite(
+          bestScore,
+        )
       ) {
         candidates.push({
           task,
@@ -228,8 +300,8 @@ export default function TodayPage() {
           </h1>
 
           <p className="mt-2 text-[var(--ink-soft)]">
-            Loading your schedule and
-            priorities.
+            Loading your schedule
+            and priorities.
           </p>
         </div>
       </main>
@@ -255,8 +327,8 @@ export default function TodayPage() {
         </h1>
 
         <p className="mt-3 text-[var(--ink-soft)]">
-          Your day, reduced to the next
-          useful thing.
+          Your day, reduced to
+          the next useful thing.
         </p>
       </div>
 
@@ -269,7 +341,9 @@ export default function TodayPage() {
 
             <h2 className="mt-2 text-2xl sm:text-3xl">
               {recommendation
-                ? recommendation.task.title
+                ? recommendation
+                    .task
+                    .title
                 : "Nothing urgent"}
             </h2>
           </div>
@@ -277,7 +351,8 @@ export default function TodayPage() {
           {recommendation && (
             <span className="rounded-full border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-3 py-1 text-sm font-extrabold text-[var(--primary-dark)]">
               {getTypeLabel(
-                recommendation.task.type,
+                recommendation
+                  .task.type,
               )}
             </span>
           )}
@@ -336,7 +411,8 @@ export default function TodayPage() {
 
               <p className="mt-1 text-[var(--ink-soft)]">
                 {
-                  recommendation.explanation
+                  recommendation
+                    .explanation
                 }
               </p>
             </div>
@@ -353,8 +429,9 @@ export default function TodayPage() {
         ) : (
           <div className="mt-6 rounded-[16px] bg-[var(--primary-soft)] p-5">
             <p className="font-semibold text-[var(--ink-soft)]">
-              Nothing fits your current
-              schedule. You are caught up
+              Nothing fits your
+              current schedule.
+              You are caught up
               for now.
             </p>
           </div>
@@ -378,7 +455,9 @@ export default function TodayPage() {
               ({ task }) => (
                 <Link
                   key={task.id}
-                  href={getTaskHref(task)}
+                  href={getTaskHref(
+                    task,
+                  )}
                   className="card flex items-center justify-between gap-4 bg-[var(--surface)] p-5 transition hover:-translate-y-1"
                 >
                   <div>
@@ -407,7 +486,7 @@ export default function TodayPage() {
         ) : (
           <div className="rounded-[16px] bg-[var(--surface-soft)] p-5 text-[var(--ink-soft)]">
             Nothing else fits into
-            today's available
+            today&apos;s available
             windows.
           </div>
         )}
@@ -421,7 +500,8 @@ export default function TodayPage() {
             </p>
 
             <h2 className="mt-1 text-2xl">
-              What the day looks like
+              What the day looks
+              like
             </h2>
           </div>
 
@@ -469,7 +549,10 @@ export default function TodayPage() {
           {freeWindows
             .slice(0, 4)
             .map(
-              (window, index) => (
+              (
+                window,
+                index,
+              ) => (
                 <div
                   key={`${window.startAt.toISOString()}-${index}`}
                   className="rounded-[16px] border-2 border-[var(--border)] bg-[var(--surface)] p-4"

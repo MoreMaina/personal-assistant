@@ -64,7 +64,8 @@ function makeLocalDate(
       .split(":")
       .map(Number);
 
-  const result = new Date(date);
+  const result =
+    new Date(date);
 
   result.setHours(
     hours,
@@ -115,6 +116,28 @@ export function getTodayFixedEvents(
           classItem.end,
         ),
     }));
+}
+
+function getStudyDuration(
+  box: number,
+): number {
+  if (box <= 1) {
+    return 8;
+  }
+
+  if (box === 2) {
+    return 8;
+  }
+
+  if (box === 3) {
+    return 10;
+  }
+
+  if (box === 4) {
+    return 12;
+  }
+
+  return 15;
 }
 
 function getStudyTasks(): TodayTask[] {
@@ -192,20 +215,16 @@ function getStudyTasks(): TodayTask[] {
         .filter(Boolean)
         .join(" — "),
       type: "study",
-      durationMinutes: 8,
+      durationMinutes:
+        getStudyDuration(
+          lecture.box,
+        ),
       priority:
         (lecture.box >= 4
           ? 5
           : 4) as TaskPriority,
       dueAt:
         lecture.nextReviewAt,
-
-      /*
-       * Study reviews are handled by the
-       * existing Leitner system, so once a
-       * review is completed the lecture
-       * naturally disappears from Today.
-       */
     };
   });
 }
@@ -342,15 +361,13 @@ function mapImportance(
     | "High",
 ): TaskPriority {
   if (
-    importance ===
-    "High"
+    importance === "High"
   ) {
     return 5;
   }
 
   if (
-    importance ===
-    "Medium"
+    importance === "Medium"
   ) {
     return 3;
   }
@@ -378,9 +395,10 @@ function getProjectTasks(): TodayTask[] {
         mapImportance(
           project.importance,
         ),
-      energy: mapEnergy(
-        project.energy,
-      ),
+      energy:
+        mapEnergy(
+          project.energy,
+        ),
       deadlineAt:
         project.deadline,
       lastWorkedAt:
@@ -403,6 +421,7 @@ export function getTodayData(
   return {
     fixedEvents:
       getTodayFixedEvents(now),
-    tasks: getTodayTasks(),
+    tasks:
+      getTodayTasks(),
   };
 }
