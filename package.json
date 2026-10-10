@@ -15,6 +15,7 @@
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "rrule": "^2.8.1",
     "ts-fsrs": "^5.4.2"
   },
   "devDependencies": {
