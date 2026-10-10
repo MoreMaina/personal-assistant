@@ -184,57 +184,46 @@ export function getEligibleTasks(
 ): TodayTask[] {
   return tasks.filter((task) => {
     if (
-      !Number.isFinite(
-        task.durationMinutes,
-      ) ||
+      !Number.isFinite(task.durationMinutes) ||
       task.durationMinutes <= 0
     ) {
       return false;
     }
 
-    if (
-      task.durationMinutes >
-      window.durationMinutes
-    ) {
+    if (task.durationMinutes > window.durationMinutes) {
       return false;
     }
 
-    if (task.availableFrom) {
-      const availableFrom =
-        toDate(
-          task.availableFrom,
-        );
+    const windowStart = window.startAt.getTime();
+    const windowEnd = window.endAt.getTime();
 
-      const earliestStart =
-        availableFrom >
-        window.startAt
-          ? availableFrom
-          : window.startAt;
+    const availableFrom = task.availableFrom
+      ? toDate(task.availableFrom).getTime()
+      : windowStart;
 
-      if (
-        earliestStart.getTime() +
-          task.durationMinutes *
-            60000 >
-        window.endAt.getTime()
-      ) {
-        return false;
-      }
+    const earliestStart = Math.max(
+      availableFrom,
+      windowStart,
+    );
+
+    const earliestFinish =
+      earliestStart + task.durationMinutes * 60000;
+
+    // The task must be available early enough to finish
+    // within the current free window.
+    if (earliestFinish > windowEnd) {
+      return false;
     }
 
     if (task.deadlineAt) {
-      const deadline =
-        toDate(
-          task.deadlineAt,
-        );
+      const deadline = toDate(task.deadlineAt).getTime();
 
-      const latestFinish =
-        window.startAt.getTime() +
-        task.durationMinutes *
-          60000;
-
+      // Enforce the deadline when it is still ahead at the
+      // start of the window. Already-overdue work remains
+      // eligible instead of being permanently excluded.
       if (
-        latestFinish >
-        deadline.getTime()
+        deadline > windowStart &&
+        earliestFinish > deadline
       ) {
         return false;
       }

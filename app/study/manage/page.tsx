@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
 import {
@@ -96,11 +96,10 @@ export default function StudyManagePage() {
   const [editingLectureName, setEditingLectureName] =
     useState("");
 
-  function refresh() {
+  const refresh = useCallback(() => {
     const refreshedPrograms = getPrograms();
     const refreshedSemesters = getSemesters();
-    const refreshedCurrentSemester =
-      getCurrentSemester();
+    const refreshedCurrentSemester = getCurrentSemester();
 
     setPrograms(refreshedPrograms);
     setSemesters(refreshedSemesters);
@@ -109,20 +108,21 @@ export default function StudyManagePage() {
     setUnits(getUnits());
     setLectures(getLectures());
 
-    if (
-      newSemesterProgramId === null &&
-      refreshedPrograms.length > 0
-    ) {
-      setNewSemesterProgramId(
+    setNewSemesterProgramId((current) => {
+      if (current !== null || refreshedPrograms.length === 0) {
+        return current;
+      }
+
+      return (
         refreshedCurrentSemester?.programId ??
-          refreshedPrograms[0].id,
+        refreshedPrograms[0].id
       );
-    }
-  }
+    });
+  }, []);
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [refresh]);
 
   const semesterCourses = currentSemester
     ? courses.filter(

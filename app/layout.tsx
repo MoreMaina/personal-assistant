@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import { Fredoka, Nunito } from "next/font/google";
 
 import "./globals.css";
@@ -52,6 +53,16 @@ export default function RootLayout({
             </div>
 
             <div className="topbar__actions">
+              <Link
+                href="/backup"
+                aria-label="Backup and recovery"
+                title="Backup and recovery"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border-2 border-[var(--border)] bg-[var(--surface)] px-3 font-extrabold text-[var(--primary)] transition hover:-translate-y-0.5"
+              >
+                <span aria-hidden="true">↻</span>
+                <span>Backups</span>
+              </Link>
+
               <SignOutButton />
             </div>
           </header>

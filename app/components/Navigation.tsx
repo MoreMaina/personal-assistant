@@ -1,28 +1,23 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navigation = [
-  { href: "/", label: "Today", icon: "⌂" },
-  { href: "/classes", label: "Classes", icon: "▤" },
-  { href: "/study", label: "Study", icon: "▥" },
-  { href: "/reading", label: "Reading", icon: "◫" },
-  { href: "/projects", label: "Projects", icon: "✦" },
+  { href: "/", label: "Today", mobileLabel: "Today", icon: "⌂" },
+  { href: "/classes", label: "Calendar", mobileLabel: "Cal", icon: "▦" },
+  { href: "/study", label: "Study", mobileLabel: "Study", icon: "▥" },
+  { href: "/reading", label: "Reading", mobileLabel: "Read", icon: "◫" },
+  { href: "/projects", label: "Projects", mobileLabel: "Proj.", icon: "✦" },
 ];
 
 export default function Navigation() {
   const pathname = usePathname();
 
   function isActive(href: string) {
-    if (href === "/") {
-      return pathname === "/";
-    }
-
-    return (
-      pathname === href ||
-      pathname.startsWith(`${href}/`)
-    );
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   return (
@@ -33,51 +28,32 @@ export default function Navigation() {
           className="assistant-button"
           aria-label="Personal Assistant home"
         >
-          <span className="assistant-button__mark">
-            PA
-          </span>
-
+          <span className="assistant-button__mark">PA</span>
           <span className="assistant-button__text">
             <strong>Personal</strong>
             <span>Assistant</span>
           </span>
         </Link>
 
-        <nav
-          className="sidebar-nav"
-          aria-label="Primary navigation"
-        >
-          {navigation.map((item) => {
-            const active = isActive(item.href);
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`sidebar-nav__link ${
-                  active
-                    ? "sidebar-nav__link--active"
-                    : ""
-                }`}
-              >
-                <span
-                  className="sidebar-nav__icon"
-                  aria-hidden="true"
-                >
-                  {item.icon}
-                </span>
-
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav className="sidebar-nav" aria-label="Primary navigation">
+          {navigation.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`sidebar-nav__link ${
+                isActive(item.href) ? "sidebar-nav__link--active" : ""
+              }`}
+            >
+              <span className="sidebar-nav__icon" aria-hidden="true">
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
         </nav>
 
         <div className="sidebar-note">
-          <div className="sidebar-note__leaf">
-            ❧
-          </div>
-
+          <div className="sidebar-note__leaf">❧</div>
           <p>
             Small steps
             <br />
@@ -86,34 +62,24 @@ export default function Navigation() {
         </div>
       </aside>
 
-      <nav
-        className="mobile-nav"
-        aria-label="Primary navigation"
-      >
-        {navigation.map((item) => {
-          const active = isActive(item.href);
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`mobile-nav__item ${
-                active
-                  ? "mobile-nav__item--active"
-                  : ""
-              }`}
-            >
-              <span
-                className="mobile-nav__icon"
-                aria-hidden="true"
-              >
-                {item.icon}
-              </span>
-
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="mobile-nav" aria-label="Primary navigation">
+        {navigation.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={isActive(item.href) ? "page" : undefined}
+            className={`mobile-nav__item ${
+              isActive(item.href) ? "mobile-nav__item--active" : ""
+            }`}
+          >
+            <span className="mobile-nav__icon" aria-hidden="true">
+              {item.icon}
+            </span>
+            <span className="mobile-nav__label">
+              {item.mobileLabel}
+            </span>
+          </Link>
+        ))}
       </nav>
     </>
   );

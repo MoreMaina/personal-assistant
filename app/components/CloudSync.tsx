@@ -541,22 +541,39 @@ export default function CloudSync() {
           conflict.localSnapshot,
         );
 
-      const { error } = await supabase
-        .from("user_app_state")
-        .upsert(
-          {
+      const replacementTimestamp = new Date().toISOString();
+      const replacementData = {
+        ...conflict.localSnapshot,
+        __replace_all_keys: true,
+      };
+
+      const { data: updatedRow, error: updateError } =
+        await supabase
+          .from("user_app_state")
+          .update({
+            data: replacementData,
+            updated_at: replacementTimestamp,
+          })
+          .eq("user_id", userId)
+          .select("user_id")
+          .maybeSingle();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (!updatedRow) {
+        const { error: insertError } = await supabase
+          .from("user_app_state")
+          .insert({
             user_id: userId,
             data: conflict.localSnapshot,
-            updated_at:
-              new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id",
-          },
-        );
+            updated_at: replacementTimestamp,
+          });
 
-      if (error) {
-        throw error;
+        if (insertError) {
+          throw insertError;
+        }
       }
 
       Object.assign(
@@ -639,7 +656,7 @@ export default function CloudSync() {
             </p>
 
             <p className="mt-3 text-sm text-[var(--ink-soft)]">
-              The copy you don't choose will be saved
+              The copy you don&apos;t choose will be saved
               as a backup in this browser.
             </p>
 

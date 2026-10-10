@@ -1,3 +1,4 @@
+
 export const SYNCED_STORAGE_KEYS = [
   "personal-assistant-classes",
   "cancelled-class-sessions",
@@ -7,6 +8,7 @@ export const SYNCED_STORAGE_KEYS = [
   "personal-assistant-reading-sessions",
   "personal-assistant-essays",
   "personal-assistant-projects",
+  "personal-assistant-calendar-items",
 ] as const;
 
 export type AppSnapshot = Record<string, string>;
@@ -57,9 +59,7 @@ export function snapshotSignature(
 ): string {
   const sorted: AppSnapshot = {};
 
-  for (
-    const key of Object.keys(snapshot).sort()
-  ) {
+  for (const key of Object.keys(snapshot).sort()) {
     sorted[key] = snapshot[key];
   }
 
@@ -107,9 +107,7 @@ export function snapshotHasUserData(
       continue;
     }
 
-    if (
-      key === "personal-assistant-study-v2"
-    ) {
+    if (key === "personal-assistant-study-v2") {
       if (
         value &&
         typeof value === "object" &&

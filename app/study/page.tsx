@@ -228,15 +228,9 @@ export default function StudyPage() {
     [lectures, semesterUnitIds],
   );
 
-  const dueLectures = useMemo(
-    () =>
-      currentSemester
-        ? getDueLectures(
-            currentSemester.id,
-          )
-        : [],
-    [currentSemester, lectures],
-  );
+  const dueLectures = currentSemester
+  ? getDueLectures(currentSemester.id)
+  : [];
 
   const newCount =
     semesterLectures.filter(
