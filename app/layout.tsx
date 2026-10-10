@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Fredoka, Nunito } from "next/font/google";
+
 import "./globals.css";
 import Navigation from "./components/Navigation";
+import SignOutButton from "./components/SignOutButton";
+import CloudSync from "./components/CloudSync";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -40,6 +43,8 @@ export default function RootLayout({
       >
         <Navigation />
 
+        <CloudSync />
+
         <div className="app-frame">
           <header className="topbar">
             <div className="topbar__brand">
@@ -47,21 +52,7 @@ export default function RootLayout({
             </div>
 
             <div className="topbar__actions">
-              <button
-                type="button"
-                className="topbar__icon-button"
-                aria-label="Notifications"
-              >
-                ♧
-              </button>
-
-              <button
-                type="button"
-                className="profile-dot"
-                aria-label="Profile"
-              >
-                P
-              </button>
+              <SignOutButton />
             </div>
           </header>
 
