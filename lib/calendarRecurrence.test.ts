@@ -1,7 +1,7 @@
 
 import { describe, expect, it } from "vitest";
-import type { CalendarEvent } from "./calendarItemStorage";
-import { expandCalendarEvents } from "./calendarRecurrence";
+import type { CalendarEvent, CalendarTask } from "./calendarItemStorage";
+import { expandCalendarEvents, expandCalendarTasks } from "./calendarRecurrence";
 
 
 function makeEvent(
@@ -288,5 +288,132 @@ describe("expandCalendarEvents", () => {
     expect(
       expandCalendarEvents([event], "not-a-date", "2026-10-05"),
     ).toEqual([]);
+  });
+});
+
+
+function makeTask(
+  overrides: Partial<CalendarTask> & Pick<CalendarTask, "id" | "title">,
+): CalendarTask {
+  return {
+    ...overrides,
+    id: overrides.id,
+    type: "task",
+    title: overrides.title,
+    priority: overrides.priority ?? "medium",
+    completed: overrides.completed ?? false,
+    createdAt: overrides.createdAt ?? "2026-10-01T08:00:00.000Z",
+    updatedAt: overrides.updatedAt ?? "2026-10-01T08:00:00.000Z",
+  };
+}
+
+describe("expandCalendarTasks", () => {
+  it("skips selected dates and applies completion to only one occurrence", () => {
+    const task = makeTask({
+      id: "review",
+      title: "Review lecture notes",
+      dueDate: "2026-10-01",
+      recurrence: {
+        frequency: "daily",
+        interval: 1,
+        until: "2026-10-04",
+      },
+      exceptions: [
+        { occurrenceDate: "2026-10-02", skipped: true },
+        { occurrenceDate: "2026-10-03", completed: true },
+      ],
+    });
+
+    const result = expandCalendarTasks(
+      [task],
+      "2026-10-01",
+      "2026-10-05",
+    );
+
+    expect(result.map((item) => item.date)).toEqual([
+      "2026-10-01",
+      "2026-10-03",
+      "2026-10-04",
+    ]);
+    expect(result.find((item) => item.date === "2026-10-03")?.completed)
+      .toBe(true);
+    expect(result.find((item) => item.date === "2026-10-04")?.completed)
+      .toBe(false);
+  });
+
+  it("supports selected weekdays for weekly recurrence", () => {
+    const task = makeTask({
+      id: "weekly",
+      title: "Weekly review",
+      dueDate: "2026-10-05",
+      recurrence: {
+        frequency: "weekly",
+        interval: 1,
+        weekdays: ["Monday", "Wednesday"],
+        until: "2026-10-14",
+      },
+    });
+
+    const result = expandCalendarTasks(
+      [task],
+      "2026-10-05",
+      "2026-10-14",
+    );
+
+    expect(result.map((item) => item.date)).toEqual([
+      "2026-10-05",
+      "2026-10-07",
+      "2026-10-12",
+      "2026-10-14",
+    ]);
+  });
+
+  it("keeps tasks without a due date or recurrence start off the calendar", () => {
+    const task = makeTask({
+      id: "flexible",
+      title: "Flexible task",
+      recurrence: { frequency: "daily", interval: 1 },
+    });
+
+    expect(
+      expandCalendarTasks([task], "2026-10-01", "2026-10-07"),
+    ).toEqual([]);
+  });
+
+  it("expands recurring tasks without a due date from their start date", () => {
+    const task = makeTask({
+      id: "scheduled-without-deadline",
+      title: "Daily review",
+      recurrence: {
+        frequency: "daily",
+        interval: 1,
+        startDate: "2026-10-01",
+        until: "2026-10-03",
+      },
+    });
+
+    expect(
+      expandCalendarTasks([task], "2026-10-01", "2026-10-05").map(
+        (occurrence) => occurrence.date,
+      ),
+    ).toEqual(["2026-10-01", "2026-10-02", "2026-10-03"]);
+  });
+
+  it("shows a non-recurring task only on its due date", () => {
+    const task = makeTask({
+      id: "one-off",
+      title: "Submit assignment",
+      dueDate: "2026-10-03",
+    });
+
+    const result = expandCalendarTasks(
+      [task],
+      "2026-10-01",
+      "2026-10-07",
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe("2026-10-03");
+    expect(result[0].recurring).toBe(false);
   });
 });

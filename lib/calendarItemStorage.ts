@@ -1,3 +1,5 @@
+import { readStoredJson } from "./storageRecovery";
+
 export type WeekdayName =
   | "Monday"
   | "Tuesday"
@@ -20,6 +22,22 @@ export type EventRecurrence = {
   // Inclusive final date, in YYYY-MM-DD format.
   // Omit for a series with no planned end date.
   until?: string;
+};
+
+/**
+ * Tasks use the same recurrence rules as events, but their schedule
+ * starts independently of the optional due date. Missing startDate
+ * falls back to dueDate for compatibility with existing records.
+ */
+export type TaskRecurrence = EventRecurrence & {
+  startDate?: string;
+};
+
+/** Changes that apply to one original occurrence in a recurring task series. */
+export type CalendarTaskException = {
+  occurrenceDate: string;
+  skipped?: boolean;
+  completed?: boolean;
 };
 
 export type EventOccurrenceOverride = {
@@ -72,6 +90,8 @@ export type CalendarTask = {
   priority: "low" | "medium" | "high";
   estimatedMinutes?: number;
   completed: boolean;
+  recurrence?: TaskRecurrence;
+  exceptions?: CalendarTaskException[];
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -85,25 +105,30 @@ export const CALENDAR_ITEMS_KEY =
 export function getCalendarItems(): CalendarItem[] {
   if (typeof window === "undefined") return [];
 
-  try {
-    const saved = localStorage.getItem(CALENDAR_ITEMS_KEY);
-    if (!saved) return [];
+  const saved = localStorage.getItem(CALENDAR_ITEMS_KEY);
+  if (!saved) return [];
 
-    const parsed: unknown = JSON.parse(saved);
+  return readStoredJson<CalendarItem[]>(
+    CALENDAR_ITEMS_KEY,
+    saved,
+    [],
+    (value) =>
+      Array.isArray(value) &&
+      value.every((item) => {
+        if (
+          item === null ||
+          typeof item !== "object" ||
+          Array.isArray(item)
+        ) return false;
 
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.filter(
-      (item): item is CalendarItem =>
-        item !== null &&
-        typeof item === "object" &&
-        typeof item.id === "string" &&
-        typeof item.title === "string" &&
-        (item.type === "event" || item.type === "task"),
-    );
-  } catch {
-    return [];
-  }
+        const record = item as Record<string, unknown>;
+        return (
+          typeof record.id === "string" &&
+          typeof record.title === "string" &&
+          (record.type === "event" || record.type === "task")
+        );
+      }),
+  );
 }
 
 export function saveCalendarItems(
@@ -204,4 +229,43 @@ export function toggleCalendarTask(
   if (!item || item.type !== "task") return;
 
   updateCalendarItem({ ...item, completed });
+}
+
+/**
+ * Complete or reopen one occurrence without changing the whole recurring task.
+ * The task's own completed value remains the default for its occurrences.
+ */
+export function setCalendarTaskOccurrenceCompleted(
+  id: string,
+  occurrenceDate: string,
+  completed: boolean,
+): void {
+  const task = getCalendarItems().find(
+    (item): item is CalendarTask =>
+      item.id === id && item.type === "task",
+  );
+
+  if (!task?.recurrence) return;
+
+  const existingException = (task.exceptions ?? []).find(
+    (exception) => exception.occurrenceDate === occurrenceDate,
+  );
+
+  const exceptions = (task.exceptions ?? []).filter(
+    (exception) => exception.occurrenceDate !== occurrenceDate,
+  );
+
+  // Store only differences from the series default, but keep a skip exception.
+  if (completed !== task.completed || existingException?.skipped) {
+    exceptions.push({
+      occurrenceDate,
+      ...(existingException?.skipped ? { skipped: true } : {}),
+      ...(completed !== task.completed ? { completed } : {}),
+    });
+  }
+
+  updateCalendarItem({
+    ...task,
+    exceptions,
+  });
 }

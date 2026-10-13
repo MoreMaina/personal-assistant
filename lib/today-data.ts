@@ -155,16 +155,6 @@ function getStudyTasks(): TodayTask[] {
         semester.id,
     );
 
-  const courseById =
-    new Map(
-      courses.map(
-        (course) => [
-          course.id,
-          course,
-        ],
-      ),
-    );
-
   const courseIds =
     new Set(
       courses.map(
@@ -199,21 +189,10 @@ function getStudyTasks(): TodayTask[] {
         lecture.unitId,
       );
 
-    const course = unit
-      ? courseById.get(
-          unit.courseId,
-        )
-      : undefined;
-
     return {
       id: `study-${lecture.id}`,
-      title: [
-        course?.name,
-        unit?.name,
-        lecture.name,
-      ]
-        .filter(Boolean)
-        .join(" — "),
+      title: lecture.name,
+      unitName: unit?.name,
       type: "study",
       durationMinutes:
         getStudyDuration(

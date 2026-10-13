@@ -154,6 +154,76 @@ export default function CardMenu({
                     </svg>
                   )}
 
+                  {!action.destructive &&
+                    /^(restart|pause|resume)\b/i.test(action.label) && (
+                      <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        {/^(restart)\b/i.test(action.label) ? (
+                          <>
+                            <path d="M3 11a9 9 0 0 1 15.36-6.36L21 7" />
+                            <path d="M21 3v4h-4" />
+                            <path d="M21 13a9 9 0 0 1-15.36 6.36L3 17" />
+                            <path d="M3 21v-4h4" />
+                          </>
+                        ) : /^pause\b/i.test(action.label) ? (
+                          <>
+                            <path d="M8 5v14" />
+                            <path d="M16 5v14" />
+                          </>
+                        ) : (
+                          <path
+                            d="M8 5l11 7-11 7z"
+                            fill="currentColor"
+                          />
+                        )}
+                      </svg>
+                    )}
+
+                  {!action.destructive &&
+                    /^(export|share)\b/i.test(action.label) && (
+                      <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 15V3" />
+                        <path d="m7 8 5-5 5 5" />
+                        <path d="M5 12v8h14v-8" />
+                      </svg>
+                    )}
+
+                  {!action.destructive && /^edit\b/i.test(action.label) && (
+                    <svg
+                      width="19"
+                      height="19"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+                    </svg>
+                  )}
+
                   <span>{action.label}</span>
                 </button>
               ))}

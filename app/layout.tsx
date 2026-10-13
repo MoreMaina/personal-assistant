@@ -4,7 +4,6 @@ import { Fredoka, Nunito } from "next/font/google";
 
 import "./globals.css";
 import Navigation from "./components/Navigation";
-import SignOutButton from "./components/SignOutButton";
 import CloudSync from "./components/CloudSync";
 
 const fredoka = Fredoka({
@@ -48,23 +47,14 @@ export default function RootLayout({
 
         <div className="app-frame">
           <header className="topbar">
-            <div className="topbar__brand">
-              Personal Assistant
-            </div>
-
-            <div className="topbar__actions">
-              <Link
-                href="/backup"
-                aria-label="Backup and recovery"
-                title="Backup and recovery"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-full border-2 border-[var(--border)] bg-[var(--surface)] px-3 font-extrabold text-[var(--primary)] transition hover:-translate-y-0.5"
-              >
-                <span aria-hidden="true">↻</span>
-                <span>Backups</span>
-              </Link>
-
-              <SignOutButton />
-            </div>
+            <Link
+              href="/"
+              className="topbar__brand"
+              aria-label="Personal Assistant home"
+            >
+              <span className="topbar__brand-mark" aria-hidden="true">PA</span>
+              <span>Personal Assistant</span>
+            </Link>
           </header>
 
           <main className="app-content">

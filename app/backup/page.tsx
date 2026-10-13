@@ -9,7 +9,11 @@ import {
 
 import { createClient } from "@/lib/supabase/client";
 import {
-  applySnapshot,
+  getLocalRecoveryCopies,
+  type LocalStorageRecoveryCopy,
+} from "@/lib/storageRecovery";
+import {
+  applySnapshotWithRollback,
   normalizeSnapshot,
   readLocalSnapshot,
   saveLocalBackup,
@@ -85,9 +89,45 @@ function downloadBackupFile(
   }, 1000);
 }
 
+function downloadRecoveryCopy(
+  copy: LocalStorageRecoveryCopy,
+): void {
+  // This is a separate recovery format, not a normal app backup.
+  // It preserves the exact raw value without automatically restoring it.
+  const payload = {
+    format: "personal-assistant-local-recovery-copy",
+    version: 1,
+    app: "Personal Assistant",
+    originalKey: copy.originalKey,
+    preservedAt: copy.preservedAt,
+    reason: copy.reason,
+    rawValue: copy.rawValue,
+    exportedAt: new Date().toISOString(),
+  };
+
+  const blob = new Blob(
+    [JSON.stringify(payload, null, 2)],
+    { type: "application/json" },
+  );
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const safeKey = copy.originalKey.replace(/[^a-z0-9-]/gi, "-");
+
+  link.href = url;
+  link.download = `personal-assistant-recovery-${safeKey}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default function BackupRecoveryPage() {
   const [backups, setBackups] =
     useState<BackupRow[]>([]);
+  const [recoveryCopies, setRecoveryCopies] =
+    useState<LocalStorageRecoveryCopy[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [working, setWorking] =
@@ -151,6 +191,21 @@ export default function BackupRecoveryPage() {
   useEffect(() => {
     void refreshBackups();
   }, [refreshBackups]);
+
+  const refreshRecoveryCopies = useCallback(() => {
+    try {
+      setRecoveryCopies(getLocalRecoveryCopies());
+    } catch (caughtError) {
+      setError(
+        "Could not read local recovery copies. " +
+          describeError(caughtError),
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshRecoveryCopies();
+  }, [refreshRecoveryCopies]);
 
   async function downloadCurrentCloudBackup() {
     setWorking("download");
@@ -228,7 +283,18 @@ export default function BackupRecoveryPage() {
     input: unknown,
     label: string,
   ): Promise<void> {
-    const snapshot = normalizeSnapshot(input);
+    let snapshot: AppSnapshot;
+
+    try {
+      snapshot = normalizeSnapshot(input);
+    } catch (caughtError) {
+      setMessage("");
+      setError(
+        "This backup contains malformed app data and cannot be restored. " +
+          describeError(caughtError),
+      );
+      return;
+    }
 
     if (Object.keys(snapshot).length === 0) {
       setError(
@@ -271,10 +337,13 @@ export default function BackupRecoveryPage() {
         );
       }
 
-      // Keep an additional browser-local copy.
+      // Keep an additional browser-local copy and retain the
+      // original snapshot in memory in case local apply fails.
+      const localSnapshotBeforeRestore = readLocalSnapshot();
+
       saveLocalBackup(
         "personal-assistant-local-backup-before-restore",
-        readLocalSnapshot(),
+        localSnapshotBeforeRestore,
       );
 
       // Updating the existing cloud row triggers the SQL
@@ -314,8 +383,40 @@ export default function BackupRecoveryPage() {
         }
       }
 
-      // Align this browser with the restored cloud state.
-      applySnapshot(snapshot);
+      // The cloud restore succeeded above. Handle a local
+      // storage failure separately so it isn't reported as a
+      // failed cloud restore.
+      const localApplyResult = applySnapshotWithRollback(
+        snapshot,
+        localSnapshotBeforeRestore,
+      );
+
+      if (!localApplyResult.success) {
+        console.error(
+          "Cloud restore succeeded, but local storage could not be updated:",
+          localApplyResult.applyError,
+        );
+
+        if (!localApplyResult.rollbackSucceeded) {
+          console.error(
+            "Could not restore the previous local snapshot:",
+            localApplyResult.rollbackError,
+          );
+        }
+
+        setMessage(
+          "The cloud backup was restored successfully, but this browser could not finish updating its local copy.",
+        );
+
+        setError(
+          localApplyResult.rollbackSucceeded
+            ? "This browser's previous local data was restored. Reload and resolve any Cloud Sync conflict to load the restored cloud version."
+            : "This browser's local data may be partially updated. Do not overwrite the restored cloud data with this device's version. Reload and carefully resolve any Cloud Sync conflict.",
+        );
+
+        setWorking(null);
+        return;
+      }
 
       setMessage(
         "Backup restored. This device is refreshing, and your other devices will sync to this version.",
@@ -479,6 +580,98 @@ export default function BackupRecoveryPage() {
             first.
           </p>
         </div>
+      </section>
+
+      <section className="rounded-2xl bg-[var(--surface)] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
+              Local recovery copies
+            </p>
+
+            <h2 className="mt-1 text-2xl">
+              Preserved browser data
+            </h2>
+
+            <p className="mt-2 max-w-2xl text-sm font-bold text-[var(--muted)]">
+              When a storage reader detects malformed data, the original
+              raw value is preserved here in this browser before a fallback
+              is returned. These copies are local to this browser and are
+              not synced to the cloud. Download them somewhere private and
+              safe before clearing browser data. They are raw recovery
+              material, not files that can be directly restored through
+              the normal backup importer.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={refreshRecoveryCopies}
+            disabled={working !== null}
+            className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 font-extrabold text-[var(--primary)] disabled:opacity-50"
+          >
+            ↻ Refresh local copies
+          </button>
+        </div>
+
+        {recoveryCopies.length === 0 ? (
+          <div className="mt-5 rounded-xl border-2 border-dashed border-[var(--border)] p-5">
+            <h3 className="text-lg">
+              No local recovery copies found
+            </h3>
+            <p className="mt-2 text-sm font-bold text-[var(--ink-soft)]">
+              Copies will appear here if a storage reader encounters
+              malformed or unexpectedly shaped saved data.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-5 space-y-3">
+            {recoveryCopies.map((copy, index) => (
+              <article
+                key={`${copy.originalKey}-${copy.preservedAt}-${index}`}
+                className="rounded-xl border-2 border-[var(--border)] bg-[var(--background)] p-4"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words font-extrabold text-[var(--primary)]">
+                      {copy.originalKey}
+                    </p>
+                    <p className="text-sm font-bold text-[var(--muted)]">
+                      Preserved: {formatDate(copy.preservedAt)}
+                    </p>
+                    <p className="text-sm text-[var(--ink-soft)]">
+                      Reason: {copy.reason === "invalid-json"
+                        ? "Invalid JSON"
+                        : "Unexpected data shape"} · {copy.rawValue.length.toLocaleString()} characters
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={working !== null}
+                    onClick={() => {
+                      try {
+                        downloadRecoveryCopy(copy);
+                        setError("");
+                        setMessage(
+                          `Local recovery copy for ${copy.originalKey} downloaded.`,
+                        );
+                      } catch (caughtError) {
+                        setError(
+                          "Could not download the recovery copy. " +
+                            describeError(caughtError),
+                        );
+                      }
+                    }}
+                    className="shrink-0 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-3 py-2 text-sm font-extrabold text-white disabled:opacity-50"
+                  >
+                    ↓ Download raw copy
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl bg-[var(--surface)] p-5">

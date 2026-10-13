@@ -2,17 +2,15 @@
 
 import { FormEvent, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import CardMenu from "@/app/components/CardMenu";
 
 import {
   Course,
   Lecture,
-  Program,
   Semester,
   Unit,
   addCoursesBulk,
   addLecturesBulk,
-  addProgram,
-  addSemester,
   addUnitsBulk,
   deleteCourse,
   deleteLecture,
@@ -20,8 +18,6 @@ import {
   getCourses,
   getCurrentSemester,
   getLectures,
-  getPrograms,
-  getSemesters,
   getUnits,
   setCurrentSemesterId,
   updateCourse,
@@ -30,12 +26,11 @@ import {
 } from "@/lib/studyStorage";
 
 export default function StudyManagePage() {
-  const [programs, setPrograms] = useState<Program[]>([]);
-  const [semesters, setSemesters] = useState<Semester[]>(
-    [],
-  );
   const [currentSemester, setCurrentSemester] =
     useState<Semester | null>(null);
+
+  const [highlightedLectureId, setHighlightedLectureId] =
+    useState<number | null>(null);
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -43,17 +38,9 @@ export default function StudyManagePage() {
     [],
   );
 
-  const [showSemesterSettings, setShowSemesterSettings] =
-    useState(false);
 
-  const [newProgramName, setNewProgramName] =
-    useState("");
 
-  const [newSemesterName, setNewSemesterName] =
-    useState("");
 
-  const [newSemesterProgramId, setNewSemesterProgramId] =
-    useState<number | null>(null);
 
   const [expandedCourses, setExpandedCourses] =
     useState<Record<number, boolean>>({});
@@ -97,32 +84,64 @@ export default function StudyManagePage() {
     useState("");
 
   const refresh = useCallback(() => {
-    const refreshedPrograms = getPrograms();
-    const refreshedSemesters = getSemesters();
-    const refreshedCurrentSemester = getCurrentSemester();
-
-    setPrograms(refreshedPrograms);
-    setSemesters(refreshedSemesters);
-    setCurrentSemester(refreshedCurrentSemester);
+    setCurrentSemester(getCurrentSemester());
     setCourses(getCourses());
     setUnits(getUnits());
     setLectures(getLectures());
-
-    setNewSemesterProgramId((current) => {
-      if (current !== null || refreshedPrograms.length === 0) {
-        return current;
-      }
-
-      return (
-        refreshedCurrentSemester?.programId ??
-        refreshedPrograms[0].id
-      );
-    });
   }, []);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const rawId = new URLSearchParams(window.location.search)
+      .get("findLectureId");
+
+    if (!rawId || lectures.length === 0) return;
+
+    const id = Number(rawId);
+    if (!Number.isFinite(id)) return;
+
+    const lecture = lectures.find((item) => item.id === id);
+    if (!lecture) return;
+
+    const unit = units.find((item) => item.id === lecture.unitId);
+    const course = unit
+      ? courses.find((item) => item.id === unit.courseId)
+      : undefined;
+
+    if (!unit || !course) return;
+
+    setCurrentSemesterId(course.semesterId);
+    if (currentSemester?.id !== course.semesterId) {
+      refresh();
+    }
+
+    setExpandedCourses((current) => ({
+      ...current,
+      [course.id]: true,
+    }));
+    setExpandedUnits((current) => ({
+      ...current,
+      [unit.id]: true,
+    }));
+    setHighlightedLectureId(lecture.id);
+
+    window.history.replaceState({}, "", "/study/manage");
+  }, [lectures, units, courses, currentSemester, refresh]);
+
+  useEffect(() => {
+    if (highlightedLectureId === null) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      document
+        .getElementById(`study-lecture-${highlightedLectureId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [highlightedLectureId, expandedCourses, expandedUnits]);
 
   const semesterCourses = currentSemester
     ? courses.filter(
@@ -143,50 +162,6 @@ export default function StudyManagePage() {
       ...current,
       [unitId]: !current[unitId],
     }));
-  }
-
-  function handleAddProgram(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    const program = addProgram(newProgramName);
-
-    if (!program) {
-      return;
-    }
-
-    setNewProgramName("");
-    setNewSemesterProgramId(program.id);
-    refresh();
-  }
-
-  function handleAddSemester(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-
-    if (
-      newSemesterProgramId === null ||
-      !newSemesterName.trim()
-    ) {
-      return;
-    }
-
-    addSemester(
-      newSemesterProgramId,
-      newSemesterName,
-    );
-
-    setNewSemesterName("");
-    refresh();
-  }
-
-  function handleSemesterChange(
-    semesterId: number,
-  ) {
-    setCurrentSemesterId(semesterId);
-    refresh();
   }
 
   function handleAddCourses(
@@ -425,8 +400,7 @@ export default function StudyManagePage() {
           </h1>
 
           <p className="mt-2 text-sm text-slate-500">
-            Set up your semester and manage courses,
-            units, and lectures.
+            Manage courses, units, and lectures for your selected semester.
           </p>
         </div>
 
@@ -438,175 +412,31 @@ export default function StudyManagePage() {
         </Link>
       </div>
 
-      <section className="mb-8 rounded-xl border border-slate-200 bg-white p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Current semester
-            </p>
-
-            <p className="mt-1 font-medium text-slate-900">
-              {currentSemester?.name ??
-                "No semester selected"}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() =>
-              setShowSemesterSettings(
-                (current) => !current,
-              )
-            }
-            className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
-          >
-            {showSemesterSettings
-              ? "Close"
-              : "Semester settings"}
-          </button>
+      <section className="mb-8 flex flex-col gap-3 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
+            Current semester
+          </p>
+          <p className="mt-1 text-lg font-extrabold text-[var(--ink)]">
+            {currentSemester?.name ?? "No semester selected"}
+          </p>
         </div>
-
-        {showSemesterSettings && (
-          <div className="mt-5 border-t border-slate-100 pt-5">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">
-                  Choose semester
-                </h2>
-
-                <div className="mt-3 space-y-2">
-                  {semesters.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      No semesters yet.
-                    </p>
-                  ) : (
-                    semesters.map((semester) => (
-                      <button
-                        key={semester.id}
-                        type="button"
-                        onClick={() =>
-                          handleSemesterChange(
-                            semester.id,
-                          )
-                        }
-                        className={`w-full rounded-lg border px-3 py-3 text-left text-sm transition ${
-                          currentSemester?.id ===
-                          semester.id
-                            ? "border-slate-900 bg-slate-50 text-slate-900"
-                            : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                        }`}
-                      >
-                        {semester.name}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">
-                    Add program
-                  </h2>
-
-                  <form
-                    onSubmit={handleAddProgram}
-                    className="mt-3 flex gap-2"
-                  >
-                    <input
-                      value={newProgramName}
-                      onChange={(event) =>
-                        setNewProgramName(
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Pharmacy"
-                      className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    />
-
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-                    >
-                      Add
-                    </button>
-                  </form>
-                </div>
-
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">
-                    Add semester
-                  </h2>
-
-                  <form
-                    onSubmit={handleAddSemester}
-                    className="mt-3 space-y-2"
-                  >
-                    <select
-                      value={
-                        newSemesterProgramId ?? ""
-                      }
-                      onChange={(event) =>
-                        setNewSemesterProgramId(
-                          event.target.value
-                            ? Number(
-                                event.target.value,
-                              )
-                            : null,
-                        )
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    >
-                      <option value="">
-                        Choose program
-                      </option>
-
-                      {programs.map((program) => (
-                        <option
-                          key={program.id}
-                          value={program.id}
-                        >
-                          {program.name}
-                        </option>
-                      ))}
-                    </select>
-
-                    <div className="flex gap-2">
-                      <input
-                        value={newSemesterName}
-                        onChange={(event) =>
-                          setNewSemesterName(
-                            event.target.value,
-                          )
-                        }
-                        placeholder="Semester 4"
-                        className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                      />
-
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <Link
+          href="/settings"
+          className="inline-flex min-h-11 items-center justify-center rounded-full border-2 border-[var(--primary-dark)] px-4 py-2 text-sm font-extrabold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
+        >
+          Academic settings
+        </Link>
       </section>
 
       {!currentSemester ? (
         <section className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
           <h2 className="text-lg font-semibold text-slate-900">
-            Create or select a semester
+            Choose your current semester
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            Open Semester settings above to create
-            your first program and semester.
+            Open General Settings to set your program and choose Semester 1, 2, or 3.
           </p>
         </section>
       ) : (
@@ -719,36 +549,55 @@ export default function StudyManagePage() {
                 return (
                   <div
                     key={course.id}
-                    className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                    className="overflow-hidden rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)]"
                   >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        toggleCourse(course.id)
-                      }
-                      className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
-                    >
-                      <div>
-                        <div className="font-medium text-slate-900">
-                          {course.name}
+                    <div className="flex items-center gap-2 px-3 py-3 transition hover:bg-[var(--surface-soft)] sm:px-5 sm:py-4">
+                      <button
+                        type="button"
+                        aria-expanded={isExpanded}
+                        onClick={() => toggleCourse(course.id)}
+                        className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate font-extrabold text-[var(--ink)]">
+                            {course.name}
+                          </div>
+                          <div className="mt-1 text-xs text-[var(--muted)]">
+                            {courseUnits.length} {courseUnits.length === 1 ? "unit" : "units"}
+                            {" · "}
+                            {courseLectures.length} {courseLectures.length === 1 ? "lecture" : "lectures"}
+                          </div>
                         </div>
-
-                        <div className="mt-1 text-xs text-slate-500">
-                          {courseUnits.length}{" "}
-                          {courseUnits.length === 1
-                            ? "unit"
-                            : "units"}{" "}
-                          · {courseLectures.length}{" "}
-                          {courseLectures.length === 1
-                            ? "lecture"
-                            : "lectures"}
-                        </div>
-                      </div>
-
-                      <span className="text-lg text-slate-400">
-                        {isExpanded ? "−" : "+"}
-                      </span>
-                    </button>
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          className={`h-5 w-5 shrink-0 text-[var(--muted)] transition-transform ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
+                      </button>
+                      <CardMenu
+                        title={`Actions for ${course.name}`}
+                        actions={[
+                          {
+                            label: "Edit course",
+                            onSelect: () => startEditingCourse(course),
+                          },
+                          {
+                            label: "Delete course",
+                            destructive: true,
+                            onSelect: () => removeCourse(course),
+                          },
+                        ]}
+                      />
+                    </div>
 
                     {isExpanded && (
                       <div className="border-t border-slate-200 px-5 py-5">
@@ -796,29 +645,7 @@ export default function StudyManagePage() {
                           </div>
                         ) : (
                           <>
-                            <div className="mb-5 flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  startEditingCourse(
-                                    course,
-                                  )
-                                }
-                                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
-                              >
-                                Edit course
-                              </button>
 
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  removeCourse(course)
-                                }
-                                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
-                              >
-                                Delete course
-                              </button>
-                            </div>
 
                             <div className="mb-3 flex items-center justify-between gap-3">
                               <div>
@@ -840,7 +667,7 @@ export default function StudyManagePage() {
                                       course.id,
                                     )
                                   }
-                                  className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
+                                  className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] px-3 py-2 text-xs font-extrabold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
                                 >
                                   + Add units
                                 </button>
@@ -934,31 +761,38 @@ export default function StudyManagePage() {
                                     return (
                                       <div
                                         key={unit.id}
-                                        className="rounded-lg border border-slate-200"
+                                        className="rounded-[16px] border-2 border-[var(--border)] bg-[var(--surface)]"
                                       >
                                         <div className="flex items-center gap-3 px-4 py-3">
                                           <button
                                             type="button"
-                                            onClick={() =>
-                                              toggleUnit(
-                                                unit.id,
-                                              )
-                                            }
-                                            className="min-w-0 flex-1 text-left"
+                                            aria-expanded={isExpanded}
+                                            onClick={() => toggleUnit(unit.id)}
+                                            className="flex min-h-12 min-w-0 flex-1 items-center gap-3 text-left"
                                           >
-                                            <div className="text-sm font-medium text-slate-900">
-                                              {unit.name}
+                                            <div className="min-w-0 flex-1">
+                                              <div className="truncate text-sm font-extrabold text-[var(--ink)]">
+                                                {unit.name}
+                                              </div>
+                                              <div className="mt-1 text-xs text-[var(--muted)]">
+                                                {unitLectures.length}{" "}
+                                                {unitLectures.length === 1 ? "lecture" : "lectures"}
+                                              </div>
                                             </div>
-
-                                            <div className="mt-1 text-xs text-slate-500">
-                                              {
-                                                unitLectures.length
-                                              }{" "}
-                                              {unitLectures.length ===
-                                              1
-                                                ? "lecture"
-                                                : "lectures"}
-                                            </div>
+                                            <svg
+                                              aria-hidden="true"
+                                              viewBox="0 0 24 24"
+                                              className={`h-4 w-4 shrink-0 text-[var(--muted)] transition-transform ${
+                                                isExpanded ? "rotate-180" : ""
+                                              }`}
+                                              fill="none"
+                                              stroke="currentColor"
+                                              strokeWidth="2"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            >
+                                              <path d="m6 9 6 6 6-6" />
+                                            </svg>
                                           </button>
 
                                           <button
@@ -973,35 +807,22 @@ export default function StudyManagePage() {
                                             + Lectures
                                           </button>
 
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              startEditingUnit(
-                                                unit,
-                                              )
-                                            }
-                                            className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
-                                          >
-                                            Edit
-                                          </button>
+                                          <CardMenu
+                                            title={`Actions for ${unit.name}`}
+                                            actions={[
+                                              {
+                                                label: "Edit unit",
+                                                onSelect: () => startEditingUnit(unit),
+                                              },
+                                              {
+                                                label: "Delete unit",
+                                                destructive: true,
+                                                onSelect: () => removeUnit(unit),
+                                              },
+                                            ]}
+                                          />
 
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              removeUnit(
-                                                unit,
-                                              )
-                                            }
-                                            className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
-                                          >
-                                            Delete
-                                          </button>
 
-                                          <span className="text-sm text-slate-400">
-                                            {isExpanded
-                                              ? "−"
-                                              : "+"}
-                                          </span>
                                         </div>
 
                                         {isEditingUnit && (
@@ -1135,7 +956,12 @@ export default function StudyManagePage() {
                                                         key={
                                                           lecture.id
                                                         }
-                                                        className="rounded-lg border border-slate-200 p-3"
+                                                        id={`study-lecture-${lecture.id}`}
+                                                        className={`rounded-lg border border-slate-200 p-3 ${
+                                                          highlightedLectureId === lecture.id
+                                                            ? "ring-2 ring-[var(--accent)]"
+                                                            : ""
+                                                        }`}
                                                       >
                                                         {isEditingLecture ? (
                                                           <>
@@ -1203,29 +1029,20 @@ export default function StudyManagePage() {
                                                             </div>
 
                                                             <div className="flex shrink-0 gap-2">
-                                                              <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                  startEditingLecture(
-                                                                    lecture,
-                                                                  )
-                                                                }
-                                                                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
-                                                              >
-                                                                Edit
-                                                              </button>
-
-                                                              <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                  removeLecture(
-                                                                    lecture,
-                                                                  )
-                                                                }
-                                                                className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
-                                                              >
-                                                                Delete
-                                                              </button>
+                                                              <CardMenu
+                                                                title={`Actions for ${lecture.name}`}
+                                                                actions={[
+                                                                  {
+                                                                    label: "Edit lecture",
+                                                                    onSelect: () => startEditingLecture(lecture),
+                                                                  },
+                                                                  {
+                                                                    label: "Delete lecture",
+                                                                    destructive: true,
+                                                                    onSelect: () => removeLecture(lecture),
+                                                                  },
+                                                                ]}
+                                                              />
                                                             </div>
                                                           </div>
                                                         )}

@@ -3,6 +3,8 @@ import { RRule } from "rrule";
 import type {
   CalendarEvent,
   CalendarEventException,
+  CalendarTask,
+  CalendarTaskException,
   WeekdayName,
 } from "./calendarItemStorage";
 
@@ -380,6 +382,166 @@ export function expandCalendarEvents(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       (a.startTime ?? "").localeCompare(b.startTime ?? "") ||
+      a.title.localeCompare(b.title) ||
+      a.id.localeCompare(b.id),
+  );
+}
+
+
+export type CalendarTaskOccurrence = {
+  id: string;
+  taskId: string;
+  originalDate: string;
+  date: string;
+  title: string;
+  priority: CalendarTask["priority"];
+  estimatedMinutes?: number;
+  completed: boolean;
+  notes?: string;
+  recurring: boolean;
+  task: CalendarTask;
+};
+
+function makeTaskOccurrence(
+  task: CalendarTask,
+  originalDate: string,
+  exception?: CalendarTaskException,
+): CalendarTaskOccurrence {
+  return {
+    id: `${task.id}@${originalDate}`,
+    taskId: task.id,
+    originalDate,
+    date: originalDate,
+    title: task.title,
+    priority: task.priority,
+    ...(task.estimatedMinutes !== undefined
+      ? { estimatedMinutes: task.estimatedMinutes }
+      : {}),
+    completed: exception?.completed ?? task.completed,
+    ...(task.notes !== undefined ? { notes: task.notes } : {}),
+    recurring: Boolean(task.recurrence),
+    task,
+  };
+}
+
+/**
+ * Expand scheduled tasks inside an inclusive YYYY-MM-DD range.
+ * Recurring tasks use startDate, falling back to dueDate for old records.
+ * Completion and skip exceptions affect only their original occurrence.
+ * Unscheduled tasks without a due date or recurrence start remain off-calendar.
+ */
+export function expandCalendarTasks(
+  tasks: CalendarTask[],
+  rangeStart: string,
+  rangeEnd: string,
+): CalendarTaskOccurrence[] {
+  const startDate = parseDateKey(rangeStart);
+  const endDate = parseDateKey(rangeEnd);
+
+  if (!startDate || !endDate || rangeStart > rangeEnd) {
+    return [];
+  }
+
+  const results: CalendarTaskOccurrence[] = [];
+
+  for (const task of tasks) {
+    const recurrence = task.recurrence;
+    const recurrenceStartDate = recurrence
+      ? recurrence.startDate ?? task.dueDate
+      : task.dueDate;
+
+    if (!recurrenceStartDate || !parseDateKey(recurrenceStartDate)) continue;
+
+    if (!recurrence) {
+      if (isWithinRange(recurrenceStartDate, rangeStart, rangeEnd)) {
+        results.push(makeTaskOccurrence(task, recurrenceStartDate));
+      }
+      continue;
+    }
+
+    if (
+      !Number.isInteger(recurrence.interval) ||
+      recurrence.interval < 1
+    ) {
+      continue;
+    }
+
+    const dtstart = parseDateKey(recurrenceStartDate);
+    if (!dtstart) continue;
+
+    let untilDate: Date | undefined;
+    if (recurrence.until !== undefined) {
+      const parsedUntil = parseDateKey(recurrence.until);
+      if (!parsedUntil || recurrence.until < recurrenceStartDate) continue;
+      untilDate = parsedUntil;
+    }
+
+    const frequency = FREQUENCY_TO_RULE[recurrence.frequency];
+    if (frequency === undefined) continue;
+
+    const requestedWeekdays = (recurrence.weekdays ?? []).filter(
+      (day) => VALID_WEEKDAY_NAMES.includes(day),
+    );
+    const byweekday = [...new Set(requestedWeekdays)].map(
+      (day) => WEEKDAY_TO_RULE[day],
+    );
+
+    let rule: RRule;
+
+    try {
+      rule = new RRule({
+        freq: frequency,
+        interval: recurrence.interval,
+        dtstart,
+        wkst: RRule.MO,
+        ...(untilDate ? { until: untilDate } : {}),
+        ...(recurrence.frequency === "weekly" && byweekday.length > 0
+          ? { byweekday }
+          : {}),
+      });
+    } catch {
+      continue;
+    }
+
+    const candidateDates = new Set(
+      rule.between(startDate, endDate, true).map(formatDateKey),
+    );
+
+    // Keep the first scheduled date even if selected weekdays exclude it.
+    if (
+      isWithinRange(recurrenceStartDate, rangeStart, rangeEnd) &&
+      (!recurrence.until || recurrenceStartDate <= recurrence.until)
+    ) {
+      candidateDates.add(recurrenceStartDate);
+    }
+
+    const exceptions = new Map<string, CalendarTaskException>();
+    for (const exception of task.exceptions ?? []) {
+      if (parseDateKey(exception.occurrenceDate)) {
+        exceptions.set(exception.occurrenceDate, exception);
+      }
+    }
+
+    for (const originalDate of [...candidateDates].sort()) {
+      if (originalDate < recurrenceStartDate) continue;
+
+      if (
+        recurrence.until !== undefined &&
+        originalDate > recurrence.until
+      ) {
+        continue;
+      }
+
+      const exception = exceptions.get(originalDate);
+      if (exception?.skipped) continue;
+
+      results.push(makeTaskOccurrence(task, originalDate, exception));
+    }
+  }
+
+  return results.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
       a.title.localeCompare(b.title) ||
       a.id.localeCompare(b.id),
   );

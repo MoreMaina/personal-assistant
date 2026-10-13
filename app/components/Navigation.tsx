@@ -3,25 +3,36 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import AppIcon from "@/app/components/AppIcon";
+import AppUtilitiesMenu from "@/app/components/AppUtilitiesMenu";
 
 const navigation = [
-  { href: "/", label: "Today", mobileLabel: "Today", icon: "⌂" },
-  { href: "/classes", label: "Calendar", mobileLabel: "Cal", icon: "▦" },
-  { href: "/study", label: "Study", mobileLabel: "Study", icon: "▥" },
-  { href: "/reading", label: "Reading", mobileLabel: "Read", icon: "◫" },
-  { href: "/projects", label: "Projects", mobileLabel: "Proj.", icon: "✦" },
-];
+  { href: "/", label: "Today", mobileLabel: "Today", icon: "home" },
+  { href: "/classes", label: "Calendar", mobileLabel: "Calendar", icon: "calendar" },
+  { href: "/study", label: "Study", mobileLabel: "Study", icon: "study" },
+  { href: "/reading", label: "Workspace", mobileLabel: "Work", icon: "workspace" },
+  { href: "/assistant", label: "AI Copilot", mobileLabel: "AI", icon: "sparkles" },
+] as const;
 
 export default function Navigation() {
   const pathname = usePathname();
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
+    if (href === "/reading") {
+      return (
+        pathname === "/reading" ||
+        pathname.startsWith("/reading/") ||
+        pathname === "/projects" ||
+        pathname.startsWith("/projects/")
+      );
+    }
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   return (
     <>
+      <AppUtilitiesMenu />
       <aside className="app-sidebar">
         <Link
           href="/"
@@ -40,12 +51,13 @@ export default function Navigation() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive(item.href) ? "page" : undefined}
               className={`sidebar-nav__link ${
                 isActive(item.href) ? "sidebar-nav__link--active" : ""
               }`}
             >
               <span className="sidebar-nav__icon" aria-hidden="true">
-                {item.icon}
+                <AppIcon name={item.icon} size={22} />
               </span>
               <span>{item.label}</span>
             </Link>
@@ -73,7 +85,7 @@ export default function Navigation() {
             }`}
           >
             <span className="mobile-nav__icon" aria-hidden="true">
-              {item.icon}
+              <AppIcon name={item.icon} size={22} />
             </span>
             <span className="mobile-nav__label">
               {item.mobileLabel}

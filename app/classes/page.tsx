@@ -5,21 +5,27 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type FormEvent,
 } from "react";
 
 import Button from "@/app/components/Button";
+import CalendarOverview from "@/app/components/CalendarOverview";
 import { addClass, getClasses } from "@/lib/classStorage";
 import {
   addCalendarEvent,
   addCalendarTask,
   deleteCalendarItem,
   getCalendarItems,
+  setCalendarTaskOccurrenceCompleted,
   toggleCalendarTask,
   updateCalendarItem,
   type CalendarEvent,
   type CalendarItem,
   type CalendarTask,
+  type EventRecurrence,
+  type TaskRecurrence,
+  type WeekdayName,
 } from "@/lib/calendarItemStorage";
 
 const days = [
@@ -41,6 +47,13 @@ const types = [
 ];
 
 type PlannerFormType = "event" | "task";
+type RecurrenceFrequency = "none" | EventRecurrence["frequency"];
+
+const recurrenceDays: WeekdayName[] = [
+  "Monday", "Tuesday", "Wednesday", "Thursday",
+  "Friday", "Saturday", "Sunday",
+];
+type ManagementTab = "events" | "tasks";
 
 function localDateString() {
   const now = new Date();
@@ -75,6 +88,49 @@ function formatDate(value?: string) {
   return `${Number(day)} ${monthNames[monthIndex]} ${year}`;
 }
 
+function recurrenceSignature(
+  recurrence?: EventRecurrence | TaskRecurrence,
+  taskStartDate?: string,
+): string {
+  if (!recurrence) return "none";
+
+  return JSON.stringify({
+    frequency: recurrence.frequency,
+    interval: recurrence.interval,
+    weekdays: [...(recurrence.weekdays ?? [])].sort(),
+    until: recurrence.until ?? "",
+    startDate:
+      taskStartDate ??
+      ("startDate" in recurrence ? recurrence.startDate : undefined) ??
+      "",
+  });
+}
+
+function recurrenceSummary(
+  recurrence?: EventRecurrence | TaskRecurrence,
+): string {
+  if (!recurrence) return "";
+
+  const unit =
+    recurrence.frequency === "daily"
+      ? "day"
+      : recurrence.frequency === "weekly"
+        ? "week"
+        : "month";
+
+  const base =
+    recurrence.interval === 1
+      ? `Repeats ${unit === "day" ? "daily" : unit === "week" ? "weekly" : "monthly"}`
+      : `Repeats every ${recurrence.interval} ${unit}s`;
+
+  const weekdays =
+    recurrence.frequency === "weekly" && recurrence.weekdays?.length
+      ? ` on ${recurrence.weekdays.join(", ")}`
+      : "";
+
+  return `${base}${weekdays}${recurrence.until ? ` · until ${formatDate(recurrence.until)}` : ""}`;
+}
+
 function formatDuration(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
@@ -97,14 +153,18 @@ export default function ClassesPage() {
   const [classError, setClassError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const [todayName, setTodayName] = useState<string | null>(null);
-
   // Calendar events and tasks
   const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
   const [showPlannerForm, setShowPlannerForm] = useState(false);
   const [plannerType, setPlannerType] = useState<PlannerFormType>("event");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [plannerError, setPlannerError] = useState("");
+  const [managementTab, setManagementTab] = useState<ManagementTab>("events");
+  const [searchHighlightCalendarId, setSearchHighlightCalendarId] =
+    useState<string | null>(null);
+  const [searchHighlightClassId, setSearchHighlightClassId] =
+    useState<number | null>(null);
+  const plannerFormRef = useRef<HTMLFormElement | null>(null);
 
   const [plannerTitle, setPlannerTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -112,23 +172,90 @@ export default function ClassesPage() {
   const [eventEnd, setEventEnd] = useState("");
   const [eventLocation, setEventLocation] = useState("");
   const [eventNotes, setEventNotes] = useState("");
+  const [eventRepeatFrequency, setEventRepeatFrequency] =
+    useState<RecurrenceFrequency>("none");
+  const [eventRepeatInterval, setEventRepeatInterval] = useState("1");
+  const [eventRepeatWeekdays, setEventRepeatWeekdays] =
+    useState<WeekdayName[]>([]);
+  const [eventRepeatUntil, setEventRepeatUntil] = useState("");
 
   const [taskDueDate, setTaskDueDate] = useState("");
+  const [taskRepeatStartDate, setTaskRepeatStartDate] = useState("");
   const [taskPriority, setTaskPriority] =
     useState<CalendarTask["priority"]>("medium");
   const [taskMinutes, setTaskMinutes] = useState("");
   const [taskNotes, setTaskNotes] = useState("");
+  const [taskRepeatFrequency, setTaskRepeatFrequency] =
+    useState<RecurrenceFrequency>("none");
+  const [taskRepeatInterval, setTaskRepeatInterval] = useState("1");
+  const [taskRepeatWeekdays, setTaskRepeatWeekdays] =
+    useState<WeekdayName[]>([]);
+  const [taskRepeatUntil, setTaskRepeatUntil] = useState("");
 
   useEffect(() => {
     setCalendarItems(getCalendarItems());
-
-    const today = new Intl.DateTimeFormat("en-US", {
-      weekday: "long",
-      timeZone: "Africa/Nairobi",
-    }).format(new Date());
-
-    setTodayName(today);
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const calendarTargetId = params.get("findCalendarItemId");
+
+    if (calendarTargetId) {
+      const item = calendarItems.find(
+        (candidate) => candidate.id === calendarTargetId,
+      );
+
+      if (!item) return;
+
+      setSearchHighlightCalendarId(item.id);
+      setManagementTab(item.type === "event" ? "events" : "tasks");
+      window.history.replaceState({}, "", "/classes");
+
+      window.setTimeout(() => {
+        document
+          .getElementById(`calendar-item-${item.id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+      return;
+    }
+
+    const classTargetValue = params.get("findClassId");
+    if (!classTargetValue) return;
+
+    const classTargetId = Number(classTargetValue);
+    if (!Number.isFinite(classTargetId)) return;
+
+    const classItem = classList.find(
+      (candidate) => candidate.id === classTargetId,
+    );
+    if (!classItem) return;
+
+    setSearchHighlightClassId(classItem.id);
+    window.history.replaceState({}, "", "/classes");
+
+    window.setTimeout(() => {
+      const isMobile = window.matchMedia("(max-width: 767px)").matches;
+      const target = document.getElementById(
+        isMobile
+          ? `class-record-mobile-${classItem.id}`
+          : `class-record-${classItem.id}`,
+      );
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, [calendarItems, classList]);
+
+  useEffect(() => {
+    if (!showPlannerForm) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      plannerFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [showPlannerForm, plannerType, editingId, managementTab]);
 
   const sortedClasses = useMemo(() => {
     return [...classList].sort(
@@ -138,18 +265,9 @@ export default function ClassesPage() {
     );
   }, [classList]);
 
-  const classesByDay = useMemo(() => {
-    return Object.fromEntries(
-      days.map((dayName) => [
-        dayName,
-        sortedClasses.filter((item) => item.day === dayName),
-      ]),
-    ) as Record<string, typeof sortedClasses>;
-  }, [sortedClasses]);
 
-  const activeDays = days.filter(
-    (dayName) => classesByDay[dayName].length > 0,
-  ).length;
+
+  const activeDays = new Set(classList.map((item) => item.day)).size;
 
   const weeklyMinutes = classList.reduce((total, item) => {
     const [startHour, startMinute] = item.start.split(":").map(Number);
@@ -162,6 +280,108 @@ export default function ClassesPage() {
 
     return total + Math.max(0, duration);
   }, 0);
+
+
+  useEffect(() => {
+    let lastTrigger: HTMLElement | null = null;
+
+    const getMenus = () =>
+      Array.from(
+        document.querySelectorAll<HTMLDetailsElement>(
+          "details[data-smart-menu]",
+        ),
+      );
+
+    const getPanel = (menu: HTMLDetailsElement): HTMLElement | null => {
+      const trigger = menu.querySelector(":scope > summary");
+      const panel = trigger?.nextElementSibling;
+
+      return panel instanceof HTMLElement ? panel : null;
+    };
+
+    const clearPanelPosition = (menu: HTMLDetailsElement) => {
+      getPanel(menu)?.removeAttribute("style");
+    };
+
+    const closeAllMenus = () => {
+      for (const menu of getMenus()) {
+        if (menu.open) menu.open = false;
+        clearPanelPosition(menu);
+      }
+    };
+
+    const handleToggle = (event: Event) => {
+      const menu = event.target;
+      if (
+        !(menu instanceof HTMLDetailsElement) ||
+        !menu.hasAttribute("data-smart-menu")
+      ) {
+        return;
+      }
+
+      if (!menu.open) {
+        clearPanelPosition(menu);
+        return;
+      }
+
+      for (const other of getMenus()) {
+        if (other !== menu && other.open) {
+          other.open = false;
+          clearPanelPosition(other);
+        }
+      }
+
+      const trigger = menu.querySelector(":scope > summary");
+      lastTrigger = trigger instanceof HTMLElement ? trigger : null;
+
+      clearPanelPosition(menu);
+    };
+
+    const handleOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest("details[data-smart-menu]")
+      ) {
+        return;
+      }
+
+      closeAllMenus();
+    };
+
+    const handleMenuAction = (event: MouseEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest("[data-smart-menu-panel] button, [data-smart-menu-panel] a")
+      ) {
+        // Run after the action's own click handler.
+        window.setTimeout(closeAllMenus, 0);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+
+      const hasOpenMenu = getMenus().some((menu) => menu.open);
+      if (!hasOpenMenu) return;
+
+      closeAllMenus();
+      lastTrigger?.focus();
+    };
+
+    document.addEventListener("toggle", handleToggle, true);
+    document.addEventListener("pointerdown", handleOutsidePointer, true);
+    document.addEventListener("click", handleMenuAction);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("toggle", handleToggle, true);
+      document.removeEventListener("pointerdown", handleOutsidePointer, true);
+      document.removeEventListener("click", handleMenuAction);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const calendarEvents = useMemo(() => {
     return calendarItems
@@ -250,15 +470,31 @@ export default function ClassesPage() {
     setEventEnd("");
     setEventLocation("");
     setEventNotes("");
+    setEventRepeatFrequency("none");
+    setEventRepeatInterval("1");
+    setEventRepeatWeekdays([]);
+    setEventRepeatUntil("");
     setTaskDueDate("");
+    setTaskRepeatStartDate("");
     setTaskPriority("medium");
     setTaskMinutes("");
     setTaskNotes("");
+    setTaskRepeatFrequency("none");
+    setTaskRepeatInterval("1");
+    setTaskRepeatWeekdays([]);
+    setTaskRepeatUntil("");
+  }
+
+  function switchManagementTab(tab: ManagementTab) {
+    resetPlannerForm();
+    setShowClassForm(false);
+    setManagementTab(tab);
   }
 
   function openPlannerForm(
     kind: PlannerFormType,
     item?: CalendarItem,
+    defaultDate?: string,
   ) {
     setPlannerType(kind);
     setEditingId(item?.id ?? null);
@@ -273,16 +509,32 @@ export default function ClassesPage() {
       setEventEnd(item.endTime ?? "");
       setEventLocation(item.location ?? "");
       setEventNotes(item.notes ?? "");
+      setEventRepeatFrequency(item.recurrence?.frequency ?? "none");
+      setEventRepeatInterval(String(item.recurrence?.interval ?? 1));
+      setEventRepeatWeekdays(item.recurrence?.weekdays ?? []);
+      setEventRepeatUntil(item.recurrence?.until ?? "");
     } else {
-      setEventDate(localDateString());
+      setEventDate(defaultDate ?? localDateString());
       setEventStart("");
       setEventEnd("");
       setEventLocation("");
       setEventNotes("");
+      setEventRepeatFrequency("none");
+      setEventRepeatInterval("1");
+      setEventRepeatWeekdays([]);
+      setEventRepeatUntil("");
     }
 
     if (item?.type === "task") {
       setTaskDueDate(item.dueDate ?? "");
+      setTaskRepeatStartDate(
+        item.recurrence?.startDate ??
+          item.dueDate ??
+          defaultDate ??
+          new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+            .toISOString()
+            .slice(0, 10),
+      );
       setTaskPriority(item.priority);
       setTaskMinutes(
         item.estimatedMinutes != null
@@ -290,11 +542,25 @@ export default function ClassesPage() {
           : "",
       );
       setTaskNotes(item.notes ?? "");
+      setTaskRepeatFrequency(item.recurrence?.frequency ?? "none");
+      setTaskRepeatInterval(String(item.recurrence?.interval ?? 1));
+      setTaskRepeatWeekdays(item.recurrence?.weekdays ?? []);
+      setTaskRepeatUntil(item.recurrence?.until ?? "");
     } else {
-      setTaskDueDate("");
+      setTaskDueDate(defaultDate ?? "");
+      setTaskRepeatStartDate(
+        defaultDate ??
+          new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+            .toISOString()
+            .slice(0, 10),
+      );
       setTaskPriority("medium");
       setTaskMinutes("");
       setTaskNotes("");
+      setTaskRepeatFrequency("none");
+      setTaskRepeatInterval("1");
+      setTaskRepeatWeekdays([]);
+      setTaskRepeatUntil("");
     }
 
     setShowPlannerForm(true);
@@ -333,6 +599,46 @@ export default function ClassesPage() {
           return;
         }
 
+        const interval = Number(eventRepeatInterval);
+
+        if (
+          eventRepeatFrequency !== "none" &&
+          (!Number.isInteger(interval) || interval < 1)
+        ) {
+          setPlannerError("The repeat interval must be a positive whole number.");
+          return;
+        }
+
+        if (
+          eventRepeatFrequency !== "none" &&
+          eventRepeatUntil &&
+          eventRepeatUntil < eventDate
+        ) {
+          setPlannerError("The repeat end date cannot be before the event date.");
+          return;
+        }
+
+        const recurrence: EventRecurrence | undefined =
+          eventRepeatFrequency === "none"
+            ? undefined
+            : {
+                frequency: eventRepeatFrequency,
+                interval,
+                ...(eventRepeatFrequency === "weekly" &&
+                eventRepeatWeekdays.length > 0
+                  ? { weekdays: eventRepeatWeekdays }
+                  : {}),
+                ...(eventRepeatUntil ? { until: eventRepeatUntil } : {}),
+              };
+
+        const existingEvent =
+          existing?.type === "event" ? existing : undefined;
+
+        const keepEventExceptions =
+          existingEvent?.date === eventDate &&
+          recurrenceSignature(existingEvent?.recurrence) ===
+            recurrenceSignature(recurrence);
+
         const eventData = {
           title: plannerTitle.trim(),
           date: eventDate,
@@ -340,6 +646,10 @@ export default function ClassesPage() {
           endTime: eventEnd || undefined,
           location: eventLocation.trim() || undefined,
           notes: eventNotes.trim() || undefined,
+          recurrence,
+          exceptions: keepEventExceptions
+            ? existingEvent?.exceptions ?? []
+            : [],
         };
 
         if (existing?.type === "event") {
@@ -369,15 +679,67 @@ export default function ClassesPage() {
           return;
         }
 
+        if (taskRepeatFrequency !== "none" && !taskRepeatStartDate) {
+          setPlannerError("Choose a start date for this recurring task.");
+          return;
+        }
+
+        const taskInterval = Number(taskRepeatInterval);
+
+        if (
+          taskRepeatFrequency !== "none" &&
+          (!Number.isInteger(taskInterval) || taskInterval < 1)
+        ) {
+          setPlannerError("The repeat interval must be a positive whole number.");
+          return;
+        }
+
+        if (
+          taskRepeatFrequency !== "none" &&
+          taskRepeatUntil &&
+          taskRepeatUntil < taskRepeatStartDate
+        ) {
+          setPlannerError("The repeat end date cannot be before the recurrence start date.");
+          return;
+        }
+
+        const recurrence: TaskRecurrence | undefined =
+          taskRepeatFrequency === "none"
+            ? undefined
+            : {
+                frequency: taskRepeatFrequency,
+                interval: taskInterval,
+                startDate: taskRepeatStartDate,
+                ...(taskRepeatFrequency === "weekly" &&
+                taskRepeatWeekdays.length > 0
+                  ? { weekdays: taskRepeatWeekdays }
+                  : {}),
+                ...(taskRepeatUntil ? { until: taskRepeatUntil } : {}),
+              };
+
+        const existingTask =
+          existing?.type === "task" ? existing : undefined;
+
+        const existingTaskStartDate =
+          existingTask?.recurrence?.startDate ?? existingTask?.dueDate;
+        const keepTaskExceptions =
+          existingTaskStartDate === (taskRepeatStartDate || undefined) &&
+          recurrenceSignature(
+            existingTask?.recurrence,
+            existingTaskStartDate,
+          ) === recurrenceSignature(recurrence, taskRepeatStartDate || undefined);
+
         const taskData = {
           title: plannerTitle.trim(),
           dueDate: taskDueDate || undefined,
           priority: taskPriority,
           estimatedMinutes: parsedMinutes,
           notes: taskNotes.trim() || undefined,
-          completed: existing?.type === "task"
-            ? existing.completed
-            : false,
+          completed: existingTask?.completed ?? false,
+          recurrence,
+          exceptions: keepTaskExceptions
+            ? existingTask?.exceptions ?? []
+            : [],
         };
 
         if (existing?.type === "task") {
@@ -425,46 +787,27 @@ export default function ClassesPage() {
     }
   }
 
-  function handleToggleTask(task: CalendarTask) {
+  function handleToggleTask(
+    task: CalendarTask,
+    occurrenceDate?: string,
+    currentCompleted?: boolean,
+  ) {
     try {
-      toggleCalendarTask(task.id, !task.completed);
+      if (task.recurrence && occurrenceDate) {
+        setCalendarTaskOccurrenceCompleted(
+          task.id,
+          occurrenceDate,
+          !(currentCompleted ?? task.completed),
+        );
+      } else {
+        toggleCalendarTask(task.id, !task.completed);
+      }
+
       setCalendarItems(getCalendarItems());
     } catch (caughtError) {
       console.error("Could not update task:", caughtError);
       setNotice("Could not update this task. Please try again.");
     }
-  }
-
-  function ClassEntry({
-    item,
-    compact = false,
-  }: {
-    item: (typeof sortedClasses)[number];
-    compact?: boolean;
-  }) {
-    return (
-      <div
-        className={`rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--surface)] ${
-          compact ? "p-2" : "p-3"
-        }`}
-      >
-        <p className="text-xs font-extrabold text-[var(--primary)]">
-          {item.start}–{item.end}
-        </p>
-
-        <p
-          className={`mt-1 break-words font-extrabold text-[var(--ink)] ${
-            compact ? "text-xs leading-snug" : "text-base"
-          }`}
-        >
-          {item.name}
-        </p>
-
-        <p className="mt-1 text-xs font-bold text-[var(--muted)]">
-          {item.type}
-        </p>
-      </div>
-    );
   }
 
   return (
@@ -522,32 +865,78 @@ export default function ClassesPage() {
         </div>
       </section>
 
-      {/* Weekly timetable */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl">Weekly timetable</h2>
-          <p className="mt-1 text-sm font-bold text-[var(--muted)]">
-            {todayName
-              ? `${todayName} is highlighted`
-              : "Preparing your weekly timetable…"}
+      <CalendarOverview
+        classes={classList}
+        events={calendarEvents}
+        tasks={calendarTasks}
+        onAddEvent={(date) => {
+          setShowClassForm(false);
+          setManagementTab("events");
+          openPlannerForm("event", undefined, date);
+        }}
+        onAddTask={(date) => {
+          setShowClassForm(false);
+          setManagementTab("tasks");
+          openPlannerForm("task", undefined, date);
+        }}
+        onEditEvent={(item) => {
+          setShowClassForm(false);
+          setManagementTab("events");
+          openPlannerForm("event", item);
+        }}
+        onEditTask={(item) => {
+          setShowClassForm(false);
+          setManagementTab("tasks");
+          openPlannerForm("task", item);
+        }}
+        onDeleteItem={handleDeleteItem}
+        onToggleTask={handleToggleTask}
+      />
+
+      {/* Calendar management: one tab visible at a time */}
+      <section className="mt-10">
+        <div className="mb-4">
+          <p className="stat-label">Manage your plan</p>
+          <h2 className="mt-1 text-2xl sm:text-3xl">Classes, events & tasks</h2>
+          <p className="mt-1 text-sm text-[var(--ink-soft)]">
+            Keep each kind of item organised here. The calendar overview above
+            brings them all together.
           </p>
         </div>
 
-        {!showClassForm && (
-          <Button
-            variant="primary"
-            onClick={() => {
-              setClassError("");
-              setNotice("");
-              setShowClassForm(true);
-            }}
-          >
-            + Add class
-          </Button>
-        )}
-      </div>
+        <details className="mb-5 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4">
+          <summary className="cursor-pointer list-none font-extrabold">
+            Manage weekly classes
+            <span className="mt-1 block text-sm font-normal text-[var(--ink-soft)]">
+              Add and review your weekly class patterns. Individual sessions can
+              still be cancelled or restored from the selected-day agenda.
+            </span>
+          </summary>
+          <div className="mt-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="stat-label">Recurring weekly schedule</p>
+                <h3 className="mt-1 text-2xl">Your classes</h3>
+                <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                  Manage your weekly class pattern. Cancel or restore individual
+                  sessions from the selected-day agenda above.
+                </p>
+              </div>
+              {!showClassForm && (
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setClassError("");
+                    setNotice("");
+                    setShowClassForm(true);
+                  }}
+                >
+                  + Add class
+                </Button>
+              )}
+            </div>
 
-      {showClassForm && (
+{showClassForm && (
         <form
           onSubmit={handleClassSubmit}
           className="card mb-6 space-y-5 bg-[var(--surface)] p-5 sm:p-6"
@@ -657,122 +1046,174 @@ export default function ClassesPage() {
         </form>
       )}
 
-      {classList.length === 0 ? (
-        <section className="card bg-[var(--surface)] p-8 text-center">
-          <h2 className="text-2xl">Your week starts here</h2>
-          <p className="mt-3 text-[var(--ink-soft)]">
-            Add your first recurring class to start building your timetable.
-          </p>
-          {!showClassForm && (
-            <Button
-              variant="primary"
-              className="mt-5"
-              onClick={() => setShowClassForm(true)}
-            >
-              Add your first class
-            </Button>
-          )}
-        </section>
-      ) : (
-        <>
-          {/* Desktop and tablet: seven-day timetable */}
-          <div className="hidden grid-cols-7 gap-2 md:grid">
-            {days.map((dayName) => {
-              const dayClasses = classesByDay[dayName];
-              const isToday = todayName !== null && dayName === todayName;
+            {classList.length === 0 ? (
+              <div className="card bg-[var(--surface)] p-6 text-center">
+                <h3 className="text-lg">No classes added yet</h3>
+                <p className="mt-2 text-sm text-[var(--ink-soft)]">
+                  Add a recurring weekly class to start building your schedule.
+                </p>
+              </div>
+            ) : (
+              <>
+              <div className="hidden grid-cols-7 gap-2 md:grid">
+                {days.map((dayName) => {
+                  const dayClasses = sortedClasses.filter(
+                    (item) => item.day === dayName,
+                  );
 
-              return (
-                <section
-                  key={dayName}
-                  className={`min-w-0 rounded-2xl border-2 p-2 ${
-                    isToday
-                      ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] shadow-[0_4px_0_var(--primary-dark)]"
-                      : "border-[var(--border)] bg-[var(--surface)]"
-                  }`}
-                >
-                  <header className="mb-3 border-b border-[var(--border)] pb-2 text-center">
-                    <h3 className="text-sm">{dayName.slice(0, 3)}</h3>
-                    <p className="mt-1 text-xs font-extrabold text-[var(--muted)]">
-                      {dayClasses.length}
-                    </p>
-                  </header>
-
-                  <div className="space-y-2">
-                    {dayClasses.map((item) => (
-                      <ClassEntry key={item.id} item={item} compact />
-                    ))}
-                    {dayClasses.length === 0 && (
-                      <p className="py-3 text-center text-xs font-bold text-[var(--muted)]">
-                        Free
-                      </p>
-                    )}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-
-          {/* Phone: agenda grouped by day */}
-          <div className="space-y-3 md:hidden">
-            {days.map((dayName) => {
-              const dayClasses = classesByDay[dayName];
-              const isToday = todayName !== null && dayName === todayName;
-
-              return (
-                <section
-                  key={dayName}
-                  className={`rounded-2xl border-2 p-4 ${
-                    isToday
-                      ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] shadow-[0_4px_0_var(--primary-dark)]"
-                      : "border-[var(--border)] bg-[var(--surface)]"
-                  }`}
-                >
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <h3 className="text-xl">{dayName}</h3>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-extrabold ${
-                        isToday
-                          ? "border-[var(--primary-dark)] bg-[var(--primary)] text-white"
-                          : "border-[var(--border)] bg-[var(--surface)] text-[var(--ink-soft)]"
-                      }`}
+                  return (
+                    <section
+                      key={dayName}
+                      className="min-w-0 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-2"
                     >
-                      {isToday ? "Today · " : ""}
-                      {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}
-                    </span>
-                  </div>
+                      <header className="mb-3 border-b border-[var(--border)] pb-2 text-center">
+                        <h4 className="text-sm font-extrabold">
+                          {dayName.slice(0, 3)}
+                        </h4>
+                        <p className="mt-1 text-xs font-extrabold text-[var(--muted)]">
+                          {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}
+                        </p>
+                      </header>
+                      <div className="space-y-2">
+                        {dayClasses.map((item) => (
+                          <article
+                            key={item.id}
+                            id={`class-record-${item.id}`}
+                            className={`rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-2 ${
+                              searchHighlightClassId === item.id
+                                ? "ring-2 ring-[var(--accent)]"
+                                : ""
+                            }`}
+                          >
+                            <p className="text-xs font-extrabold text-[var(--primary-dark)]">
+                              {item.start}–{item.end}
+                            </p>
+                            <p className="mt-1 break-words text-xs font-extrabold text-[var(--ink)]">
+                              {item.name}
+                            </p>
+                            <p className="mt-1 text-xs font-bold text-[var(--muted)]">
+                              {item.type}
+                            </p>
+                          </article>
+                        ))}
+                        {dayClasses.length === 0 && (
+                          <p className="py-3 text-center text-xs font-bold text-[var(--muted)]">
+                            Free
+                          </p>
+                        )}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
 
-                  {dayClasses.length > 0 ? (
-                    <div className="space-y-2">
-                      {dayClasses.map((item) => (
-                        <div key={item.id} className="flex items-stretch gap-3">
-                          <div className="flex w-[88px] shrink-0 flex-col justify-center">
-                            <p className="text-xs font-extrabold text-[var(--primary)]">
-                              {item.start}
-                            </p>
-                            <p className="text-xs font-bold text-[var(--muted)]">
-                              {item.end}
-                            </p>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <ClassEntry item={item} />
-                          </div>
+              <div className="space-y-3 md:hidden">
+                {days.map((dayName) => {
+                  const dayClasses = sortedClasses.filter(
+                    (item) => item.day === dayName,
+                  );
+
+                  return (
+                    <section
+                      key={dayName}
+                      className="rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4"
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h4 className="text-lg font-extrabold">{dayName}</h4>
+                        <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs font-extrabold text-[var(--ink-soft)]">
+                          {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}
+                        </span>
+                      </div>
+
+                      {dayClasses.length > 0 ? (
+                        <div className="space-y-2">
+                          {dayClasses.map((item) => (
+                            <div key={item.id} className="flex items-stretch gap-3">
+                              <div className="flex w-[88px] shrink-0 flex-col justify-center">
+                                <p className="text-xs font-extrabold text-[var(--primary)]">
+                                  {item.start}
+                                </p>
+                                <p className="text-xs font-bold text-[var(--muted)]">
+                                  {item.end}
+                                </p>
+                              </div>
+                              <article
+                                id={`class-record-mobile-${item.id}`}
+                                className={`min-w-0 flex-1 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3 ${
+                                  searchHighlightClassId === item.id
+                                    ? "ring-2 ring-[var(--accent)]"
+                                    : ""
+                                }`}
+                              >
+                                <p className="break-words font-extrabold text-[var(--ink)]">
+                                  {item.name}
+                                </p>
+                                <p className="mt-1 text-xs font-bold text-[var(--muted)]">
+                                  {item.type}
+                                </p>
+                              </article>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm font-bold text-[var(--muted)]">
-                      No scheduled classes. Room to breathe.
-                    </p>
-                  )}
-                </section>
-              );
-            })}
+                      ) : (
+                        <p className="text-sm font-bold text-[var(--muted)]">
+                          No scheduled classes. Room to breathe.
+                        </p>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+                </>
+            )}
           </div>
-        </>
-      )}
+        </details>
 
-      {/* Events and commitments */}
-      <section className="mt-10">
+        <div
+          role="tablist"
+          aria-label="Manage calendar items"
+          className="mb-5 flex gap-1 rounded-full border-2 border-[var(--border)] bg-[var(--surface)] p-1"
+        >
+          <button
+            id="calendar-tab-events"
+            type="button"
+            role="tab"
+            aria-selected={managementTab === "events"}
+            aria-controls="calendar-panel-events"
+            onClick={() => switchManagementTab("events")}
+            className={`flex-1 rounded-full px-3 py-2.5 text-sm font-extrabold transition sm:px-4 ${
+              managementTab === "events"
+                ? "bg-[var(--primary)] text-white shadow-sm"
+                : "text-[var(--muted)] hover:bg-[var(--primary-soft)]"
+            }`}
+          >
+            Events
+          </button>
+          <button
+            id="calendar-tab-tasks"
+            type="button"
+            role="tab"
+            aria-selected={managementTab === "tasks"}
+            aria-controls="calendar-panel-tasks"
+            onClick={() => switchManagementTab("tasks")}
+            className={`flex-1 rounded-full px-3 py-2.5 text-sm font-extrabold transition sm:px-4 ${
+              managementTab === "tasks"
+                ? "bg-[var(--primary)] text-white shadow-sm"
+                : "text-[var(--muted)] hover:bg-[var(--primary-soft)]"
+            }`}
+          >
+            Tasks
+          </button>
+        </div>
+
+        {managementTab === "events" && (
+          <div
+            id="calendar-panel-events"
+            role="tabpanel"
+            aria-labelledby="calendar-tab-events"
+          >
+{/* Events and commitments */}
+      <section className="mt-3">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="stat-label">Fixed dates and times</p>
@@ -787,7 +1228,7 @@ export default function ClassesPage() {
         </div>
 
         {showPlannerForm && plannerType === "event" && (
-          <form onSubmit={handlePlannerSubmit} className="card mb-5 space-y-4 bg-[var(--surface)] p-5 sm:p-6">
+          <form ref={plannerFormRef} onSubmit={handlePlannerSubmit} className="card mb-5 scroll-mt-6 space-y-4 bg-[var(--surface)] p-5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl">{editingId ? "Edit event" : "Add an event"}</h3>
@@ -861,6 +1302,99 @@ export default function ClassesPage() {
               </div>
             </div>
 
+            <fieldset className="space-y-3 rounded-2xl border-2 border-[var(--border)] p-4">
+              <legend className="px-1 text-sm font-extrabold">
+                Repeat this event
+              </legend>
+              <div>
+                <label htmlFor="planner-event-repeat" className="mb-1 block text-sm font-extrabold">
+                  Repeat pattern
+                </label>
+                <select
+                  id="planner-event-repeat"
+                  value={eventRepeatFrequency}
+                  onChange={(change) =>
+                    setEventRepeatFrequency(change.target.value as RecurrenceFrequency)
+                  }
+                >
+                  <option value="none">Does not repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+
+              {eventRepeatFrequency !== "none" && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="planner-event-repeat-interval" className="mb-1 block text-sm font-extrabold">
+                      Repeat every
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="planner-event-repeat-interval"
+                        type="number"
+                        min="1"
+                        step="1"
+                        required
+                        value={eventRepeatInterval}
+                        onChange={(change) => setEventRepeatInterval(change.target.value)}
+                      />
+                      <span className="text-sm text-[var(--ink-soft)]">
+                        {eventRepeatFrequency === "daily"
+                          ? "day(s)"
+                          : eventRepeatFrequency === "weekly"
+                            ? "week(s)"
+                            : "month(s)"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="planner-event-repeat-until" className="mb-1 block text-sm font-extrabold">
+                      End date (optional)
+                    </label>
+                    <input
+                      id="planner-event-repeat-until"
+                      type="date"
+                      min={eventDate}
+                      value={eventRepeatUntil}
+                      onChange={(change) => setEventRepeatUntil(change.target.value)}
+                    />
+                  </div>
+
+                  {eventRepeatFrequency === "weekly" && (
+                    <div className="space-y-2 sm:col-span-2">
+                      <p className="text-sm font-extrabold">
+                        Repeat on weekdays (optional)
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {recurrenceDays.map((weekday) => (
+                          <label key={weekday} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={eventRepeatWeekdays.includes(weekday)}
+                              onChange={(change) =>
+                                setEventRepeatWeekdays((current) =>
+                                  change.target.checked
+                                    ? [...current, weekday]
+                                    : current.filter((dayName) => dayName !== weekday),
+                                )
+                              }
+                            />
+                            {weekday}
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-[var(--ink-soft)]">
+                        If none are selected, it repeats on the weekday of the first event.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </fieldset>
+
             <div>
               <label htmlFor="planner-event-notes" className="mb-1 block text-sm font-extrabold">
                 Notes (optional)
@@ -899,13 +1433,26 @@ export default function ClassesPage() {
         ) : (
           <div className="space-y-3">
             {calendarEvents.map((item) => (
-              <article key={item.id} className="card bg-[var(--surface)] p-4 sm:p-5">
+              <article
+                key={item.id}
+                id={`calendar-item-${item.id}`}
+                className={`card bg-[var(--surface)] p-4 sm:p-5 ${
+                  searchHighlightCalendarId === item.id
+                    ? "ring-2 ring-[var(--accent)]"
+                    : ""
+                }`}
+              >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--accent-dark)]">
                       {formatDate(item.date)}
                     </p>
                     <h3 className="mt-1 break-words text-xl">{item.title}</h3>
+                    {item.recurrence && (
+                      <p className="mt-1 text-xs font-extrabold text-[#684000]">
+                        {recurrenceSummary(item.recurrence)}
+                      </p>
+                    )}
                     <p className="mt-1 text-sm font-bold text-[var(--primary)]">
                       {item.startTime
                         ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ""}`
@@ -923,12 +1470,36 @@ export default function ClassesPage() {
                     )}
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    <Button variant="secondary" onClick={() => openPlannerForm("event", item)}>
-                      Edit
-                    </Button>
-                    <Button variant="destructive" onClick={() => handleDeleteItem(item)}>
-                      Delete
-                    </Button>
+                    <details data-smart-menu className="relative">
+                      <summary
+                        aria-label={`More actions for ${item.title}`}
+                        className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
+                      >
+                        <span aria-hidden="true">⋮</span>
+                      </summary>
+                      <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                        <button
+                          type="button"
+                          onClick={(clickEvent) => {
+                            clickEvent.currentTarget.closest("details")?.removeAttribute("open");
+                            openPlannerForm("event", item);
+                          }}
+                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                        >
+                          {item.recurrence ? "Edit series" : "Edit event"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(clickEvent) => {
+                            clickEvent.currentTarget.closest("details")?.removeAttribute("open");
+                            handleDeleteItem(item);
+                          }}
+                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                        >
+                          {item.recurrence ? "Delete series" : "Delete event"}
+                        </button>
+                      </div>
+                    </details>
                   </div>
                 </div>
               </article>
@@ -936,9 +1507,17 @@ export default function ClassesPage() {
           </div>
         )}
       </section>
+          </div>
+        )}
 
-      {/* Flexible tasks */}
-      <section className="mt-10">
+        {managementTab === "tasks" && (
+          <div
+            id="calendar-panel-tasks"
+            role="tabpanel"
+            aria-labelledby="calendar-tab-tasks"
+          >
+{/* Flexible tasks */}
+      <section className="mt-3">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="stat-label">Work around your schedule</p>
@@ -972,7 +1551,7 @@ export default function ClassesPage() {
         </div>
 
         {showPlannerForm && plannerType === "task" && (
-          <form onSubmit={handlePlannerSubmit} className="card mb-5 space-y-4 bg-[var(--surface)] p-5 sm:p-6">
+          <form ref={plannerFormRef} onSubmit={handlePlannerSubmit} className="card mb-5 scroll-mt-6 space-y-4 bg-[var(--surface)] p-5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl">{editingId ? "Edit task" : "Add a task"}</h3>
@@ -1040,6 +1619,116 @@ export default function ClassesPage() {
               </div>
             </div>
 
+            <fieldset className="space-y-3 rounded-2xl border-2 border-[var(--border)] p-4">
+              <legend className="px-1 text-sm font-extrabold">
+                Repeat this task
+              </legend>
+              <p className="text-xs text-[var(--ink-soft)]">
+                Each due date is a separate task occurrence. Completing one will not complete future dates.
+              </p>
+              <div>
+                <label htmlFor="planner-task-repeat" className="mb-1 block text-sm font-extrabold">
+                  Repeat pattern
+                </label>
+                <select
+                  id="planner-task-repeat"
+                  value={taskRepeatFrequency}
+                  onChange={(change) =>
+                    setTaskRepeatFrequency(change.target.value as RecurrenceFrequency)
+                  }
+                >
+                  <option value="none">Does not repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+
+              {taskRepeatFrequency !== "none" && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="planner-task-repeat-start" className="mb-1 block text-sm font-extrabold">
+                      Starts on
+                    </label>
+                    <input
+                      id="planner-task-repeat-start"
+                      type="date"
+                      required
+                      value={taskRepeatStartDate}
+                      onChange={(change) => setTaskRepeatStartDate(change.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="planner-task-repeat-interval" className="mb-1 block text-sm font-extrabold">
+                      Repeat every
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="planner-task-repeat-interval"
+                        type="number"
+                        min="1"
+                        step="1"
+                        required
+                        value={taskRepeatInterval}
+                        onChange={(change) => setTaskRepeatInterval(change.target.value)}
+                      />
+                      <span className="text-sm text-[var(--ink-soft)]">
+                        {taskRepeatFrequency === "daily"
+                          ? "day(s)"
+                          : taskRepeatFrequency === "weekly"
+                            ? "week(s)"
+                            : "month(s)"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="planner-task-repeat-until" className="mb-1 block text-sm font-extrabold">
+                      End date (optional)
+                    </label>
+                    <input
+                      id="planner-task-repeat-until"
+                      type="date"
+                      min={taskRepeatStartDate || undefined}
+                      value={taskRepeatUntil}
+                      onChange={(change) => setTaskRepeatUntil(change.target.value)}
+                    />
+                  </div>
+
+                  {taskRepeatFrequency === "weekly" && (
+                    <div className="space-y-2 sm:col-span-2">
+                      <p className="text-sm font-extrabold">
+                        Repeat on weekdays (optional)
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {recurrenceDays.map((weekday) => (
+                          <label key={weekday} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={taskRepeatWeekdays.includes(weekday)}
+                              onChange={(change) =>
+                                setTaskRepeatWeekdays((current) =>
+                                  change.target.checked
+                                    ? [...current, weekday]
+                                    : current.filter((dayName) => dayName !== weekday),
+                                )
+                              }
+                            />
+                            {weekday}
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-[var(--ink-soft)]">
+                        If none are selected, it repeats on the weekday of the start date.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+             </fieldset>
+
             <div>
               <label htmlFor="planner-task-notes" className="mb-1 block text-sm font-extrabold">
                 Notes (optional)
@@ -1080,21 +1769,36 @@ export default function ClassesPage() {
             {calendarTasks.map((item) => (
               <article
                 key={item.id}
+                id={`calendar-item-${item.id}`}
                 className={`card bg-[var(--surface)] p-4 sm:p-5 ${
                   item.completed ? "opacity-75" : ""
+                } ${
+                  searchHighlightCalendarId === item.id
+                    ? "ring-2 ring-[var(--accent)]"
+                    : ""
                 }`}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
-                    <input
-                      type="checkbox"
-                      aria-label={`Mark ${item.title} ${item.completed ? "incomplete" : "complete"}`}
-                      checked={item.completed}
-                      onChange={() => handleToggleTask(item)}
-                      className="mt-1 h-5 w-5 shrink-0 accent-[var(--primary)]"
-                    />
+                    {item.recurrence ? (
+                        <span
+                          title="Complete individual occurrences from the calendar agenda"
+                          aria-label="Recurring task; completion is tracked per occurrence"
+                          className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--accent-dark)] bg-[var(--accent-soft)] font-extrabold text-[var(--accent-dark)]"
+                        >
+                          ↻
+                        </span>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          aria-label={`Mark ${item.title} ${item.completed ? "incomplete" : "complete"}`}
+                          checked={item.completed}
+                          onChange={() => handleToggleTask(item)}
+                          className="mt-1 h-5 w-5 shrink-0 accent-[var(--primary)]"
+                        />
+                      )}
 
-                    <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1">
                       <h3 className={`break-words text-lg ${item.completed ? "line-through" : ""}`}>
                         {item.title}
                       </h3>
@@ -1133,16 +1837,43 @@ export default function ClassesPage() {
                   </div>
 
                   <div className="flex shrink-0 gap-2 pl-8 sm:pl-0">
-                    <Button variant="secondary" onClick={() => openPlannerForm("task", item)}>
-                      Edit
-                    </Button>
-                    <Button variant="destructive" onClick={() => handleDeleteItem(item)}>
-                      Delete
-                    </Button>
+                    <details data-smart-menu className="relative">
+                      <summary
+                        aria-label={`More actions for ${item.title}`}
+                        className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
+                      >
+                        <span aria-hidden="true">⋮</span>
+                      </summary>
+                      <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-44 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                        <button
+                          type="button"
+                          onClick={(clickEvent) => {
+                            clickEvent.currentTarget.closest("details")?.removeAttribute("open");
+                            openPlannerForm("task", item);
+                          }}
+                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                        >
+                          Edit task
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(clickEvent) => {
+                            clickEvent.currentTarget.closest("details")?.removeAttribute("open");
+                            handleDeleteItem(item);
+                          }}
+                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                        >
+                          Delete task
+                        </button>
+                      </div>
+                    </details>
                   </div>
                 </div>
               </article>
             ))}
+          </div>
+        )}
+      </section>
           </div>
         )}
       </section>

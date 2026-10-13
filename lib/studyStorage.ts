@@ -1,3 +1,5 @@
+import { readStoredJson } from "./storageRecovery";
+
 export type ReviewRating = "Again" | "Good" | "Easy";
 
 export type Program = {
@@ -52,6 +54,16 @@ type StoredLecture = Partial<Lecture> & {
 const STORAGE_KEY = "personal-assistant-study-v2";
 const CURRENT_SEMESTER_KEY =
   "personal-assistant-current-semester";
+const ACADEMIC_SETTINGS_KEY =
+  "personal-assistant-academic-settings";
+
+export type AcademicSettings = {
+  studyYear: number;
+};
+
+const DEFAULT_ACADEMIC_SETTINGS: AcademicSettings = {
+  studyYear: 1,
+};
 
 const BOX_INTERVALS: Record<number, number> = {
   1: 1,
@@ -146,51 +158,94 @@ function normalizeLecture(
   };
 }
 
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  );
+}
+
+function hasFields(
+  value: unknown,
+  fields: Record<string, "number" | "string">,
+): boolean {
+  if (!isRecord(value)) return false;
+
+  return Object.entries(fields).every(
+    ([key, type]) => typeof value[key] === type,
+  );
+}
+
+function isRecordArray(
+  value: unknown,
+  fields: Record<string, "number" | "string">,
+): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => hasFields(item, fields))
+  );
+}
+
+function isStoredStudyData(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+
+  const specs: Record<
+    string,
+    Record<string, "number" | "string">
+  > = {
+    programs: { id: "number", name: "string" },
+    semesters: { id: "number", programId: "number", name: "string" },
+    courses: { id: "number", semesterId: "number", name: "string" },
+    units: { id: "number", courseId: "number", name: "string" },
+    lectures: { id: "number", unitId: "number", name: "string" },
+  };
+
+  return Object.entries(specs).every(([key, fields]) =>
+    value[key] === undefined ||
+    isRecordArray(value[key], fields)
+  );
+}
+
 export function getStudyData(): StudyData {
   if (typeof window === "undefined") {
     return getEmptyStudyData();
   }
 
   const saved = localStorage.getItem(STORAGE_KEY);
-
   if (!saved) {
     return getEmptyStudyData();
   }
 
-  try {
-    const parsed = JSON.parse(saved) as {
-      programs?: Program[];
-      semesters?: Semester[];
-      courses?: Course[];
-      units?: Unit[];
-      lectures?: StoredLecture[];
-    };
+  const parsed = readStoredJson<{
+    programs?: Program[];
+    semesters?: Semester[];
+    courses?: Course[];
+    units?: Unit[];
+    lectures?: StoredLecture[];
+  }>(
+    STORAGE_KEY,
+    saved,
+    {},
+    isStoredStudyData,
+  );
 
-    return {
-      programs: Array.isArray(parsed.programs)
-        ? parsed.programs
-        : [],
-      semesters: Array.isArray(parsed.semesters)
-        ? parsed.semesters
-        : [],
-      courses: Array.isArray(parsed.courses)
-        ? parsed.courses
-        : [],
-      units: Array.isArray(parsed.units)
-        ? parsed.units
-        : [],
-      lectures: Array.isArray(parsed.lectures)
-        ? parsed.lectures
-            .map(normalizeLecture)
-            .filter(
-              (lecture): lecture is Lecture =>
-                lecture !== null,
-            )
-        : [],
-    };
-  } catch {
-    return getEmptyStudyData();
-  }
+  return {
+    programs: Array.isArray(parsed.programs) ? parsed.programs : [],
+    semesters: Array.isArray(parsed.semesters) ? parsed.semesters : [],
+    courses: Array.isArray(parsed.courses) ? parsed.courses : [],
+    units: Array.isArray(parsed.units) ? parsed.units : [],
+    lectures: Array.isArray(parsed.lectures)
+      ? parsed.lectures
+          .map(normalizeLecture)
+          .filter(
+            (lecture): lecture is Lecture =>
+              lecture !== null,
+          )
+      : [],
+  };
 }
 
 export function saveStudyData(data: StudyData) {
@@ -198,6 +253,153 @@ export function saveStudyData(data: StudyData) {
     STORAGE_KEY,
     JSON.stringify(data),
   );
+}
+
+export function getAcademicSettings(): AcademicSettings {
+  if (typeof window === "undefined") {
+    return { ...DEFAULT_ACADEMIC_SETTINGS };
+  }
+
+  const raw = localStorage.getItem(ACADEMIC_SETTINGS_KEY);
+  if (!raw) return { ...DEFAULT_ACADEMIC_SETTINGS };
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      "studyYear" in parsed &&
+      typeof parsed.studyYear === "number" &&
+      Number.isSafeInteger(parsed.studyYear) &&
+      parsed.studyYear >= 1
+    ) {
+      return { studyYear: parsed.studyYear };
+    }
+  } catch {
+    // Keep the safe default if the new setting is malformed.
+  }
+
+  return { ...DEFAULT_ACADEMIC_SETTINGS };
+}
+
+export function saveStudyYear(studyYear: number): boolean {
+  if (!Number.isSafeInteger(studyYear) || studyYear < 1) {
+    return false;
+  }
+
+  localStorage.setItem(
+    ACADEMIC_SETTINGS_KEY,
+    JSON.stringify({ studyYear }),
+  );
+
+  return true;
+}
+
+export function getGlobalProgram(): Program | null {
+  const data = getStudyData();
+  const currentSemesterId = getCurrentSemesterId();
+  const currentSemester = data.semesters.find(
+    (semester) => semester.id === currentSemesterId,
+  );
+
+  return (
+    data.programs.find(
+      (program) => program.id === currentSemester?.programId,
+    ) ??
+    data.programs[0] ??
+    null
+  );
+}
+
+export function saveGlobalProgramName(name: string): Program | null {
+  const cleanName = name.trim();
+  if (!cleanName) return null;
+
+  const data = getStudyData();
+  const currentSemesterId = getCurrentSemesterId();
+  const currentSemester = data.semesters.find(
+    (semester) => semester.id === currentSemesterId,
+  );
+
+  const existingProgram =
+    data.programs.find(
+      (program) => program.id === currentSemester?.programId,
+    ) ??
+    data.programs[0];
+
+  const program: Program = existingProgram
+    ? { ...existingProgram, name: cleanName }
+    : { id: Date.now(), name: cleanName };
+
+  // Keep semester IDs unchanged so courses remain attached to their
+  // existing semesters. The application now uses one global program.
+  saveStudyData({
+    ...data,
+    programs: [program],
+    semesters: data.semesters.map((semester) => ({
+      ...semester,
+      programId: program.id,
+    })),
+  });
+
+  return program;
+}
+
+export function ensureFixedSemesters(programId?: number): Semester[] {
+  if (typeof window === "undefined") return [];
+
+  const data = getStudyData();
+  const currentId = getCurrentSemesterId();
+  const current = data.semesters.find((semester) => semester.id === currentId);
+  const program =
+    data.programs.find((item) => item.id === programId) ??
+    data.programs.find((item) => item.id === current?.programId) ??
+    data.programs[0];
+
+  if (!program) return [];
+
+  let nextId = Math.max(
+    Date.now(),
+    ...data.semesters.map((semester) => semester.id + 1),
+  );
+
+  const fixed = [1, 2, 3].map((number): Semester => {
+    const existing = data.semesters.find(
+      (semester) =>
+        new RegExp("^semester\\s*" + number + "$", "i").test(
+          semester.name.trim(),
+        ),
+    );
+
+    if (existing) {
+      return {
+        ...existing,
+        programId: program.id,
+        name: `Semester ${number}`,
+      };
+    }
+
+    return {
+      id: nextId++,
+      programId: program.id,
+      name: `Semester ${number}`,
+    };
+  });
+
+  const fixedIds = new Set(fixed.map((semester) => semester.id));
+  const legacy = data.semesters.filter(
+    (semester) => !fixedIds.has(semester.id),
+  );
+
+  // Keep all extra legacy semester records and their IDs.
+  // Only canonical Semester 1–3 records appear in this selector.
+  saveStudyData({
+    ...data,
+    semesters: [...fixed, ...legacy],
+  });
+
+  return fixed;
 }
 
 export function getPrograms() {

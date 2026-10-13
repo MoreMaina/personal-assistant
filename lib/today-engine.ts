@@ -29,6 +29,7 @@ export interface FreeWindow {
 export interface TodayTask {
   id: string | number;
   title: string;
+  unitName?: string;
   type: TodayTaskType;
   durationMinutes: number;
 

@@ -1,3 +1,5 @@
+import { readStoredJson } from "./storageRecovery";
+
 export type Book = {
   id: number;
   title: string;
@@ -64,6 +66,54 @@ export type Essay = {
   criticismUnlockedAt?: string;
 };
 
+function isObjectRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  );
+}
+
+function isBookArray(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isObjectRecord(item) &&
+        typeof item.id === "number" &&
+        typeof item.title === "string" &&
+        typeof item.author === "string",
+    )
+  );
+}
+
+function isSessionArray(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isObjectRecord(item) &&
+        typeof item.id === "number" &&
+        typeof item.bookId === "number",
+    )
+  );
+}
+
+function isEssayArray(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        isObjectRecord(item) &&
+        typeof item.id === "number" &&
+        typeof item.title === "string" &&
+        typeof item.author === "string",
+    )
+  );
+}
+
 const BOOKS_KEY = "personal-assistant-books";
 const SESSIONS_KEY = "personal-assistant-reading-sessions";
 const ESSAYS_KEY = "personal-assistant-essays";
@@ -86,16 +136,16 @@ export function getBooks(): Book[] {
   }
 
   const saved = localStorage.getItem(BOOKS_KEY);
-
   if (!saved) {
     return defaultBooks;
   }
 
-  try {
-    return JSON.parse(saved);
-  } catch {
-    return defaultBooks;
-  }
+  return readStoredJson<Book[]>(
+    BOOKS_KEY,
+    saved,
+    defaultBooks,
+    isBookArray,
+  );
 }
 
 export function saveBooks(books: Book[]) {
@@ -129,22 +179,33 @@ export function updateBook(updatedBook: Book) {
   );
 }
 
+export function deleteBookAndSessions(bookId: number) {
+  saveBooks(getBooks().filter((book) => book.id !== bookId));
+
+  const sessions = getReadingSessions().filter(
+    (session) => session.bookId !== bookId,
+  );
+
+  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+  return sessions;
+}
+
 export function getReadingSessions(): ReadingSession[] {
   if (typeof window === "undefined") {
     return [];
   }
 
   const saved = localStorage.getItem(SESSIONS_KEY);
-
   if (!saved) {
     return [];
   }
 
-  try {
-    return JSON.parse(saved);
-  } catch {
-    return [];
-  }
+  return readStoredJson<ReadingSession[]>(
+    SESSIONS_KEY,
+    saved,
+    [],
+    isSessionArray,
+  );
 }
 
 export function saveReadingSession(
@@ -171,16 +232,16 @@ export function getEssays(): Essay[] {
   }
 
   const saved = localStorage.getItem(ESSAYS_KEY);
-
   if (!saved) {
     return [];
   }
 
-  try {
-    return JSON.parse(saved);
-  } catch {
-    return [];
-  }
+  return readStoredJson<Essay[]>(
+    ESSAYS_KEY,
+    saved,
+    [],
+    isEssayArray,
+  );
 }
 
 export function saveEssays(essays: Essay[]) {
