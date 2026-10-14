@@ -1,12 +1,15 @@
+
 export const SYNCED_STORAGE_KEYS = [
   "personal-assistant-classes",
   "cancelled-class-sessions",
   "personal-assistant-study-v2",
   "personal-assistant-current-semester",
+  "personal-assistant-academic-settings",
   "personal-assistant-books",
   "personal-assistant-reading-sessions",
   "personal-assistant-essays",
   "personal-assistant-projects",
+  "personal-assistant-calendar-items",
 ] as const;
 
 export type AppSnapshot = Record<string, string>;
@@ -15,14 +18,12 @@ export function readLocalSnapshot(): AppSnapshot {
   const snapshot: AppSnapshot = {};
 
   for (const key of SYNCED_STORAGE_KEYS) {
-    try {
-      const value = localStorage.getItem(key);
+    // Fail the whole snapshot if any registered key is unreadable.
+    // Cloud sync can then stop instead of uploading partial state.
+    const value = localStorage.getItem(key);
 
-      if (value !== null) {
-        snapshot[key] = value;
-      }
-    } catch {
-      // Keep the snapshot limited to readable values.
+    if (value !== null) {
+      snapshot[key] = value;
     }
   }
 
@@ -44,9 +45,19 @@ export function normalizeSnapshot(
   const snapshot: AppSnapshot = {};
 
   for (const key of SYNCED_STORAGE_KEYS) {
-    if (typeof source[key] === "string") {
-      snapshot[key] = source[key] as string;
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
     }
+
+    const field = source[key];
+
+    if (typeof field !== "string") {
+      throw new Error(
+        `Invalid app snapshot: "${key}" must be a string.`,
+      );
+    }
+
+    snapshot[key] = field;
   }
 
   return snapshot;
@@ -57,9 +68,7 @@ export function snapshotSignature(
 ): string {
   const sorted: AppSnapshot = {};
 
-  for (
-    const key of Object.keys(snapshot).sort()
-  ) {
+  for (const key of Object.keys(snapshot).sort()) {
     sorted[key] = snapshot[key];
   }
 
@@ -107,9 +116,7 @@ export function snapshotHasUserData(
       continue;
     }
 
-    if (
-      key === "personal-assistant-study-v2"
-    ) {
+    if (key === "personal-assistant-study-v2") {
       if (
         value &&
         typeof value === "object" &&
@@ -188,6 +195,50 @@ export function applySnapshot(
       localStorage.removeItem(key);
     } else {
       localStorage.setItem(key, value);
+    }
+  }
+}
+
+export type SnapshotApplyWithRollbackResult =
+  | { success: true }
+  | {
+      success: false;
+      applyError: unknown;
+      rollbackSucceeded: true;
+    }
+  | {
+      success: false;
+      applyError: unknown;
+      rollbackSucceeded: false;
+      rollbackError: unknown;
+    };
+
+/**
+ * Applies a snapshot locally. If application fails partway through,
+ * attempts to restore the previous local snapshot.
+ */
+export function applySnapshotWithRollback(
+  snapshot: AppSnapshot,
+  previousSnapshot: AppSnapshot,
+): SnapshotApplyWithRollbackResult {
+  try {
+    applySnapshot(snapshot);
+    return { success: true };
+  } catch (applyError) {
+    try {
+      applySnapshot(previousSnapshot);
+      return {
+        success: false,
+        applyError,
+        rollbackSucceeded: true,
+      };
+    } catch (rollbackError) {
+      return {
+        success: false,
+        applyError,
+        rollbackSucceeded: false,
+        rollbackError,
+      };
     }
   }
 }

@@ -291,10 +291,35 @@ a {
 }
 
 .topbar__brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
   color: var(--primary);
   font-family: var(--font-heading);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
+}
+
+.topbar__brand-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid var(--primary-dark);
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--surface);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+@media (min-width: 721px) {
+  .topbar {
+    display: none;
+  }
 }
 
 .topbar__actions {
@@ -341,6 +366,52 @@ a {
   cursor: pointer;
 }
 
+.app-utilities{position:relative;z-index:60}
+.app-utilities__trigger{display:inline-flex;width:44px;height:44px;align-items:center;justify-content:center;border:2px solid rgba(255,250,241,.2);border-radius:14px;background:#304e39;color:#fffaf1;cursor:pointer;transition:transform 120ms ease,background 120ms ease}
+.app-utilities__trigger:hover{background:#3a6046;transform:translateY(-1px)}
+.app-utilities__panel{position:absolute;top:calc(100% + 8px);right:0;z-index:210;width:min(300px,calc(100vw - 24px));max-height:min(70vh,560px);overflow-y:auto;padding:8px;border:2px solid var(--primary-dark);border-radius:20px;background:var(--surface);color:var(--ink);box-shadow:0 5px 0 var(--primary-dark)}
+.app-utilities__heading{margin:4px 8px 8px;color:var(--muted);font-size:11px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.app-utilities__action{display:flex;width:100%;min-height:44px;align-items:center;gap:10px;padding:10px 12px;border:0;border-radius:12px;background:transparent;color:var(--primary-dark);font:inherit;font-size:14px;font-weight:800;text-align:left;text-decoration:none;cursor:pointer;box-shadow:none}
+.app-utilities__action:hover:not(:disabled){background:var(--primary-soft)}
+.app-utilities__action:disabled{cursor:not-allowed;opacity:.55}
+.app-utilities__shortcut{margin-left:auto;color:var(--muted);font-size:10px;white-space:nowrap}
+.app-utilities__sync{display:flex;align-items:flex-start;gap:10px;margin-top:4px;padding:11px 12px;border-radius:12px;background:var(--surface-soft);color:var(--ink-soft);font-size:12px;font-weight:800;line-height:1.4}
+.app-utilities__sync svg{flex-shrink:0}
+.app-utilities__sync--synced{background:var(--primary-soft);color:var(--primary-dark)}
+.app-utilities__sync--error,.app-utilities__sync--conflict{background:var(--accent-soft);color:var(--accent-dark)}
+.app-utilities__sync-message{margin:7px 8px;color:var(--accent-dark);font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.app-utilities__divider{height:1px;margin:8px 4px;background:var(--border)}
+.app-utilities__signout{color:var(--accent-dark)}
+@media(max-width:720px){.app-utilities__panel{position:fixed;top:60px;right:8px;width:min(360px,calc(100vw - 16px));max-height:calc(100dvh - 76px);border-radius:18px}}
+
+/* Utilities live in the sidebar on desktop and the compact header on mobile. */
+@media (min-width: 721px) {
+  .app-utilities {
+    position: fixed;
+    top: auto;
+    right: auto;
+    bottom: 150px;
+    left: 18px;
+  }
+
+  .app-utilities__panel {
+    top: auto;
+    right: auto;
+    bottom: calc(100% + 8px);
+    left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-utilities {
+    position: fixed;
+    top: 8px;
+    right: 14px;
+    bottom: auto;
+    left: auto;
+  }
+}
+
 /* --------------------------------
    Tactile cards
 --------------------------------- */
@@ -356,6 +427,7 @@ section.rounded-xl {
 .card:hover {
   transform: translateY(-1px);
 }
+
 
 /* --------------------------------
    Stat cards
@@ -565,4 +637,574 @@ a.rounded-xl:active {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+/* =================================
+   Cozy Notebook - shared UI polish
+================================= */
+
+/* Consistent tactile controls */
+.app-content button:not(.topbar__icon-button) {
+  min-height: 44px;
+  border: 2px solid var(--primary-dark);
+  border-radius: 16px;
+  box-shadow: 0 3px 0 var(--primary-dark);
+  font-weight: 900;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease;
+}
+
+.app-content button:not([class*="bg-"]):not(.topbar__icon-button):not(.btn):not([class*="card-menu__"]) {
+  background: var(--surface);
+  color: var(--primary);
+}
+
+.app-content button:active {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 transparent;
+}
+
+.app-content button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Shared reusable Button component */
+.app-content .btn {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 2px solid var(--primary-dark);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 900;
+  box-shadow: 0 4px 0 var(--primary-dark);
+  cursor: pointer;
+}
+
+.app-content .btn--primary {
+  border-color: var(--accent-dark);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--accent-dark);
+}
+
+.app-content .btn--secondary {
+  border-color: var(--primary-dark);
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 4px 0 var(--primary-dark);
+}
+
+.app-content .btn--destructive {
+  border-color: #922b21;
+  background: #c0392b;
+  color: #fff;
+  box-shadow: 0 4px 0 #922b21;
+}
+
+.app-content .btn--icon {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 4px 0 var(--primary-dark);
+}
+
+.app-content .btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+
+/* Replace the old navy-blue primary button styling */
+.app-content button[class*="bg-slate-900"],
+.app-content button[class*="bg-slate-800"],
+.app-content button[class*="bg-slate-950"],
+.app-content button[class*="bg-gray-900"],
+.app-content button[class*="bg-[#1e293b]"],
+.app-content button[class*="bg-[#0f172a]"],
+.app-content a[class*="bg-slate-900"],
+.app-content a[class*="bg-slate-800"],
+.app-content a[class*="bg-slate-950"],
+.app-content a[class*="bg-gray-900"],
+.app-content a[class*="bg-[#1e293b]"],
+.app-content a[class*="bg-[#0f172a]"] {
+  min-height: 44px;
+  border: 2px solid var(--accent-dark);
+  border-radius: 16px;
+  background: var(--accent) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 0 var(--accent-dark);
+  font-weight: 900;
+}
+
+/* Keep existing forest-green buttons readable */
+.app-content button[class*="bg-[var(--primary)]"],
+.app-content a[class*="bg-[var(--primary)]"] {
+  border-color: var(--primary-dark);
+  background: var(--primary) !important;
+  color: var(--surface) !important;
+  box-shadow: 0 4px 0 var(--primary-dark);
+}
+
+/* Keep explicitly terracotta buttons consistent */
+.app-content button[class*="bg-[var(--accent)]"],
+.app-content a[class*="bg-[var(--accent)]"] {
+  border-color: var(--accent-dark);
+  background: var(--accent) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 0 var(--accent-dark);
+}
+
+/* Destructive actions remain clearly red */
+.app-content button[class*="bg-red-"],
+.app-content a[class*="bg-red-"] {
+  border-color: #922b21;
+  background: #c0392b !important;
+  color: #fff !important;
+  box-shadow: 0 4px 0 #922b21;
+}
+
+/* Make older white cards tactile without changing their content */
+.app-content article,
+.app-content form[class*="rounded-3xl"],
+.app-content [class*="bg-white"][class*="rounded-2xl"],
+.app-content [class*="bg-white"][class*="rounded-3xl"] {
+  border: 2px solid var(--primary-dark);
+  border-radius: var(--radius-xl);
+  background-color: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+/* Notebook-style form fields; retain subtle placeholders */
+.app-content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.app-content select,
+.app-content textarea {
+  width: 100%;
+  min-height: 48px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.02);
+}
+
+.app-content input::placeholder,
+.app-content textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.app-content input:focus,
+.app-content select:focus,
+.app-content textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Replace the slate background and text on older screens */
+.app-content main.min-h-screen.bg-slate-50 {
+  background: transparent !important;
+  color: var(--ink) !important;
+}
+
+.app-content [class~="text-slate-900"] {
+  color: var(--ink) !important;
+}
+
+.app-content [class~="text-slate-600"] {
+  color: var(--ink-soft) !important;
+}
+
+.app-content [class~="text-slate-500"],
+.app-content [class~="text-slate-400"] {
+  color: var(--muted) !important;
+}
+
+/* Today: tactile stat blocks and a calm yellow free-window block */
+.app-content main > section.card > div.grid.gap-3 > div {
+  border: 2px solid var(--primary-dark);
+  border-radius: 16px;
+  box-shadow: 0 3px 0 var(--primary-dark);
+}
+
+.app-content main > section.card > div.grid.gap-3 > div:nth-child(2) {
+  background: var(--yellow-soft) !important;
+}
+
+.app-content main > section.card > div.grid.gap-3 > div:nth-child(2) > div {
+  color: var(--primary-dark) !important;
+}
+
+/* Keep available-time summary helpful, not headline-sized */
+.app-content main > section.mt-8 > div.flex.items-end.justify-between > div.text-right > div:first-child {
+  font-size: 18px !important;
+  line-height: 1.3;
+}
+
+/* Narrow phone navigation labels so all five items fit */
+@media (max-width: 720px) {
+  .mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px;
+    padding-right: 5px;
+    padding-left: 5px;
+  }
+
+  .mobile-nav__item {
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 1px;
+    font-size: 10px;
+    text-align: center;
+  }
+
+  .mobile-nav__icon {
+    font-size: 22px;
+  }
+
+  .mobile-nav__label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+  }
+}
+
+
+/* =================================
+   Reusable card actions menu
+================================= */
+
+.card-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.card-menu--open {
+  z-index: 80;
+}
+
+.app-content button.card-menu__trigger {
+  display: grid;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--primary-dark);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 4px 0 var(--primary-dark);
+}
+
+.app-content button.card-menu__trigger:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.app-content button.card-menu__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(26, 46, 36, 0.32);
+  box-shadow: none;
+}
+
+.card-menu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 90;
+  width: 230px;
+  max-width: calc(100vw - 24px);
+  padding: 12px;
+  border: 2px solid var(--primary-dark);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 5px 0 var(--primary-dark);
+}
+
+.card-menu__heading {
+  margin: 2px 8px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.app-content button.card-menu__action,
+.app-content button.card-menu__cancel {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
+  text-align: left;
+  font-weight: 900;
+}
+
+.app-content button.card-menu__action:hover {
+  border-color: var(--border);
+  background: var(--surface-soft);
+}
+
+.app-content button.card-menu__action--destructive {
+  color: #c0392b;
+}
+
+.app-content button.card-menu__action--destructive:hover {
+  border-color: #c0392b;
+  background: #fae8e5;
+}
+
+.app-content button.card-menu__cancel {
+  justify-content: center;
+  margin-top: 8px;
+  border-color: var(--primary-dark);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--primary-dark);
+}
+
+@media (max-width: 720px) {
+  .card-menu__panel {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 90;
+    width: 100%;
+    max-width: none;
+    padding: 22px 18px max(18px, env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -3px 0 var(--primary-dark);
+  }
+
+  .card-menu__heading {
+    margin-bottom: 14px;
+    font-size: 14px;
+  }
+
+  .app-content button.card-menu__action {
+    min-height: 54px;
+    font-size: 16px;
+  }
+
+  .app-content button.card-menu__cancel {
+    min-height: 48px;
+    margin-top: 12px;
+  }
+}
+
+/* Fix: keep the card-menu backdrop from inheriting button colors */
+.app-content button.card-menu__backdrop {
+  background: rgba(26, 46, 36, 0.32) !important;
+  color: transparent !important;
+}
+
+
+/* Final card menu overlay fix */
+
+button.card-menu__backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9998 !important;
+  display: block !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: rgba(26, 46, 36, 0.28) !important;
+  color: transparent !important;
+  box-shadow: none !important;
+  cursor: default;
+  transform: none !important;
+}
+
+.card-menu__panel {
+  position: fixed !important;
+  top: var(--card-menu-top, 12px);
+  right: auto !important;
+  bottom: auto;
+  left: var(--card-menu-left, 12px);
+  z-index: 9999 !important;
+  width: 230px;
+  max-width: calc(100vw - 24px);
+  padding: 12px;
+  border: 2px solid var(--primary-dark);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 5px 0 var(--primary-dark);
+}
+
+.card-menu__heading {
+  margin: 2px 8px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+button.card-menu__action,
+button.card-menu__cancel {
+  display: flex;
+  width: 100%;
+  min-height: 46px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
+  font-family: var(--font-body);
+  font-weight: 900;
+  text-align: left;
+}
+
+button.card-menu__action:hover {
+  border-color: var(--border);
+  background: var(--surface-soft);
+}
+
+button.card-menu__action--destructive {
+  color: #c0392b;
+}
+
+button.card-menu__action--destructive:hover {
+  border-color: #c0392b;
+  background: #fae8e5;
+}
+
+button.card-menu__cancel {
+  justify-content: center;
+  margin-top: 8px;
+  border-color: var(--primary-dark);
+  background: var(--surface);
+  box-shadow: 0 3px 0 var(--primary-dark);
+}
+
+@media (max-width: 720px) {
+  .card-menu__panel {
+    top: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100%;
+    max-width: 100%;
+    padding: 22px 18px max(18px, env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -3px 0 var(--primary-dark);
+  }
+
+  .card-menu__heading {
+    margin-bottom: 14px;
+    font-size: 14px;
+  }
+
+  button.card-menu__action {
+    min-height: 54px;
+    font-size: 16px;
+  }
+
+  button.card-menu__cancel {
+    min-height: 48px;
+    margin-top: 12px;
+  }
+}
+
+
+/* AI Copilot */
+.ai-copilot { max-width: 960px; margin: 0 auto; padding: 8px 0 24px; }
+.ai-copilot__header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:16px; }
+.ai-copilot__header h1 { margin:0; font-size:clamp(1.7rem,4vw,2.3rem); }
+.ai-copilot__eyebrow { margin:0 0 8px; font-size:.72rem; font-weight:700; letter-spacing:.12em; opacity:.68; }
+.ai-copilot__subtitle { margin:8px 0 0; line-height:1.5; opacity:.8; }
+.ai-copilot__badge { flex:0 0 auto; padding:6px 10px; border-radius:999px; background:#eff4ec; color:#35513a; font-size:.78rem; font-weight:650; }
+.ai-copilot__disclosure { padding:12px 14px; margin:0 0 16px; border:1px solid #e5ded4; border-radius:12px; background:#faf7f2; color:#584f46; font-size:.84rem; line-height:1.55; }
+.ai-copilot__panel { min-width:0; overflow:hidden; border:1px solid #e5ded4; border-radius:18px; background:#fffefa; }
+.ai-copilot__transcript { display:flex; flex-direction:column; gap:14px; min-height:300px; max-height:min(58vh,600px); overflow-y:auto; padding:22px; }
+.ai-copilot__welcome { max-width:700px; margin:auto; padding-block:20px; text-align:center; }
+.ai-copilot__welcome h2 { margin:0 0 8px; font-size:1.25rem; }
+.ai-copilot__welcome p { max-width:560px; margin:0 auto; line-height:1.6; opacity:.78; }
+.ai-copilot__suggestions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:24px; }
+.ai-copilot__suggestion { min-width:0; border:1px solid #e5ded4; border-radius:12px; background:#fff; color:inherit; padding:12px; text-align:left; line-height:1.4; cursor:pointer; }
+.ai-copilot__suggestion:hover { background:#f8f4ed; }
+.ai-copilot__message { max-width:88%; border:1px solid #e5ded4; border-radius:14px; padding:12px 14px; }
+.ai-copilot__message--user { align-self:flex-end; background:#eff4ec; border-color:#dce6d7; }
+.ai-copilot__message--assistant { align-self:flex-start; background:#fff; }
+.ai-copilot__message-label { display:block; margin-bottom:6px; font-size:.73rem; font-weight:700; opacity:.7; }
+.ai-copilot__message p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.6; }
+.ai-copilot__thinking { margin:0; font-size:.86rem; opacity:.72; }
+.ai-copilot__error { margin:0 18px 14px; color:#9f2929; font-size:.9rem; }
+.ai-copilot__form { border-top:1px solid #ece5db; padding:16px; }
+.ai-copilot__label { display:block; margin-bottom:7px; font-size:.83rem; font-weight:650; }
+.ai-copilot__form textarea { display:block; width:100%; min-height:84px; resize:vertical; border:1px solid #dcd3c8; border-radius:11px; background:#fff; color:#25231f; padding:11px 12px; font:inherit; line-height:1.5; }
+.ai-copilot__form textarea:focus-visible, .ai-copilot__suggestion:focus-visible, .ai-copilot__send:focus-visible, .ai-copilot__voice-button:focus-visible, .ai-copilot__message-action:focus-visible { outline:2px solid #54724e; outline-offset:2px; }
+.ai-copilot__voice-controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:12px 0 6px; }
+.ai-copilot__voice-button, .ai-copilot__message-action { min-height:44px; border:1px solid #dcd3c8; border-radius:10px; background:#fff; color:#25231f; padding:9px 12px; font:inherit; font-size:.88rem; font-weight:650; cursor:pointer; }
+.ai-copilot__voice-button:hover:not(:disabled), .ai-copilot__message-action:hover { background:#f8f4ed; }
+.ai-copilot__voice-button[aria-pressed="true"] { border-color:#a33; background:#fff0ed; color:#8b1e1e; }
+.ai-copilot__voice-button:disabled { cursor:not-allowed; opacity:.55; }
+.ai-copilot__voice-status { font-size:.8rem; line-height:1.45; opacity:.78; }
+.ai-copilot__voice-note { margin:5px 0 12px; font-size:.75rem; line-height:1.5; opacity:.7; }
+.ai-copilot__voice-error { margin:8px 0; color:#9f2929; font-size:.85rem; }
+.ai-copilot__message-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.ai-copilot__form-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:10px; font-size:.78rem; opacity:.76; }
+.ai-copilot__send { border:1px solid #334b35; border-radius:10px; background:#3b563e; color:#fff; padding:10px 15px; font:inherit; font-weight:650; cursor:pointer; }
+.ai-copilot__send:disabled, .ai-copilot__suggestion:disabled { cursor:not-allowed; opacity:.55; }
+@media (max-width:900px) {
+  .mobile-nav { grid-template-columns:repeat(5,minmax(0,1fr)); }
+  .mobile-nav__item { min-width:0; }
+  .mobile-nav__label { font-size:clamp(.58rem,2.1vw,.76rem); }
+  .ai-copilot__transcript { max-height:52vh; padding:16px; }
+  .ai-copilot__message { max-width:96%; }
+}
+@media (max-width:520px) {
+  .ai-copilot__header { gap:8px; }
+  .ai-copilot__badge { padding:5px 8px; font-size:.72rem; }
+  .ai-copilot__suggestions { grid-template-columns:1fr; }
+  .ai-copilot__form { padding:12px; }
 }

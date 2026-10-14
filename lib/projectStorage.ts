@@ -1,3 +1,5 @@
+import { readStoredJson } from "./storageRecovery";
+
 export type ProjectStatus =
   | "Active"
   | "Paused"
@@ -34,16 +36,24 @@ export function getProjects(): Project[] {
   }
 
   const saved = localStorage.getItem(PROJECTS_KEY);
-
   if (!saved) {
     return [];
   }
 
-  try {
-    return JSON.parse(saved);
-  } catch {
-    return [];
-  }
+  return readStoredJson<Project[]>(
+    PROJECTS_KEY,
+    saved,
+    [],
+    (value) =>
+      Array.isArray(value) &&
+      value.every((item) =>
+        item !== null &&
+        typeof item === "object" &&
+        !Array.isArray(item) &&
+        typeof (item as Record<string, unknown>).id === "number" &&
+        typeof (item as Record<string, unknown>).name === "string"
+      ),
+  );
 }
 
 export function saveProjects(projects: Project[]) {

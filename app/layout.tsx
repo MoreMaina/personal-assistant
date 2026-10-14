@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import { Fredoka, Nunito } from "next/font/google";
 
 import "./globals.css";
 import Navigation from "./components/Navigation";
-import SignOutButton from "./components/SignOutButton";
 import CloudSync from "./components/CloudSync";
 
 const fredoka = Fredoka({
@@ -47,13 +47,14 @@ export default function RootLayout({
 
         <div className="app-frame">
           <header className="topbar">
-            <div className="topbar__brand">
-              Personal Assistant
-            </div>
-
-            <div className="topbar__actions">
-              <SignOutButton />
-            </div>
+            <Link
+              href="/"
+              className="topbar__brand"
+              aria-label="Personal Assistant home"
+            >
+              <span className="topbar__brand-mark" aria-hidden="true">PA</span>
+              <span>Personal Assistant</span>
+            </Link>
           </header>
 
           <main className="app-content">

@@ -36,6 +36,9 @@ type SyncControl = {
   conflicting: boolean;
 };
 
+const SYNC_STATUS_EVENT = "personal-assistant:cloud-sync-status";
+const REQUEST_SYNC_STATUS_EVENT = "personal-assistant:request-cloud-sync-status";
+
 const initialControl: SyncControl = {
   initialized: false,
   userId: null,
@@ -64,6 +67,37 @@ export default function CloudSync() {
 
   const [errorMessage, setErrorMessage] =
     useState("");
+
+  useEffect(() => {
+    function publishStatus() {
+      window.dispatchEvent(
+        new CustomEvent(SYNC_STATUS_EVENT, {
+          detail: {
+            status: conflict ? "conflict" : status,
+            message: errorMessage,
+          },
+        }),
+      );
+    }
+
+    function handleStatusRequest() {
+      publishStatus();
+    }
+
+    window.addEventListener(
+      REQUEST_SYNC_STATUS_EVENT,
+      handleStatusRequest,
+    );
+
+    publishStatus();
+
+    return () => {
+      window.removeEventListener(
+        REQUEST_SYNC_STATUS_EVENT,
+        handleStatusRequest,
+      );
+    };
+  }, [status, conflict, errorMessage]);
 
   useEffect(() => {
     if (pathname === "/login") {
@@ -541,22 +575,39 @@ export default function CloudSync() {
           conflict.localSnapshot,
         );
 
-      const { error } = await supabase
-        .from("user_app_state")
-        .upsert(
-          {
+      const replacementTimestamp = new Date().toISOString();
+      const replacementData = {
+        ...conflict.localSnapshot,
+        __replace_all_keys: true,
+      };
+
+      const { data: updatedRow, error: updateError } =
+        await supabase
+          .from("user_app_state")
+          .update({
+            data: replacementData,
+            updated_at: replacementTimestamp,
+          })
+          .eq("user_id", userId)
+          .select("user_id")
+          .maybeSingle();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (!updatedRow) {
+        const { error: insertError } = await supabase
+          .from("user_app_state")
+          .insert({
             user_id: userId,
             data: conflict.localSnapshot,
-            updated_at:
-              new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id",
-          },
-        );
+            updated_at: replacementTimestamp,
+          });
 
-      if (error) {
-        throw error;
+        if (insertError) {
+          throw insertError;
+        }
       }
 
       Object.assign(
@@ -590,27 +641,7 @@ export default function CloudSync() {
 
   return (
     <>
-      <div
-        aria-live="polite"
-        className={`fixed bottom-24 right-3 z-40 rounded-full border px-3 py-2 text-xs font-extrabold shadow-sm sm:bottom-4 ${
-          status === "synced"
-            ? "border-[var(--primary)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
-            : status === "error"
-              ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-dark)]"
-              : "border-[var(--border)] bg-[var(--surface)] text-[var(--ink-soft)]"
-        }`}
-        title={errorMessage || undefined}
-      >
-        {conflict
-          ? "Sync needs attention"
-          : status === "synced"
-            ? "Cloud synced"
-            : status === "waiting"
-              ? "Waiting for data"
-              : status === "error"
-                ? "Sync issue"
-                : "Connecting to cloud…"}
-      </div>
+
 
       {conflict && (
         <div className="fixed inset-0 z-[100] grid place-items-center bg-black/40 p-4">
@@ -639,7 +670,7 @@ export default function CloudSync() {
             </p>
 
             <p className="mt-3 text-sm text-[var(--ink-soft)]">
-              The copy you don't choose will be saved
+              The copy you don&apos;t choose will be saved
               as a backup in this browser.
             </p>
 

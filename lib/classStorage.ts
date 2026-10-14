@@ -1,4 +1,5 @@
 import { ClassItem, classes as defaultClasses } from "./classes";
+import { readStoredJson } from "./storageRecovery";
 
 const CLASSES_KEY = "personal-assistant-classes";
 const CANCELLED_KEY = "cancelled-class-sessions";
@@ -24,22 +25,34 @@ export function getClasses(): ClassItem[] {
     return defaultClasses;
   }
 
-  const saved =
-    localStorage.getItem(
-      CLASSES_KEY,
-    );
-
+  const saved = localStorage.getItem(CLASSES_KEY);
   if (!saved) {
     return defaultClasses;
   }
 
-  try {
-    return JSON.parse(
-      saved,
-    ) as ClassItem[];
-  } catch {
-    return defaultClasses;
-  }
+  return readStoredJson<ClassItem[]>(
+    CLASSES_KEY,
+    saved,
+    defaultClasses,
+    (value) =>
+      Array.isArray(value) &&
+      value.every((item) => {
+        if (
+          item === null ||
+          typeof item !== "object" ||
+          Array.isArray(item)
+        ) return false;
+
+        const record = item as Record<string, unknown>;
+        return (
+          typeof record.id === "number" &&
+          typeof record.name === "string" &&
+          typeof record.day === "string" &&
+          typeof record.start === "string" &&
+          typeof record.end === "string"
+        );
+      }),
+  );
 }
 
 export function saveClasses(
@@ -69,33 +82,30 @@ export function addClass(
   return createdClass;
 }
 
-function getCancelledSessions(): Record<
-  string,
-  number[]
-> {
+function getCancelledSessions(): Record<string, number[]> {
   if (typeof window === "undefined") {
     return {};
   }
 
-  const saved =
-    localStorage.getItem(
-      CANCELLED_KEY,
-    );
-
+  const saved = localStorage.getItem(CANCELLED_KEY);
   if (!saved) {
     return {};
   }
 
-  try {
-    return JSON.parse(
-      saved,
-    ) as Record<
-      string,
-      number[]
-    >;
-  } catch {
-    return {};
-  }
+  return readStoredJson<Record<string, number[]>>(
+    CANCELLED_KEY,
+    saved,
+    {},
+    (value) =>
+      value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.values(value as Record<string, unknown>).every(
+        (ids) =>
+          Array.isArray(ids) &&
+          ids.every((id) => typeof id === "number"),
+      ),
+  );
 }
 
 export function getCancelledClassIds(

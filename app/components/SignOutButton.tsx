@@ -4,8 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
+import AppIcon from "@/app/components/AppIcon";
 
-export default function SignOutButton() {
+type SignOutButtonProps = {
+  variant?: "icon" | "menu";
+};
+
+export default function SignOutButton({
+  variant = "icon",
+}: SignOutButtonProps) {
   const router = useRouter();
 
   const [loading, setLoading] =
@@ -35,9 +42,22 @@ export default function SignOutButton() {
       disabled={loading}
       aria-label="Sign out"
       title="Sign out"
-      className="topbar__icon-button"
+      className={
+        variant === "menu"
+          ? "app-utilities__action app-utilities__signout"
+          : "topbar__icon-button"
+      }
     >
-      {loading ? "…" : "↪"}
+      {loading ? (
+        "…"
+      ) : variant === "menu" ? (
+        <>
+          <AppIcon name="sign-out" size={18} />
+          <span>Sign out</span>
+        </>
+      ) : (
+        "↪"
+      )}
     </button>
   );
 }
