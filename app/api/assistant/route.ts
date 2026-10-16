@@ -33,6 +33,87 @@ function logDiagnostic(label: string, details: string): void {
   }
 }
 
+type SafeFailedGenerationDiagnostic = {
+  kind: string;
+  length?: number;
+  looksLikeJson?: boolean;
+  reasonCategory?: string;
+};
+
+function classifyCustomProviderError(details: {
+  message: string | null;
+  type: string | null;
+  code: string | null;
+}):
+  | "schema-validation"
+  | "context-limit"
+  | "output-limit"
+  | "rate-limit"
+  | "json-generation"
+  | "authentication"
+  | "other" {
+  const text = [details.message, details.type, details.code]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    /schema|response.?format|additional.?properties|required field|type mismatch/
+      .test(text)
+  ) {
+    return "schema-validation";
+  }
+
+  if (
+    /context|prompt.{0,24}(long|limit|token)|too many tokens/
+      .test(text)
+  ) {
+    return "context-limit";
+  }
+
+  if (/token|length|truncat|maximum|completion/.test(text)) {
+    return "output-limit";
+  }
+
+  if (/quota|rate.?limit/.test(text)) {
+    return "rate-limit";
+  }
+
+  if (/json|parse|syntax|generation|validation/.test(text)) {
+    return "json-generation";
+  }
+
+  if (/auth|api.?key|permission/.test(text)) {
+    return "authentication";
+  }
+
+  return "other";
+}
+
+function logCustomProviderFailureDiagnostic(details: {
+  mode: string;
+  model: string;
+  status: number;
+  responseFormat: "omitted" | "json_schema" | "json_object";
+  promptCharacters: number;
+  systemInstructionCharacters: number;
+  elapsedMs: number;
+  providerErrorCategory: ReturnType<typeof classifyCustomProviderError>;
+  failedGeneration: SafeFailedGenerationDiagnostic | null;
+}): void {
+  if (
+    process.env.NODE_ENV !== "development" &&
+    process.env.VERCEL_ENV !== "preview"
+  ) {
+    return;
+  }
+
+  console.warn(
+    "[assistant custom provider error]",
+    JSON.stringify(details),
+  );
+}
+
 const MAX_QUESTION = 1200;
 const MAX_PLANNING_QUESTION = 5000;
 const MAX_HISTORY_MESSAGES = 8;
@@ -782,6 +863,7 @@ export async function POST(request: Request) {
     );
     isGroqGPTOSSDailyPlan = isGroqGPTOSS && isDailyPlan;
 
+    const customProviderRequestStartedAt = Date.now();
     let upstream;
     try {
       upstream = await secureOpenAICompatibleRequest({
@@ -918,18 +1000,37 @@ export async function POST(request: Request) {
         }
       })();
 
-      logDiagnostic("[assistant custom provider error]", JSON.stringify({
+      const failedGeneration = providerErrorDetails.failedGeneration;
+
+      logCustomProviderFailureDiagnostic({
         mode: requestMode,
         model: activeProvider.model,
         status: upstream.status,
         responseFormat: isGroqGPTOSS && isDailyPlan
           ? "omitted"
-          : "json_object",
-        providerMessage: providerErrorDetails.message,
-        providerErrorType: providerErrorDetails.type,
-        providerErrorCode: providerErrorDetails.code,
-        failedGeneration: providerErrorDetails.failedGeneration,
-      }));
+          : isGroqGPTOSS && !isTaskProposal
+            ? "json_schema"
+            : "json_object",
+        promptCharacters: prompt.length,
+        systemInstructionCharacters: systemInstructions.length,
+        elapsedMs: Date.now() - customProviderRequestStartedAt,
+        providerErrorCategory:
+          classifyCustomProviderError(providerErrorDetails),
+        failedGeneration: failedGeneration
+          ? {
+              kind: failedGeneration.kind,
+              ...(typeof failedGeneration.length === "number"
+                ? { length: failedGeneration.length }
+                : {}),
+              ...(typeof failedGeneration.looksLikeJson === "boolean"
+                ? { looksLikeJson: failedGeneration.looksLikeJson }
+                : {}),
+              ...(typeof failedGeneration.reasonCategory === "string"
+                ? { reasonCategory: failedGeneration.reasonCategory }
+                : {}),
+            }
+          : null,
+      });
 
       return reply({
         error: providerErrorDetails.message
