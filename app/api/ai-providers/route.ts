@@ -56,6 +56,9 @@ function profileSummary(row: RecordValue, hasApiKey = true) {
     models: Array.isArray(row.models)
       ? row.models.filter((item): item is string => typeof item === "string")
       : [],
+    speechModels: Array.isArray(row.speech_models)
+      ? row.speech_models.filter((item): item is string => typeof item === "string")
+      : [],
     selectedModel: typeof row.selected_model === "string"
       ? row.selected_model
       : null,
@@ -119,6 +122,7 @@ export async function POST(request: Request) {
   const baseUrl = normalizeAIProviderBaseUrl(body.baseUrl);
   const apiKey = typeof body.apiKey === "string" ? body.apiKey : "";
   const models = normalizeAIProviderModels(body.models ?? []);
+  const speechModels = normalizeAIProviderModels(body.speechModels ?? []);
 
   const selectedModel =
     body.selectedModel === undefined || body.selectedModel === null ||
@@ -138,6 +142,9 @@ export async function POST(request: Request) {
     return reply({ error: "Enter a valid provider API key." }, 400);
   }
   if (!models) return reply({ error: "The model list is invalid or too large." }, 400);
+  if (!speechModels) {
+    return reply({ error: "The speech model list is invalid or too large." }, 400);
+  }
   if (body.selectedModel !== undefined && body.selectedModel !== null &&
       body.selectedModel !== "" && !selectedModel) {
     return reply({ error: "The selected model ID is invalid." }, 400);
@@ -199,10 +206,13 @@ export async function POST(request: Request) {
     enabled,
   };
 
-  // Legacy OpenAI-compatible profiles can still be created before the
-  // connection-type migration is applied.
+  // Omit optional new columns when unused so legacy chat-profile creation
+  // remains compatible until the corresponding migrations are applied.
   if (providerType !== "openai_compatible") {
     insertValues.provider_type = providerType;
+  }
+  if (speechModels.length > 0) {
+    insertValues.speech_models = speechModels;
   }
 
   const { data, error } = await supabase

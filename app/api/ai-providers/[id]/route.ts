@@ -56,6 +56,9 @@ function summary(row: RecordValue) {
     models: Array.isArray(row.models)
       ? row.models.filter((item): item is string => typeof item === "string")
       : [],
+    speechModels: Array.isArray(row.speech_models)
+      ? row.speech_models.filter((item): item is string => typeof item === "string")
+      : [],
     selectedModel: typeof row.selected_model === "string"
       ? row.selected_model
       : null,
@@ -109,6 +112,16 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const current = existing as unknown as RecordValue;
   const updates: RecordValue = { updated_at: new Date().toISOString() };
+
+  if (body.speechModels !== undefined) {
+    const speechModels = normalizeAIProviderModels(body.speechModels);
+    if (!speechModels) {
+      return reply({
+        error: "The speech model list is invalid or too large.",
+      }, 400);
+    }
+    updates.speech_models = speechModels;
+  }
 
   if (body.providerType !== undefined) {
     if (!isAIProviderType(body.providerType)) {
