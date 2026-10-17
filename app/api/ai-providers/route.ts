@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isAIProviderType } from "@/lib/aiProviderTypes";
 import {
   MAX_AI_PROVIDER_PROFILES,
   normalizeAIProviderBaseUrl,
@@ -47,6 +48,9 @@ async function readJson(request: Request): Promise<unknown | null> {
 function profileSummary(row: RecordValue, hasApiKey = true) {
   return {
     id: row.id,
+    providerType: isAIProviderType(row.provider_type)
+      ? row.provider_type
+      : "openai_compatible",
     name: row.name,
     baseUrl: row.base_url,
     models: Array.isArray(row.models)
@@ -77,7 +81,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("user_ai_provider_profiles")
-    .select("id,name,base_url,models,selected_model,enabled,encrypted_api_key,created_at,updated_at")
+    .select("*")
     .eq("user_id", authData.user.id)
     .order("created_at", { ascending: true });
 
@@ -102,6 +106,13 @@ export async function POST(request: Request) {
   const body = await readJson(request);
   if (!isRecord(body)) {
     return reply({ error: "Send a valid provider configuration." }, 400);
+  }
+
+  const providerType = body.providerType === undefined
+    ? "openai_compatible"
+    : body.providerType;
+  if (!isAIProviderType(providerType)) {
+    return reply({ error: "Choose a supported API connection type." }, 400);
   }
 
   const name = normalizeAIProviderName(body.name);
@@ -178,23 +189,36 @@ export async function POST(request: Request) {
     }, 503);
   }
 
+  const insertValues: RecordValue = {
+    user_id: authData.user.id,
+    name,
+    base_url: baseUrl,
+    encrypted_api_key: encryptedApiKey,
+    models,
+    selected_model: selectedModel,
+    enabled,
+  };
+
+  // Legacy OpenAI-compatible profiles can still be created before the
+  // connection-type migration is applied.
+  if (providerType !== "openai_compatible") {
+    insertValues.provider_type = providerType;
+  }
+
   const { data, error } = await supabase
     .from("user_ai_provider_profiles")
-    .insert({
-      user_id: authData.user.id,
-      name,
-      base_url: baseUrl,
-      encrypted_api_key: encryptedApiKey,
-      models,
-      selected_model: selectedModel,
-      enabled,
-    })
-    .select("id,name,base_url,models,selected_model,enabled,created_at,updated_at")
+    .insert(insertValues)
+    .select("*")
     .single();
 
   if (error) {
     if (error.code === "23505") {
       return reply({ error: "A provider with that name already exists." }, 409);
+    }
+    if (error.code === "42703" || error.code === "PGRST204") {
+      return reply({
+        error: "Connection types are not available yet. Apply the AI provider connection-types database migration.",
+      }, 503);
     }
     return reply({ error: "The provider profile could not be saved." }, 503);
   }
