@@ -12,16 +12,21 @@ const MAX_REQUEST_BODY_BYTES = 128_000;
 
 export type OpenAICompatiblePath = "/models" | "/chat/completions";
 
+export type SecureProviderPath =
+  | OpenAICompatiblePath
+  | "/google/models"
+  | "/elevenlabs/models";
+
 export type SecureProviderResponse = {
   status: number;
   contentType: string;
   body: string;
 };
 
-type SecureProviderRequest = {
+export type SecureProviderRequest = {
   baseUrl: string;
   apiKey: string;
-  path: OpenAICompatiblePath;
+  path: SecureProviderPath;
   method?: "GET" | "POST";
   body?: string;
   timeoutMs?: number;
@@ -34,7 +39,7 @@ type SecureProviderRequest = {
  * a previously checked address, TLS verification remains enabled, redirects
  * are never followed, and response bodies are bounded.
  */
-export async function secureOpenAICompatibleRequest(
+async function secureProviderRequest(
   input: SecureProviderRequest,
 ): Promise<SecureProviderResponse> {
   const baseUrl = normalizeAIProviderBaseUrl(input.baseUrl);
@@ -51,9 +56,15 @@ export async function secureOpenAICompatibleRequest(
   }
 
   const method = input.method ?? "GET";
+  const isModelsRequest =
+    input.path === "/models" ||
+    input.path === "/google/models" ||
+    input.path === "/elevenlabs/models";
+
   if (
-    (input.path === "/models" && method !== "GET") ||
-    (input.path === "/chat/completions" && method !== "POST")
+    (isModelsRequest && method !== "GET") ||
+    (input.path === "/chat/completions" && method !== "POST") ||
+    (!isModelsRequest && input.path !== "/chat/completions")
   ) {
     throw new Error("The requested provider operation is not allowed.");
   }
@@ -68,8 +79,41 @@ export async function secureOpenAICompatibleRequest(
   }
 
   const target = new URL(baseUrl);
+
+  // Typed first-party protocols must use their canonical HTTPS origin
+  // and API base path so credentials cannot be sent to another hostname.
+  if (
+    input.path === "/google/models" &&
+    (
+      target.hostname !== "generativelanguage.googleapis.com" ||
+      target.pathname.replace(/\/+$/, "") !== "/v1beta"
+    )
+  ) {
+    throw new Error(
+      "Google model discovery must use the canonical Google API host and /v1beta path.",
+    );
+  }
+
+  if (
+    input.path === "/elevenlabs/models" &&
+    (
+      target.hostname !== "api.elevenlabs.io" ||
+      target.pathname.replace(/\/+$/, "") !== "/v1"
+    )
+  ) {
+    throw new Error(
+      "ElevenLabs model discovery must use the canonical ElevenLabs API host and /v1 path.",
+    );
+  }
+
+  const endpointPath =
+    input.path === "/google/models" ||
+    input.path === "/elevenlabs/models"
+      ? "/models"
+      : input.path;
+
   target.pathname =
-    `${target.pathname.replace(/\/+$/, "")}${input.path}`;
+    `${target.pathname.replace(/\/+$/, "")}${endpointPath}`;
   target.search = "";
   target.hash = "";
 
@@ -130,8 +174,15 @@ export async function secureOpenAICompatibleRequest(
 
   const headers: Record<string, string> = {
     Accept: "application/json",
-    Authorization: `Bearer ${input.apiKey}`,
   };
+
+  if (input.path === "/google/models") {
+    headers["x-goog-api-key"] = input.apiKey;
+  } else if (input.path === "/elevenlabs/models") {
+    headers["xi-api-key"] = input.apiKey;
+  } else {
+    headers.Authorization = `Bearer ${input.apiKey}`;
+  }
 
   if (method === "POST") {
     headers["Content-Type"] = "application/json";
@@ -216,4 +267,26 @@ export async function secureOpenAICompatibleRequest(
     // returned to the caller for rejection; credentials never reach its target.
     request.end();
   });
+}
+
+
+/**
+ * Secure requests used by the Google and ElevenLabs protocol adapters.
+ * The request path is a closed set; callers cannot supply arbitrary paths.
+ */
+export async function secureProviderHttpRequest(
+  input: SecureProviderRequest,
+): Promise<SecureProviderResponse> {
+  return secureProviderRequest(input);
+}
+
+/**
+ * Backward-compatible entry point for existing OpenAI-compatible callers.
+ */
+export async function secureOpenAICompatibleRequest(
+  input: Omit<SecureProviderRequest, "path"> & {
+    path: OpenAICompatiblePath;
+  },
+): Promise<SecureProviderResponse> {
+  return secureProviderRequest(input);
 }

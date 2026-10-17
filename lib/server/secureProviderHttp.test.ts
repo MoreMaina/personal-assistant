@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
 vi.mock("node:https", () => ({ request: vi.fn() }));
 
-import { secureOpenAICompatibleRequest } from "./secureProviderHttp";
+import {
+  secureOpenAICompatibleRequest,
+  secureProviderHttpRequest,
+} from "./secureProviderHttp";
 
 type FakeResponse = EventEmitter & {
   statusCode: number;
@@ -207,6 +210,63 @@ describe("secure provider HTTPS requests", () => {
       '{"model":"test-model"}',
       "utf8",
     );
+  });
+
+  it("uses the Google API-key header only with the canonical Google model endpoint", async () => {
+    const mock = setupHttpsResponse({
+      body: JSON.stringify({ models: [] }),
+    });
+
+    const result = await secureProviderHttpRequest({
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      apiKey: "google-test-secret",
+      path: "/google/models",
+    });
+
+    expect(result.status).toBe(200);
+    expect(mock.getOptions()?.path).toBe("/v1beta/models");
+    expect(mock.getOptions()?.headers).toMatchObject({
+      "x-goog-api-key": "google-test-secret",
+    });
+    expect(mock.getOptions()?.headers).not.toHaveProperty("Authorization");
+  });
+
+  it("uses the ElevenLabs API-key header only with the canonical models endpoint", async () => {
+    const mock = setupHttpsResponse({ body: "[]" });
+
+    const result = await secureProviderHttpRequest({
+      baseUrl: "https://api.elevenlabs.io/v1",
+      apiKey: "elevenlabs-test-secret",
+      path: "/elevenlabs/models",
+    });
+
+    expect(result.status).toBe(200);
+    expect(mock.getOptions()?.path).toBe("/v1/models");
+    expect(mock.getOptions()?.headers).toMatchObject({
+      "xi-api-key": "elevenlabs-test-secret",
+    });
+    expect(mock.getOptions()?.headers).not.toHaveProperty("Authorization");
+  });
+
+  it("rejects noncanonical hosts for typed protocols before DNS lookup", async () => {
+    await expect(
+      secureProviderHttpRequest({
+        baseUrl: "https://attacker-provider.com/v1beta",
+        apiKey: "test-secret",
+        path: "/google/models",
+      }),
+    ).rejects.toThrow(/canonical Google API host/i);
+
+    await expect(
+      secureProviderHttpRequest({
+        baseUrl: "https://attacker-provider.com/v1",
+        apiKey: "test-secret",
+        path: "/elevenlabs/models",
+      }),
+    ).rejects.toThrow(/canonical ElevenLabs API host/i);
+
+    expect(lookup).not.toHaveBeenCalled();
+    expect(httpsRequest).not.toHaveBeenCalled();
   });
 
   it("returns redirect responses without following their locations", async () => {
