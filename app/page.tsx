@@ -669,15 +669,9 @@ export default function TodayPage() {
         body: JSON.stringify({
           mode: "daily-plan",
           question,
-          provider: aiPreferences.reasoningProvider,
-          ...(aiPreferences.reasoningProvider === "gemini"
-            ? { model: aiPreferences.reasoningModel }
-            : aiPreferences.reasoningProvider === "custom"
-              ? {
-                  providerProfileId: aiPreferences.customProviderProfileId,
-                  model: aiPreferences.customProviderModel,
-                }
-              : {}),
+          provider: "custom",
+          providerProfileId: aiPreferences.reasoningConnectionId,
+          model: aiPreferences.reasoningModel,
         }),
       });
 

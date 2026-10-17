@@ -103,25 +103,19 @@ export type GeminiTtsVoice =
   (typeof GEMINI_TTS_VOICE_OPTIONS)[number]["id"];
 
 export type AIPreferences = {
-  reasoningProvider: ReasoningProvider;
-  reasoningModel: GeminiReasoningModel;
-  customProviderProfileId: string;
-  customProviderModel: string;
-  speechProvider: SpeechProvider;
-  browserVoiceURI: string;
-  geminiTtsVoice: GeminiTtsVoice;
-  elevenLabsVoiceId: string;
+  reasoningConnectionId: string;
+  reasoningModel: string;
+  speechConnectionId: string;
+  speechModel: string;
+  speechVoiceId: string;
 };
 
 export const DEFAULT_AI_PREFERENCES: AIPreferences = {
-  reasoningProvider: "gemini",
-  reasoningModel: "gemini-3.1-flash-lite",
-  customProviderProfileId: "",
-  customProviderModel: "",
-  speechProvider: "elevenlabs",
-  browserVoiceURI: "",
-  geminiTtsVoice: "Achird",
-  elevenLabsVoiceId: "JBFqnCBsd6RMkjVDRZzb",
+  reasoningConnectionId: "",
+  reasoningModel: "",
+  speechConnectionId: "",
+  speechModel: "",
+  speechVoiceId: "",
 };
 
 const STORAGE_KEY = "personal-assistant-ai-preferences";
@@ -148,7 +142,7 @@ export function isCustomProviderModelId(value: unknown): value is string {
     typeof value === "string" &&
     value.length >= 1 &&
     value.length <= 200 &&
-    /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(value)
+    /^[A-Za-z0-9][A-Za-z0-9._:/_-]*$/.test(value)
   );
 }
 
@@ -186,33 +180,42 @@ export function normalizeAIPreferences(value: unknown): AIPreferences {
 
   const record = value as Record<string, unknown>;
 
-  return {
-    reasoningProvider: isReasoningProvider(record.reasoningProvider)
-      ? record.reasoningProvider
-      : DEFAULT_AI_PREFERENCES.reasoningProvider,
-    reasoningModel: isGeminiReasoningModel(record.reasoningModel)
-      ? record.reasoningModel
-      : DEFAULT_AI_PREFERENCES.reasoningModel,
-    customProviderProfileId: isProviderProfileId(record.customProviderProfileId)
-      ? record.customProviderProfileId
-      : DEFAULT_AI_PREFERENCES.customProviderProfileId,
-    customProviderModel: isCustomProviderModelId(record.customProviderModel)
-      ? record.customProviderModel
-      : DEFAULT_AI_PREFERENCES.customProviderModel,
-    speechProvider: isSpeechProvider(record.speechProvider)
-      ? record.speechProvider
-      : DEFAULT_AI_PREFERENCES.speechProvider,
-    browserVoiceURI:
-      typeof record.browserVoiceURI === "string" &&
-      record.browserVoiceURI.length <= 512
-        ? record.browserVoiceURI
-        : DEFAULT_AI_PREFERENCES.browserVoiceURI,
-    geminiTtsVoice: isGeminiTtsVoice(record.geminiTtsVoice)
+  // Preserve a previously selected saved custom reasoning connection.
+  // Legacy environment-backed services are not restored as connection choices.
+  const legacyId =
+    record.reasoningProvider === "custom" &&
+    isProviderProfileId(record.customProviderProfileId)
+      ? record.customProviderProfileId : "";
+  const legacyModel =
+    record.reasoningProvider === "custom" &&
+    isCustomProviderModelId(record.customProviderModel)
+      ? record.customProviderModel : "";
+
+  const hasReasoningId = isProviderProfileId(record.reasoningConnectionId);
+  const reasoningConnectionId = isProviderProfileId(record.reasoningConnectionId) ? record.reasoningConnectionId : legacyId;
+  const reasoningModel =
+    hasReasoningId && isCustomProviderModelId(record.reasoningModel)
+      ? record.reasoningModel : legacyModel;
+
+  const hasSpeechId = isProviderProfileId(record.speechConnectionId);
+  const speechConnectionId = isProviderProfileId(record.speechConnectionId) ? record.speechConnectionId : "";
+  const speechModel =
+    hasSpeechId && isCustomProviderModelId(record.speechModel)
+      ? record.speechModel : "";
+
+  const speechVoiceId = isElevenLabsVoiceId(record.speechVoiceId)
+    ? record.speechVoiceId
+    : record.speechProvider === "gemini" && isGeminiTtsVoice(record.geminiTtsVoice)
       ? record.geminiTtsVoice
-      : DEFAULT_AI_PREFERENCES.geminiTtsVoice,
-    elevenLabsVoiceId: isElevenLabsVoiceId(record.elevenLabsVoiceId)
-      ? record.elevenLabsVoiceId
-      : DEFAULT_AI_PREFERENCES.elevenLabsVoiceId,
+      : isElevenLabsVoiceId(record.elevenLabsVoiceId)
+        ? record.elevenLabsVoiceId : "";
+
+  return {
+    reasoningConnectionId,
+    reasoningModel,
+    speechConnectionId,
+    speechModel,
+    speechVoiceId,
   };
 }
 

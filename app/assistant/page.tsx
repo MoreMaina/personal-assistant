@@ -288,17 +288,8 @@ export default function AssistantPage() {
 
       window.speechSynthesis.cancel();
 
-      const selectedBrowserVoice = aiPreferences.browserVoiceURI
-        ? window.speechSynthesis
-            .getVoices()
-            .find((voice) => voice.voiceURI === aiPreferences.browserVoiceURI)
-        : undefined;
-
       const utterance = new SpeechSynthesisUtterance(content);
-      utterance.lang = selectedBrowserVoice?.lang || "en-GB";
-      if (selectedBrowserVoice) {
-        utterance.voice = selectedBrowserVoice;
-      }
+      utterance.lang = "en-GB";
       utterance.onstart = () => {
         if (requestId === speechRequestRef.current) {
           setSpeakingMessageIndex(index);
@@ -398,7 +389,7 @@ export default function AssistantPage() {
         setSpeakingMessageIndex(index);
         logDiagnostic("[voice timing]", JSON.stringify({
           stage: "cached_audio_replay",
-          provider: aiPreferences.speechProvider,
+          provider: aiPreferences.speechConnectionId,
         }));
         return true;
       } catch {
@@ -406,18 +397,16 @@ export default function AssistantPage() {
       }
     }
 
-    if (aiPreferences.speechProvider === "browser") {
-      playBrowserVoice("");
+    if (!aiPreferences.speechConnectionId || !aiPreferences.speechModel) {
+      playBrowserVoice(
+        "Choose an enabled speech connection in AI & Voice Settings for generated speech. Using your browser's voice for now.",
+      );
       return;
     }
-
-    const selectedSpeechVoice =
-      aiPreferences.speechProvider === "gemini"
-        ? aiPreferences.geminiTtsVoice
-        : aiPreferences.elevenLabsVoiceId;
+    const selectedSpeechVoice = aiPreferences.speechVoiceId;
 
     const cacheKey = await makeSpeechCacheKey(
-      aiPreferences.speechProvider,
+      aiPreferences.speechConnectionId + ":" + aiPreferences.speechModel,
       selectedSpeechVoice,
       content,
     );
@@ -654,10 +643,10 @@ export default function AssistantPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: content,
-          provider: aiPreferences.speechProvider,
-          ...(aiPreferences.speechProvider === "gemini"
-            ? { voice: aiPreferences.geminiTtsVoice }
-            : { voiceId: aiPreferences.elevenLabsVoiceId }),
+          providerProfileId: aiPreferences.speechConnectionId,
+          model: aiPreferences.speechModel,
+          voice: aiPreferences.speechVoiceId,
+          voiceId: aiPreferences.speechVoiceId,
         }),
       });
 
@@ -863,15 +852,9 @@ export default function AssistantPage() {
           question,
           history,
           mode,
-          provider: aiPreferences.reasoningProvider,
-          ...(aiPreferences.reasoningProvider === "gemini"
-            ? { model: aiPreferences.reasoningModel }
-            : aiPreferences.reasoningProvider === "custom"
-              ? {
-                  providerProfileId: aiPreferences.customProviderProfileId,
-                  model: aiPreferences.customProviderModel,
-                }
-              : {}),
+          provider: "custom",
+          providerProfileId: aiPreferences.reasoningConnectionId,
+          model: aiPreferences.reasoningModel,
         }),
       });
       if (mode === "voice-chat") {
