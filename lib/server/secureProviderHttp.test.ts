@@ -231,6 +231,35 @@ describe("secure provider HTTPS requests", () => {
     expect(mock.getOptions()?.headers).not.toHaveProperty("Authorization");
   });
 
+  it("uses Google authentication for secure model generation", async () => {
+    const mock = setupHttpsResponse({
+      body: JSON.stringify({ candidates: [] }),
+    });
+
+    const result = await secureProviderHttpRequest({
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      apiKey: "google-generation-test-secret",
+      path: "/google/generate-content",
+      model: "gemini-3.8-flash",
+      method: "POST",
+      body: '{"contents":[]}',
+    });
+
+    expect(result.status).toBe(200);
+    expect(mock.getOptions()?.path).toBe(
+      "/v1beta/models/gemini-3.8-flash:generateContent",
+    );
+    expect(mock.getOptions()?.headers).toMatchObject({
+      "x-goog-api-key": "google-generation-test-secret",
+      "Content-Type": "application/json",
+    });
+    expect(mock.getOptions()?.headers).not.toHaveProperty("Authorization");
+    expect(mock.request.write).toHaveBeenCalledWith(
+      '{"contents":[]}',
+      "utf8",
+    );
+  });
+
   it("uses the ElevenLabs API-key header only with the canonical models endpoint", async () => {
     const mock = setupHttpsResponse({ body: "[]" });
 
@@ -264,6 +293,17 @@ describe("secure provider HTTPS requests", () => {
         path: "/elevenlabs/models",
       }),
     ).rejects.toThrow(/canonical ElevenLabs API host/i);
+
+    await expect(
+      secureProviderHttpRequest({
+        baseUrl: "https://attacker-provider.com/v1beta",
+        apiKey: "test-secret",
+        path: "/google/generate-content",
+        model: "gemini-3.8-flash",
+        method: "POST",
+        body: "{}",
+      }),
+    ).rejects.toThrow(/canonical Google API host/i);
 
     expect(lookup).not.toHaveBeenCalled();
     expect(httpsRequest).not.toHaveBeenCalled();

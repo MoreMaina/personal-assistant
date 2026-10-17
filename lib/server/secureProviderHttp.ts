@@ -5,6 +5,7 @@ import { request as httpsRequest, type RequestOptions } from "node:https";
 import {
   isPubliclyRoutableIp,
   normalizeAIProviderBaseUrl,
+  normalizeAIProviderModelId,
 } from "@/lib/aiProviderConfig";
 
 const MAX_RESPONSE_BYTES = 256_000;
@@ -15,6 +16,7 @@ export type OpenAICompatiblePath = "/models" | "/chat/completions";
 export type SecureProviderPath =
   | OpenAICompatiblePath
   | "/google/models"
+  | "/google/generate-content"
   | "/elevenlabs/models";
 
 export type SecureProviderResponse = {
@@ -27,6 +29,7 @@ export type SecureProviderRequest = {
   baseUrl: string;
   apiKey: string;
   path: SecureProviderPath;
+  model?: string;
   method?: "GET" | "POST";
   body?: string;
   timeoutMs?: number;
@@ -60,11 +63,18 @@ async function secureProviderRequest(
     input.path === "/models" ||
     input.path === "/google/models" ||
     input.path === "/elevenlabs/models";
+  const isGoogleGenerationRequest =
+    input.path === "/google/generate-content";
 
   if (
     (isModelsRequest && method !== "GET") ||
     (input.path === "/chat/completions" && method !== "POST") ||
-    (!isModelsRequest && input.path !== "/chat/completions")
+    (isGoogleGenerationRequest && method !== "POST") ||
+    (
+      !isModelsRequest &&
+      input.path !== "/chat/completions" &&
+      !isGoogleGenerationRequest
+    )
   ) {
     throw new Error("The requested provider operation is not allowed.");
   }
@@ -79,9 +89,35 @@ async function secureProviderRequest(
   }
 
   const target = new URL(baseUrl);
+  const googleModel =
+    typeof input.model === "string"
+      ? input.model.replace(/^models\//, "")
+      : "";
+
+  if (
+    isGoogleGenerationRequest &&
+    (
+      !normalizeAIProviderModelId(googleModel) ||
+      /[/:]/.test(googleModel)
+    )
+  ) {
+    throw new Error("The Google generation model ID is invalid.");
+  }
 
   // Typed first-party protocols must use their canonical HTTPS origin
   // and API base path so credentials cannot be sent to another hostname.
+  if (
+    isGoogleGenerationRequest &&
+    (
+      target.hostname !== "generativelanguage.googleapis.com" ||
+      target.pathname.replace(/\/+$/, "") !== "/v1beta"
+    )
+  ) {
+    throw new Error(
+      "Google generation must use the canonical Google API host and /v1beta path.",
+    );
+  }
+
   if (
     input.path === "/google/models" &&
     (
@@ -110,7 +146,9 @@ async function secureProviderRequest(
     input.path === "/google/models" ||
     input.path === "/elevenlabs/models"
       ? "/models"
-      : input.path;
+      : isGoogleGenerationRequest
+        ? `/models/${encodeURIComponent(googleModel)}:generateContent`
+        : input.path;
 
   target.pathname =
     `${target.pathname.replace(/\/+$/, "")}${endpointPath}`;
@@ -176,7 +214,10 @@ async function secureProviderRequest(
     Accept: "application/json",
   };
 
-  if (input.path === "/google/models") {
+  if (
+    input.path === "/google/models" ||
+    input.path === "/google/generate-content"
+  ) {
     headers["x-goog-api-key"] = input.apiKey;
   } else if (input.path === "/elevenlabs/models") {
     headers["xi-api-key"] = input.apiKey;
