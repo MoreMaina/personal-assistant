@@ -18,7 +18,15 @@ import {
   normalizeAIProviderModels,
 } from "@/lib/aiProviderConfig";
 import { decryptAIProviderApiKey } from "@/lib/server/aiProviderCrypto";
-import { secureOpenAICompatibleRequest } from "@/lib/server/secureProviderHttp";
+import {
+  isAIProviderType,
+  supportsAICapability,
+  type AIProviderType,
+} from "@/lib/aiProviderTypes";
+import {
+  secureOpenAICompatibleRequest,
+  secureProviderHttpRequest,
+} from "@/lib/server/secureProviderHttp";
 import {
   buildCustomProviderRequestOptions,
   getEmptyAssistantResponseMessage,
@@ -466,6 +474,7 @@ export async function POST(request: Request) {
     baseUrl: string;
     apiKey: string;
     model: string;
+    providerType: AIProviderType;
   } | null = null;
 
   if (reasoningProvider === "custom") {
@@ -477,7 +486,7 @@ export async function POST(request: Request) {
 
     const { data: customProfile, error: customProfileError } = await supabase
       .from("user_ai_provider_profiles")
-      .select("id,base_url,models,enabled,encrypted_api_key")
+      .select("*")
       .eq("id", customProviderProfileId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -495,6 +504,15 @@ export async function POST(request: Request) {
     }
 
     const profileRow = customProfile as unknown as Record<string, unknown>;
+    const profileProviderType = isAIProviderType(profileRow.provider_type)
+      ? profileRow.provider_type
+      : "openai_compatible";
+
+    if (!supportsAICapability(profileProviderType, "reasoning")) {
+      return reply({
+        error: "This saved connection does not support reasoning.",
+      }, 409);
+    }
 
     if (profileRow.enabled !== true) {
       return reply({
@@ -530,6 +548,7 @@ export async function POST(request: Request) {
         baseUrl: profileRow.base_url,
         apiKey: decryptAIProviderApiKey(profileRow.encrypted_api_key),
         model: customProviderModel,
+        providerType: profileProviderType,
       };
     } catch {
       return reply({
@@ -544,7 +563,13 @@ export async function POST(request: Request) {
     }, 429);
   }
 
+  const savedGoogleConfig =
+    customProviderConfig?.providerType === "google_generative_language"
+      ? customProviderConfig
+      : null;
+
   const apiKey =
+    savedGoogleConfig?.apiKey ||
     process.env.GEMINI_API_KEY?.trim() ||
     process.env.GOOGLE_API_KEY?.trim();
   const deepseekApiKey =
@@ -592,7 +617,7 @@ export async function POST(request: Request) {
   stateReadAt = Date.now();
   const history = requestMode === "daily-plan" ? [] : cleanHistory(body.history);
   const configuredModel = process.env.GEMINI_MODEL?.trim();
-  const model = selectedModel ?? (
+  const model = selectedModel ?? customProviderConfig?.model ?? (
     isGeminiReasoningModel(configuredModel)
       ? configuredModel
       : "gemini-3.1-flash-lite"
@@ -866,7 +891,10 @@ export async function POST(request: Request) {
   let customProviderFinishReason: string | null = null;
   let isGroqGPTOSSDailyPlan = false;
 
-  if (reasoningProvider === "custom") {
+  if (
+    reasoningProvider === "custom" &&
+    customProviderConfig?.providerType === "openai_compatible"
+  ) {
     const activeProvider = customProviderConfig;
 
     // Do not fall back to another provider if the custom configuration is
@@ -1248,18 +1276,7 @@ export async function POST(request: Request) {
       }, 503);
     }
 
-    let upstream: Response;
-    try {
-      upstream = await fetchGeminiWithRetries(
-        () => fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": apiKey,
-            },
-            body: JSON.stringify({
+    const generationRequestBody = {
               systemInstruction: {
                 parts: [{
                   text: systemInstructions,
@@ -1342,7 +1359,36 @@ export async function POST(request: Request) {
                         },
                       }),
               },
-            }),
+            };
+
+    let upstream: Response;
+    try {
+      if (savedGoogleConfig) {
+        const secureResult = await secureProviderHttpRequest({
+          baseUrl: savedGoogleConfig.baseUrl,
+          apiKey: savedGoogleConfig.apiKey,
+          path: "/google/generate-content",
+          model: savedGoogleConfig.model,
+          method: "POST",
+          body: JSON.stringify(generationRequestBody),
+          timeoutMs: isDailyPlan ? 60_000 : 30_000,
+        });
+
+        upstream = new Response(secureResult.body, {
+          status: secureResult.status,
+          headers: { "Content-Type": secureResult.contentType },
+        });
+      } else {
+        upstream = await fetchGeminiWithRetries(
+        () => fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
+            },
+            body: JSON.stringify(generationRequestBody),
             cache: "no-store",
             signal: AbortSignal.timeout(isDailyPlan ? 60_000 : 30_000),
           },
@@ -1354,6 +1400,7 @@ export async function POST(request: Request) {
           logDiagnostic,
         },
       );
+      }
     } catch (error) {
       const cause =
         error instanceof Error && "cause" in error ? error.cause : null;
