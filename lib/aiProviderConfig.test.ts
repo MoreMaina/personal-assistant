@@ -45,6 +45,9 @@ describe("AI provider configuration validation", () => {
     expect(normalizeAIProviderModelId(" provider/model-v2 ")).toBe(
       "provider/model-v2",
     );
+    expect(normalizeAIProviderModelId("eleven_multilingual_v2")).toBe(
+      "eleven_multilingual_v2",
+    );
     expect(normalizeAIProviderModelId("../escape")).toBeNull();
     expect(normalizeAIProviderModelId("model name")).toBeNull();
     expect(
