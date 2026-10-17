@@ -892,6 +892,45 @@ export async function POST(request: Request) {
       }, 502);
     }
 
+    // Retry Groq GPT-OSS chat once if constrained JSON generation fails.
+    // The normal response validation below still checks both required fields.
+    if (
+      isGroqGPTOSS &&
+      requestMode === "chat" &&
+      upstream.status === 400 &&
+      /failed to (?:generate|validate) json|json_validate_failed|json_generation_failed/i.test(
+        upstream.body,
+      )
+    ) {
+      try {
+        upstream = await secureOpenAICompatibleRequest({
+          baseUrl: activeProvider.baseUrl,
+          apiKey: activeProvider.apiKey,
+          path: "/chat/completions",
+          method: "POST",
+          timeoutMs: 30_000,
+          body: JSON.stringify({
+            model: activeProvider.model,
+            messages: [
+              { role: "system", content: systemInstructions },
+              { role: "user", content: prompt },
+            ],
+            stream: false,
+            ...buildCustomProviderRequestOptions({
+              isGroqGPTOSS,
+              mode: requestMode,
+              maxOutputTokens: MAX_OUTPUT_TOKENS,
+            }),
+            response_format: { type: "json_object" },
+          }),
+        });
+      } catch {
+        return reply({
+          error: "The custom provider could not complete JSON generation after one retry. Please try again.",
+        }, 502);
+      }
+    }
+
     if (upstream.status === 429) {
       return reply({
         error: "The custom provider's request limit has been reached. Try again later.",
