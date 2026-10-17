@@ -1165,7 +1165,7 @@ button.card-menu__cancel {
 .ai-copilot__badge { flex:0 0 auto; padding:6px 10px; border-radius:999px; background:#eff4ec; color:#35513a; font-size:.78rem; font-weight:650; }
 .ai-copilot__disclosure { padding:12px 14px; margin:0 0 16px; border:1px solid #e5ded4; border-radius:12px; background:#faf7f2; color:#584f46; font-size:.84rem; line-height:1.55; }
 .ai-copilot__panel { min-width:0; overflow:hidden; border:1px solid #e5ded4; border-radius:18px; background:#fffefa; }
-.ai-copilot__transcript { display:flex; flex-direction:column; gap:14px; min-height:300px; max-height:min(58vh,600px); overflow-y:auto; padding:22px; }
+.ai-copilot__transcript { display:flex; flex-direction:column; gap:14px; min-height:300px; padding:22px; }
 .ai-copilot__welcome { max-width:700px; margin:auto; padding-block:20px; text-align:center; }
 .ai-copilot__welcome h2 { margin:0 0 8px; font-size:1.25rem; }
 .ai-copilot__welcome p { max-width:560px; margin:0 auto; line-height:1.6; opacity:.78; }
@@ -1199,7 +1199,7 @@ button.card-menu__cancel {
   .mobile-nav { grid-template-columns:repeat(5,minmax(0,1fr)); }
   .mobile-nav__item { min-width:0; }
   .mobile-nav__label { font-size:clamp(.58rem,2.1vw,.76rem); }
-  .ai-copilot__transcript { max-height:52vh; padding:16px; }
+  .ai-copilot__transcript { padding:16px; }
   .ai-copilot__message { max-width:96%; }
 }
 @media (max-width:520px) {
