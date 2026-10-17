@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addCalendarTask, type CalendarTask } from "@/lib/calendarItemStorage";
 import { getVoiceRequestMode } from "@/lib/assistantVoiceIntent";
 import { SpeechAudioCache } from "@/lib/speechAudioCache";
+import AssistantMarkdown from "@/lib/assistantMarkdown";
 import {
   DEFAULT_AI_PREFERENCES,
   loadAIPreferences,
@@ -117,6 +118,9 @@ export default function AssistantPage() {
   const [proposalError, setProposalError] = useState("");
   const proposalSaveLock = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const questionInputRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
+  const [showJumpToInput, setShowJumpToInput] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
@@ -146,6 +150,18 @@ export default function AssistantPage() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, sending]);
+
+  useEffect(() => {
+    const input = questionInputRef.current;
+    if (!input) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setShowJumpToInput(!entry.isIntersecting);
+    });
+
+    observer.observe(input);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const audioSources = audioSourcesRef.current;
@@ -1148,7 +1164,7 @@ export default function AssistantPage() {
               <span className="ai-copilot__message-label">
                 {message.role === "user" ? "You" : "AI Copilot"}
               </span>
-              <p>{message.content}</p>
+              <AssistantMarkdown content={message.content} />
               {message.role === "assistant" && (
                 <div className="ai-copilot__message-actions">
                   <button
@@ -1279,13 +1295,14 @@ export default function AssistantPage() {
 
         {error && <p className="ai-copilot__error" role="alert">{error}</p>}
 
-        <form className="ai-copilot__form" onSubmit={submit}>
+        <form ref={composerRef} className="ai-copilot__form" onSubmit={submit}>
           <label className="ai-copilot__label" htmlFor="ai-question">Your question</label>
           {voiceError && (
             <p className="ai-copilot__voice-error" role="alert">{voiceError}</p>
           )}
           <textarea
             id="ai-question"
+            ref={questionInputRef}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Ask about your saved records…"
@@ -1395,6 +1412,37 @@ export default function AssistantPage() {
             </div>
           </div>
         </form>
+
+        {showJumpToInput && (
+          <button
+            type="button"
+            className="ai-copilot__jump-to-input"
+            aria-label="Jump to question box"
+            title="Jump to question box"
+            onClick={() =>
+              composerRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "end",
+              })
+            }
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 4v12" />
+              <path d="m6 10 6 6 6-6" />
+              <path d="M5 20h14" />
+            </svg>
+          </button>
+        )}
       </div>
     </section>
   );
