@@ -26,6 +26,7 @@ import {
 import {
   secureOpenAICompatibleRequest,
   secureProviderHttpRequest,
+  secureProviderHttpStream,
 } from "@/lib/server/secureProviderHttp";
 import {
   buildCustomProviderRequestOptions,
@@ -448,9 +449,9 @@ export async function POST(request: Request) {
     return reply({ error: "Unknown assistant request mode." }, 400);
   }
 
-  if (requestMode === "voice-chat" && reasoningProvider !== "gemini") {
+  if (requestMode === "voice-chat" && reasoningProvider === "deepseek") {
     return reply({
-      error: "Streaming Voice Mode currently requires Gemini. Switch to Google Gemini in AI & Voice Settings, or use typed chat with DeepSeek.",
+      error: "Streaming Voice Mode requires a Google connection. Select a saved Google connection or the legacy Gemini connection.",
     }, 409);
   }
 
@@ -557,6 +558,16 @@ export async function POST(request: Request) {
     }
   }
 
+  if (
+    requestMode === "voice-chat" &&
+    reasoningProvider === "custom" &&
+    customProviderConfig?.providerType !== "google_generative_language"
+  ) {
+    return reply({
+      error: "Streaming Voice Mode currently supports Google connections only. Select a saved Google connection or the legacy Gemini connection.",
+    }, 409);
+  }
+
   if (!takeDailySlot(user.id)) {
     return reply({
       error: "You've reached the development limit of 20 questions today. Try again tomorrow.",
@@ -654,11 +665,58 @@ export async function POST(request: Request) {
       }, 503);
     }
 
+    const voiceRequestBody = {
+      systemInstruction: {
+        parts: [{ text: systemInstructions }],
+      },
+      contents: [{
+        role: "user",
+        parts: [{
+          text: prompt + "\n\nFor this voice turn, generate the spokenSummary first, followed by the full answer. Keep the spokenSummary concise and useful.",
+        }],
+      }],
+      generationConfig: {
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            spokenSummary: {
+              type: "STRING",
+              description:
+                "A faithful, natural spoken summary, normally 1–3 sentences and no more than 45 words. Put this field first.",
+            },
+            answer: {
+              type: "STRING",
+              description: "The full written response for the chat transcript.",
+            },
+          },
+          required: ["spokenSummary", "answer"],
+        },
+      },
+    };
+
     const voiceStartedAt = Date.now();
     let upstream: Response;
 
     try {
-      upstream = await fetch(
+      if (savedGoogleConfig) {
+        const streamed = await secureProviderHttpStream({
+          baseUrl: savedGoogleConfig.baseUrl,
+          apiKey: savedGoogleConfig.apiKey,
+          path: "/google/stream-generate-content",
+          model: savedGoogleConfig.model,
+          body: JSON.stringify(voiceRequestBody),
+          timeoutMs: 30_000,
+        });
+        upstream = new Response(streamed.body, {
+          status: streamed.status,
+          headers: {
+            "Content-Type": streamed.contentType || "text/event-stream",
+          },
+        });
+      } else {
+        upstream = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
         {
           method: "POST",
@@ -666,42 +724,14 @@ export async function POST(request: Request) {
             "Content-Type": "application/json",
             "x-goog-api-key": apiKey,
           },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstructions }],
-            },
-            contents: [{
-              role: "user",
-              parts: [{
-                text: prompt + "\n\nFor this voice turn, generate the spokenSummary first, followed by the full answer. Keep the spokenSummary concise and useful.",
-              }],
-            }],
-            generationConfig: {
-              maxOutputTokens: MAX_OUTPUT_TOKENS,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: "OBJECT",
-                properties: {
-                  spokenSummary: {
-                    type: "STRING",
-                    description:
-                      "A faithful, natural spoken summary, normally 1–3 sentences and no more than 45 words. Put this field first.",
-                  },
-                  answer: {
-                    type: "STRING",
-                    description: "The full written response for the chat transcript.",
-                  },
-                },
-                required: ["spokenSummary", "answer"],
-              },
-            },
-          }),
+          body: JSON.stringify(voiceRequestBody),
           cache: "no-store",
           signal: AbortSignal.timeout(30_000),
         },
       );
+      }
     } catch {
-      return reply({ error: "Gemini could not be reached. Please try again." }, 502);
+      return reply({ error: "Google could not be reached. Please try again." }, 502);
     }
 
     if (!upstream.ok) {
