@@ -1417,12 +1417,12 @@ export default function AssistantPage() {
           <button
             type="button"
             className="ai-copilot__jump-to-input"
-            aria-label="Jump to question box"
-            title="Jump to question box"
+            aria-label="Jump to bottom of page"
+            title="Jump to bottom of page"
             onClick={() =>
-              composerRef.current?.scrollIntoView({
+              window.scrollTo({
+                top: document.documentElement.scrollHeight,
                 behavior: "smooth",
-                block: "end",
               })
             }
           >
