@@ -681,7 +681,7 @@ export async function POST(request: Request) {
   // Voice Mode and structured task proposals keep their existing flows.
   if (wantsTextStream) {
     const streamSystemInstructions = systemInstructions.replace(
-      /For normal chat requests, return only a JSON object with exactly two string[\s\S]*?If the answer is short, summarize it faithfully in one concise sentence\./,
+      /For normal chat requests, return only a JSON object with exactly two string[\s\S]*?If the answer\s+is short, summarize it faithfully in one concise sentence\./,
       "For streamed text chat, return only the complete answer as Markdown. " +
       "Do not wrap the answer in JSON or generate a separate spokenSummary. " +
       "Keep the answer accurate, concise, and grounded in the supplied context.",
