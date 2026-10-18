@@ -133,7 +133,36 @@ export default function AssistantMarkdown({
 }: {
   content: string;
 }) {
-  const lines = content.replace(/\r\n?/g, "\n").split("\n");
+  const sourceLines = content.replace(/\r\n?/g, "\n").split("\n");
+  const lines: string[] = [];
+  let inFence = false;
+
+  for (const sourceLine of sourceLines) {
+    if (sourceLine.trim().startsWith("```")) {
+      lines.push(sourceLine);
+      inFence = !inFence;
+      continue;
+    }
+
+    if (inFence) {
+      lines.push(sourceLine);
+      continue;
+    }
+
+    const heading = sourceLine.match(
+      /^(\s*)(#{1,6})(\\#)?[ \t]+(.+?)\s*#*\s*$/
+    );
+
+    if (!heading) {
+      lines.push(sourceLine);
+      continue;
+    }
+
+    const [, indentation, markers, , title] = heading;
+    const level = Math.min(markers.length, 3);
+
+    lines.push(`${indentation}${"#".repeat(level)} ${title}`);
+  }
   const blocks: ReactNode[] = [];
   let index = 0;
 

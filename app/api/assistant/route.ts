@@ -156,6 +156,11 @@ Use appContext.taskSummary only when supplied and needed to answer a question
 about task totals or a weekly review. Never infer totals from a short task list.
 Keep the answer scoped to the request; do not add unrelated study, course, unit,
 reading, or project details.
+For headings, use standard Markdown syntax: start a heading line with
+one, two, or three # characters followed by a space and the heading text.
+Never escape heading hashes with a backslash, and never use four or more
+leading # characters.
+
 Use clean, scannable, adaptive Markdown. Match the formatting to the
 complexity of the answer; write prose first and use lists when they improve
 clarity. Keep short answers as plain prose. For medium answers, use a brief
