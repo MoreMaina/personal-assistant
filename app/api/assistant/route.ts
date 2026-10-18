@@ -42,6 +42,17 @@ function logDiagnostic(label: string, details: string): void {
   }
 }
 
+// Performance-only diagnostics are safe to inspect in Vercel Preview.
+// Do not enable all diagnostic logs there, since some contain provider errors.
+function logPerformance(label: string, details: string): void {
+  if (
+    process.env.NODE_ENV === "development" ||
+    process.env.VERCEL_ENV === "preview"
+  ) {
+    console.info(label, details);
+  }
+}
+
 type SafeFailedGenerationDiagnostic = {
   kind: string;
   length?: number;
@@ -816,7 +827,7 @@ export async function POST(request: Request) {
 
               if (summary?.trim()) {
                 summarySent = true;
-                logDiagnostic("[assistant voice stream]", JSON.stringify({
+                logPerformance("[assistant voice stream]", JSON.stringify({
                   stage: "spoken_summary_ready",
                   elapsedMs: Date.now() - voiceStartedAt,
                   summaryCharacters: summary.length,
@@ -879,7 +890,7 @@ export async function POST(request: Request) {
             spokenSummary,
           });
           completed = true;
-          logDiagnostic("[assistant voice stream]", JSON.stringify({
+          logPerformance("[assistant voice stream]", JSON.stringify({
             stage: "complete",
             elapsedMs: Date.now() - voiceStartedAt,
             summaryWasEarly: summarySent,
@@ -1565,8 +1576,10 @@ export async function POST(request: Request) {
   }
 
   const providerFinishedAt = Date.now();
-  logDiagnostic("[assistant timing]", JSON.stringify({
-    provider: reasoningProvider,
+  logPerformance("[assistant timing]", JSON.stringify({
+    provider: customProviderConfig?.providerType ?? reasoningProvider,
+    mode: requestMode,
+    model,
     authMs: authenticatedAt - requestStartedAt,
     synchronizedStateMs: stateReadAt - authenticatedAt,
     contextPreparationMs: promptReadyAt - stateReadAt,
