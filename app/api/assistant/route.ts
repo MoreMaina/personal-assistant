@@ -486,6 +486,7 @@ export async function POST(request: Request) {
   }
 
   authenticatedAt = Date.now();
+  stateReadAt = authenticatedAt;
 
   let customProviderConfig: {
     baseUrl: string;
@@ -635,13 +636,13 @@ export async function POST(request: Request) {
       }, 503);
     }
 
+    stateReadAt = Date.now();
     context = buildAssistantContext(
       normalizeSnapshot(stateRow?.data),
       currentDate,
     );
   }
 
-  stateReadAt = Date.now();
   const history = requestMode === "daily-plan" ? [] : cleanHistory(body.history);
   const configuredModel = process.env.GEMINI_MODEL?.trim();
   const model = selectedModel ?? customProviderConfig?.model ?? (
@@ -1587,8 +1588,28 @@ export async function POST(request: Request) {
     totalMs: providerFinishedAt - requestStartedAt,
   }));
 
+  // Expose timings through browser DevTools without changing the JSON body.
+  const serverTiming = [
+    `setup;dur=${Math.max(0, authenticatedAt - requestStartedAt)}`,
+    `state;dur=${Math.max(0, stateReadAt - authenticatedAt)}`,
+    `context;dur=${Math.max(0, promptReadyAt - stateReadAt)}`,
+    `provider;dur=${Math.max(0, providerFinishedAt - promptReadyAt)}`,
+  ].join(", ");
+
+  function replyWithPerformance(
+    body: Record<string, unknown>,
+    status = 200,
+  ) {
+    const response = reply(body, status);
+    response.headers.set(
+      "Server-Timing",
+      `${serverTiming}, total;dur=${Math.max(0, Date.now() - requestStartedAt)}`,
+    );
+    return response;
+  }
+
   if (!answer) {
-    return reply({
+    return replyWithPerformance({
       error: getEmptyAssistantResponseMessage({
         isDailyPlan,
         isGroqGPTOSS: isGroqGPTOSSDailyPlan,
@@ -1612,7 +1633,7 @@ export async function POST(request: Request) {
         containsCodeFence: answer.includes("```"),
       }));
 
-      return reply({
+      return replyWithPerformance({
         error: "Gemini returned an unreadable daily plan. Please refresh and try again.",
       }, 502);
     }
@@ -1624,7 +1645,7 @@ export async function POST(request: Request) {
       !Array.isArray(parsedPlan.blocks) ||
       parsedPlan.blocks.length > 3
     ) {
-      return reply({
+      return replyWithPerformance({
         error: "Gemini returned an invalid daily plan. Please refresh and try again.",
       }, 502);
     }
@@ -1649,7 +1670,7 @@ export async function POST(request: Request) {
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.end) ||
         typeof item.reason !== "string"
       ) {
-        return reply({
+        return replyWithPerformance({
           error: "Gemini returned an invalid work block. Please refresh and try again.",
         }, 502);
       }
@@ -1663,7 +1684,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return reply({
+    return replyWithPerformance({
       dailyPlan: {
         summary: parsedPlan.summary.trim().slice(0, 400),
         blocks,
@@ -1676,7 +1697,7 @@ export async function POST(request: Request) {
     try {
       parsedProposal = JSON.parse(answer);
     } catch {
-      return reply({
+      return replyWithPerformance({
         error: "Gemini returned an unreadable task draft. Please try again.",
       }, 502);
     }
@@ -1692,12 +1713,12 @@ export async function POST(request: Request) {
         isValidDateOnly(parsedProposal.dueDate)
       )
     ) {
-      return reply({
+      return replyWithPerformance({
         error: "Gemini returned an invalid task draft. Please try again.",
       }, 502);
     }
 
-    return reply({
+    return replyWithPerformance({
       taskProposal: {
         title: parsedProposal.title.trim().slice(0, 120),
         dueDate: parsedProposal.dueDate ?? "",
@@ -1710,7 +1731,7 @@ export async function POST(request: Request) {
   try {
     parsedChat = JSON.parse(answer);
   } catch {
-    return reply({
+    return replyWithPerformance({
       error: "The assistant returned an unreadable response. Please try again.",
     }, 502);
   }
@@ -1722,12 +1743,12 @@ export async function POST(request: Request) {
     typeof parsedChat.spokenSummary !== "string" ||
     !parsedChat.spokenSummary.trim()
   ) {
-    return reply({
+    return replyWithPerformance({
       error: "The assistant returned an incomplete response. Please try again.",
     }, 502);
   }
 
-  return reply({
+  return replyWithPerformance({
     answer: parsedChat.answer.trim(),
     spokenSummary: parsedChat.spokenSummary.trim().slice(0, 800),
   });
