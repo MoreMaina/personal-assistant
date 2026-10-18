@@ -479,6 +479,11 @@ export default function AISettingsPage() {
       <div className="flex flex-col gap-3 sm:flex-row">
         <select aria-label="Reasoning connection" value={reasoning?.id ?? ""} disabled={!ready || loadingProfiles} onChange={(e) => {
           const item = reasoningOptions.find((p) => p.id === e.target.value);
+          if (item) {
+            setFormOpen(false);
+            setEditingId(null);
+            setForm({ ...EMPTY_FORM });
+          }
           updatePreferences({
             reasoningConnectionId: item?.id ?? "",
             reasoningModel: item?.id === preferences.reasoningConnectionId && item.models.includes(preferences.reasoningModel)
@@ -507,6 +512,11 @@ export default function AISettingsPage() {
       <div className="flex flex-col gap-3 sm:flex-row">
         <select aria-label="Speech connection" value={speech?.id ?? ""} disabled={!ready || loadingProfiles} onChange={(e) => {
           const item = speechOptions.find((p) => p.id === e.target.value);
+          if (item) {
+            setFormOpen(false);
+            setEditingId(null);
+            setForm({ ...EMPTY_FORM });
+          }
           updatePreferences({
             speechConnectionId: item?.id ?? "",
             speechModel: item?.speechModels.includes(preferences.speechModel) ? preferences.speechModel : item?.speechModels[0] ?? "",
