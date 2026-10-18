@@ -734,7 +734,7 @@ export async function POST(request: Request) {
           path: "/google/stream-generate-content",
           model: savedGoogleConfig.model,
           body: googleBody,
-          timeoutMs: 30_000,
+          timeoutMs: 60_000,
         });
 
         upstreamStatus = upstream.status;
@@ -747,7 +747,7 @@ export async function POST(request: Request) {
           path: "/openai/chat/completions",
           model: customProviderConfig.model,
           body: makeOpenAIStreamBody(customProviderConfig.model),
-          timeoutMs: 30_000,
+          timeoutMs: 60_000,
         });
 
         upstreamStatus = upstream.status;
@@ -760,7 +760,7 @@ export async function POST(request: Request) {
           path: "/google/stream-generate-content",
           model,
           body: googleBody,
-          timeoutMs: 30_000,
+          timeoutMs: 60_000,
         });
 
         upstreamStatus = upstream.status;
@@ -777,7 +777,7 @@ export async function POST(request: Request) {
             process.env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",
           ),
           cache: "no-store",
-          signal: AbortSignal.timeout(30_000),
+          signal: AbortSignal.timeout(60_000),
         });
 
         upstreamStatus = upstream.status;
@@ -828,6 +828,9 @@ export async function POST(request: Request) {
       `context;dur=${Math.max(0, promptReadyAt - stateReadAt)}`,
       `upstream;dur=${Math.max(0, upstreamHeadersAt - streamProviderStartedAt)}`,
     ].join(", ");
+
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+    let clientCancelled = false;
 
     const eventStream = new ReadableStream<Uint8Array>({
       async start(controller) {
@@ -926,6 +929,16 @@ export async function POST(request: Request) {
           // Flush headers/body immediately; real text follows as the model generates it.
           controller.enqueue(encoder.encode(": stream-open\n\n"));
 
+          heartbeatTimer = setInterval(() => {
+            if (clientCancelled) return;
+            try {
+              controller.enqueue(encoder.encode(": keep-alive\n\n"));
+            } catch {
+              if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
+              heartbeatTimer = null;
+            }
+          }, 10_000);
+
           while (true) {
             const { done, value } = await sourceReader.read();
             if (done) break;
@@ -974,17 +987,33 @@ export async function POST(request: Request) {
           }));
 
           controller.close();
-        } catch {
+        } catch (error) {
+          if (!clientCancelled) {
+            logPerformance("[assistant stream timing]", JSON.stringify({
+              stage: "stream_interrupted",
+              provider: streamProvider,
+              model,
+              errorName: error instanceof Error ? error.name : "UnknownError",
+              providerStreamMs: Date.now() - upstreamHeadersAt,
+              answerCharacters: answer.length,
+            }));
+          }
+
           try {
-            emit({
-              type: "error",
-              error: "The response stream was interrupted. Please try again.",
-            });
+            if (!clientCancelled) {
+              emit({
+                type: "error",
+                error: "The response stream was interrupted. Please try again.",
+              });
+            }
             controller.close();
           } catch {
             // The client may already have cancelled the stream.
           }
         } finally {
+          if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+
           try {
             sourceReader.releaseLock();
           } catch {
@@ -993,6 +1022,9 @@ export async function POST(request: Request) {
         }
       },
       cancel(reason) {
+        clientCancelled = true;
+        if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
         void sourceReader.cancel(reason).catch(() => undefined);
       },
     });
