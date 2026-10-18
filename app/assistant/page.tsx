@@ -12,7 +12,7 @@ import {
   type AIPreferences,
 } from "@/lib/assistantPreferences";
 
-type Message = { role: "user" | "assistant"; content: string; spokenSummary?: string };
+type Message = { role: "user" | "assistant"; content: string; spokenSummary?: string; streaming?: boolean };
 type RequestMode = "chat" | "task-proposal" | "voice-chat";
 type TaskProposal = {
   title: string;
@@ -845,18 +845,180 @@ export default function AssistantPage() {
     setSending(true);
 
     try {
-      const response = await fetch("/api/assistant", {
+      const requestPayload = {
+        question,
+        history,
+        mode,
+        streamText: mode === "chat",
+        provider: "custom",
+        providerProfileId: aiPreferences.reasoningConnectionId,
+        model: aiPreferences.reasoningModel,
+      };
+
+      let response = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          history,
-          mode,
-          provider: "custom",
-          providerProfileId: aiPreferences.reasoningConnectionId,
-          model: aiPreferences.reasoningModel,
-        }),
+        body: JSON.stringify(requestPayload),
       });
+
+      // Preserve normal chat for providers that do not support streaming.
+      if (mode === "chat" && response.status === 409) {
+        const rejectedPayload: unknown = await response.clone().json().catch(() => null);
+
+        if (
+          rejectedPayload &&
+          typeof rejectedPayload === "object" &&
+          !Array.isArray(rejectedPayload) &&
+          "error" in rejectedPayload &&
+          rejectedPayload.error ===
+            "Streaming is not available for this provider configuration."
+        ) {
+          response = await fetch("/api/assistant", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...requestPayload, streamText: false }),
+          });
+        }
+      }
+
+      if (
+        mode === "chat" &&
+        response.headers.get("content-type")?.toLowerCase().includes("text/event-stream")
+      ) {
+        if (!response.ok || !response.body) {
+          setError("The assistant could not start a streaming response. Please try again.");
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let pending = "";
+        let partialAnswer = "";
+        let streamError = "";
+        const completedResponseRef: {
+          current: { answer: string; spokenSummary: string } | null;
+        } = { current: null };
+
+        function publishStreamedMessage(
+          content: string,
+          complete: boolean,
+          spokenSummary?: string,
+        ) {
+          setMessages((old) => {
+            const lastIndex = old.length - 1;
+            const last = old[lastIndex];
+
+            const message: Message = {
+              role: "assistant",
+              content,
+              ...(complete
+                ? (spokenSummary ? { spokenSummary } : {})
+                : { streaming: true }),
+            };
+
+            if (last?.role === "assistant" && last.streaming) {
+              return [...old.slice(0, lastIndex), message];
+            }
+
+            return [...old, message];
+          });
+        }
+
+        function processTextEvent(eventText: string) {
+          const data = eventText
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim())
+            .join("\n");
+
+          if (!data) return;
+
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(data);
+          } catch {
+            return;
+          }
+
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            return;
+          }
+
+          const event = parsed as Record<string, unknown>;
+
+          if (event.type === "delta" && typeof event.text === "string") {
+            partialAnswer += event.text;
+            publishStreamedMessage(partialAnswer, false);
+            return;
+          }
+
+          if (
+            event.type === "complete" &&
+            typeof event.answer === "string" &&
+            typeof event.spokenSummary === "string"
+          ) {
+            completedResponseRef.current = {
+              answer: event.answer,
+              spokenSummary: event.spokenSummary,
+            };
+            return;
+          }
+
+          if (event.type === "error" && typeof event.error === "string") {
+            streamError = event.error;
+          }
+        }
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            pending += decoder.decode(value, { stream: true });
+            const events = pending.split(/\r?\n\r?\n/);
+            pending = events.pop() ?? "";
+
+            for (const event of events) processTextEvent(event);
+          }
+
+          pending += decoder.decode();
+          if (pending.trim()) processTextEvent(pending);
+        } catch {
+          streamError = "The response stream was interrupted. Please try again.";
+        } finally {
+          try {
+            reader.releaseLock();
+          } catch {
+            // Ignore an already released reader.
+          }
+        }
+
+        const completedResponse = completedResponseRef.current;
+
+        if (streamError) {
+          if (partialAnswer) publishStreamedMessage(partialAnswer, true);
+          setError(streamError);
+          return;
+        }
+
+        if (!completedResponse) {
+          if (partialAnswer) publishStreamedMessage(partialAnswer, true);
+          setError("The assistant response stream ended unexpectedly. Please try again.");
+          return;
+        }
+
+        publishStreamedMessage(
+          completedResponse.answer,
+          true,
+          completedResponse.spokenSummary,
+        );
+
+        if (voiceModeRef.current) {
+          void speakMessage(completedResponse.spokenSummary, messages.length + 1);
+        }
+        return;
+      }
+
       if (mode === "voice-chat") {
         if (!response.ok) {
           const failedPayload: unknown = await response.json().catch(() => null);

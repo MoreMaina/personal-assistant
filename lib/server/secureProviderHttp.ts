@@ -349,6 +349,7 @@ export async function secureOpenAICompatibleRequest(
 
 export type SecureProviderStreamPath =
   | "/google/stream-generate-content"
+  | "/openai/chat/completions"
   | "/elevenlabs/tts";
 
 export type SecureProviderStreamRequest = {
@@ -397,6 +398,7 @@ export async function secureProviderHttpStream(
 
   const target = new URL(baseUrl);
   const isGoogle = input.path === "/google/stream-generate-content";
+  const isOpenAICompatible = input.path === "/openai/chat/completions";
   let endpointPath: string;
   let endpointQuery: string;
 
@@ -406,10 +408,7 @@ export async function secureProviderHttpStream(
         ? input.model.replace(/^models\//, "")
         : "";
 
-    if (
-      !normalizeAIProviderModelId(model) ||
-      /[/:]/.test(model)
-    ) {
+    if (!normalizeAIProviderModelId(model) || /[/:]/.test(model)) {
       throw new Error("The Google generation model ID is invalid.");
     }
 
@@ -425,7 +424,21 @@ export async function secureProviderHttpStream(
     endpointPath =
       `/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent`;
     endpointQuery = "?alt=sse";
-  } else {
+  } else if (isOpenAICompatible) {
+    const model =
+      typeof input.model === "string"
+        ? input.model
+        : "";
+
+    if (!normalizeAIProviderModelId(model)) {
+      throw new Error("The OpenAI-compatible model ID is invalid.");
+    }
+
+    // Preserve the user-configured API base path, e.g. /v1.
+    endpointPath =
+      `${target.pathname.replace(/\/+$/, "")}/chat/completions`;
+    endpointQuery = "";
+  } else if (input.path === "/elevenlabs/tts") {
     const model =
       typeof input.model === "string"
         ? input.model
@@ -435,10 +448,7 @@ export async function secureProviderHttpStream(
         ? input.voiceId
         : "";
 
-    if (
-      !normalizeAIProviderModelId(model) ||
-      /[/:]/.test(model)
-    ) {
+    if (!normalizeAIProviderModelId(model) || /[/:]/.test(model)) {
       throw new Error("The ElevenLabs speech model ID is invalid.");
     }
 
@@ -458,6 +468,8 @@ export async function secureProviderHttpStream(
     endpointPath =
       `/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream`;
     endpointQuery = "?output_format=pcm_24000";
+  } else {
+    throw new Error("The requested streaming operation is not supported.");
   }
 
   target.pathname = endpointPath;
@@ -519,12 +531,16 @@ export async function secureProviderHttpStream(
     Math.min(input.timeoutMs ?? 45_000, 60_000),
   );
 
+  const isElevenLabs = input.path === "/elevenlabs/tts";
+
   const headers: Record<string, string> = {
-    Accept: isGoogle ? "text/event-stream" : "audio/*",
+    Accept: isElevenLabs ? "audio/*" : "text/event-stream",
     "Content-Type": "application/json",
     ...(isGoogle
       ? { "x-goog-api-key": input.apiKey }
-      : { "xi-api-key": input.apiKey }),
+      : isElevenLabs
+        ? { "xi-api-key": input.apiKey }
+        : { Authorization: `Bearer ${input.apiKey}` }),
   };
 
   return new Promise<SecureProviderStreamResponse>((resolve, reject) => {

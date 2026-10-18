@@ -654,6 +654,7 @@ export async function POST(request: Request) {
   const isTaskProposal = requestMode === "task-proposal";
   const isDailyPlan = requestMode === "daily-plan";
   const isVoiceChat = requestMode === "voice-chat";
+  const wantsTextStream = body.streamText === true && requestMode === "chat";
   const relevantContext = context
     ? selectRelevantAssistantContext(context, question)
     : undefined;
@@ -675,6 +676,339 @@ export async function POST(request: Request) {
         : SYSTEM_INSTRUCTIONS;
 
   promptReadyAt = Date.now();
+
+  // Ordinary text chat can stream across supported provider protocols.
+  // Voice Mode and structured task proposals keep their existing flows.
+  if (wantsTextStream) {
+    const streamSystemInstructions = systemInstructions.replace(
+      /For normal chat requests, return only a JSON object with exactly two string[\s\S]*?If the answer is short, summarize it faithfully in one concise sentence\./,
+      "For streamed text chat, return only the complete answer as Markdown. " +
+      "Do not wrap the answer in JSON or generate a separate spokenSummary. " +
+      "Keep the answer accurate, concise, and grounded in the supplied context.",
+    );
+
+    if (
+      streamSystemInstructions === systemInstructions &&
+      systemInstructions.includes("For normal chat requests, return only a JSON object")
+    ) {
+      return reply({ error: "The streamed chat instructions could not be prepared." }, 500);
+    }
+
+    const googleBody = JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: streamSystemInstructions }],
+      },
+      contents: [{
+        role: "user",
+        parts: [{ text: prompt }],
+      }],
+      generationConfig: {
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+      },
+    });
+
+    const makeOpenAIStreamBody = (providerModel: string) => JSON.stringify({
+      model: providerModel,
+      messages: [
+        { role: "system", content: streamSystemInstructions },
+        { role: "user", content: prompt },
+      ],
+      stream: true,
+      max_tokens: MAX_OUTPUT_TOKENS,
+    });
+
+    let upstreamStatus = 502;
+    let upstreamBody: ReadableStream<Uint8Array> | null = null;
+    let streamFormat: "google" | "openai" = "google";
+    const streamProvider =
+      savedGoogleConfig?.providerType ??
+      customProviderConfig?.providerType ??
+      reasoningProvider;
+    const streamProviderStartedAt = Date.now();
+
+    try {
+      if (savedGoogleConfig) {
+        const upstream = await secureProviderHttpStream({
+          baseUrl: savedGoogleConfig.baseUrl,
+          apiKey: savedGoogleConfig.apiKey,
+          path: "/google/stream-generate-content",
+          model: savedGoogleConfig.model,
+          body: googleBody,
+          timeoutMs: 30_000,
+        });
+
+        upstreamStatus = upstream.status;
+        upstreamBody = upstream.body;
+        streamFormat = "google";
+      } else if (customProviderConfig?.providerType === "openai_compatible") {
+        const upstream = await secureProviderHttpStream({
+          baseUrl: customProviderConfig.baseUrl,
+          apiKey: customProviderConfig.apiKey,
+          path: "/openai/chat/completions",
+          model: customProviderConfig.model,
+          body: makeOpenAIStreamBody(customProviderConfig.model),
+          timeoutMs: 30_000,
+        });
+
+        upstreamStatus = upstream.status;
+        upstreamBody = upstream.body;
+        streamFormat = "openai";
+      } else if (reasoningProvider === "gemini" && apiKey) {
+        const upstream = await secureProviderHttpStream({
+          baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+          apiKey,
+          path: "/google/stream-generate-content",
+          model,
+          body: googleBody,
+          timeoutMs: 30_000,
+        });
+
+        upstreamStatus = upstream.status;
+        upstreamBody = upstream.body;
+        streamFormat = "google";
+      } else if (reasoningProvider === "deepseek" && deepseekApiKey) {
+        const upstream = await fetch("https://api.deepseek.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${deepseekApiKey}`,
+          },
+          body: makeOpenAIStreamBody(
+            process.env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",
+          ),
+          cache: "no-store",
+          signal: AbortSignal.timeout(30_000),
+        });
+
+        upstreamStatus = upstream.status;
+        upstreamBody = upstream.body;
+        streamFormat = "openai";
+      } else {
+        return reply({
+          error: "Streaming is not available for this provider configuration.",
+        }, 409);
+      }
+    } catch {
+      return reply({
+        error: "The assistant could not open the provider stream. Check the connection and try again.",
+      }, 502);
+    }
+
+    const upstreamHeadersAt = Date.now();
+
+    if (!upstreamBody) {
+      return reply({ error: "The provider returned no response stream." }, 502);
+    }
+
+    if (upstreamStatus >= 300 && upstreamStatus < 400) {
+      await upstreamBody.cancel().catch(() => undefined);
+      return reply({ error: "The provider returned a redirect, which is blocked for security." }, 502);
+    }
+
+    if (upstreamStatus < 200 || upstreamStatus >= 300) {
+      await upstreamBody.cancel().catch(() => undefined);
+
+      if (upstreamStatus === 429) {
+        return reply({ error: "The provider rate limit was reached. Try again shortly." }, 429);
+      }
+      if (upstreamStatus === 401 || upstreamStatus === 403) {
+        return reply({ error: "The provider rejected the saved API key or its permissions." }, 503);
+      }
+      return reply({
+        error: `The provider could not start a streaming response (HTTP ${upstreamStatus}).`,
+      }, 502);
+    }
+
+    const sourceReader = upstreamBody.getReader();
+    const encoder = new TextEncoder();
+
+    const serverTiming = [
+      `setup;dur=${Math.max(0, authenticatedAt - requestStartedAt)}`,
+      `state;dur=${Math.max(0, stateReadAt - authenticatedAt)}`,
+      `context;dur=${Math.max(0, promptReadyAt - stateReadAt)}`,
+      `upstream;dur=${Math.max(0, upstreamHeadersAt - streamProviderStartedAt)}`,
+    ].join(", ");
+
+    const eventStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        let pending = "";
+        let answer = "";
+        let firstDeltaAt: number | null = null;
+
+        function emit(event: Record<string, unknown>) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+          );
+        }
+
+        function processEvent(eventText: string) {
+          const data = eventText
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim())
+            .join("\n");
+
+          if (!data || data === "[DONE]") return;
+
+          let payload: unknown;
+          try {
+            payload = JSON.parse(data);
+          } catch {
+            return;
+          }
+
+          if (!isRecord(payload)) return;
+
+          let delta = "";
+
+          if (streamFormat === "google") {
+            const candidates = Array.isArray(payload.candidates)
+              ? payload.candidates
+              : [];
+            const candidate = candidates[0];
+            const content =
+              isRecord(candidate) && isRecord(candidate.content)
+                ? candidate.content
+                : null;
+            const parts = content && Array.isArray(content.parts)
+              ? content.parts
+              : [];
+
+            delta = parts
+              .filter((part): part is Record<string, unknown> =>
+                isRecord(part) &&
+                typeof part.text === "string" &&
+                part.thought !== true)
+              .map((part) => part.text as string)
+              .join("");
+          } else {
+            const choices = Array.isArray(payload.choices)
+              ? payload.choices
+              : [];
+            const choice = choices[0];
+            const detail =
+              isRecord(choice) && isRecord(choice.delta)
+                ? choice.delta
+                : null;
+            const content = detail?.content;
+
+            if (typeof content === "string") {
+              delta = content;
+            } else if (Array.isArray(content)) {
+              delta = content
+                .filter((part): part is Record<string, unknown> =>
+                  isRecord(part) && typeof part.text === "string")
+                .map((part) => part.text as string)
+                .join("");
+            }
+          }
+
+          if (!delta) return;
+
+          if (firstDeltaAt === null) {
+            firstDeltaAt = Date.now();
+            logPerformance("[assistant stream timing]", JSON.stringify({
+              stage: "first_text_delta",
+              provider: streamProvider,
+              model,
+              timeToFirstTokenMs: firstDeltaAt - streamProviderStartedAt,
+              upstreamHeadersMs: upstreamHeadersAt - streamProviderStartedAt,
+            }));
+          }
+
+          answer += delta;
+          emit({ type: "delta", text: delta });
+        }
+
+        const upstreamDecoder = new TextDecoder();
+
+        try {
+          // Flush headers/body immediately; real text follows as the model generates it.
+          controller.enqueue(encoder.encode(": stream-open\n\n"));
+
+          while (true) {
+            const { done, value } = await sourceReader.read();
+            if (done) break;
+
+            pending += upstreamDecoder.decode(value, { stream: true });
+            const events = pending.split(/\r?\n\r?\n/);
+            pending = events.pop() ?? "";
+
+            for (const event of events) processEvent(event);
+          }
+
+          pending += upstreamDecoder.decode();
+          if (pending.trim()) processEvent(pending);
+
+          const completedAnswer = answer.trim();
+
+          if (!completedAnswer) {
+            emit({
+              type: "error",
+              error: "The provider stream ended without any answer text. Try again or disable streaming for this connection.",
+            });
+          } else {
+            const words = completedAnswer.split(/\s+/);
+            const spokenSummary = words.length > 35
+              ? words.slice(0, 35).join(" ") + "…"
+              : completedAnswer;
+
+            emit({
+              type: "complete",
+              answer: completedAnswer,
+              spokenSummary,
+            });
+          }
+
+          logPerformance("[assistant stream timing]", JSON.stringify({
+            stage: "complete",
+            provider: streamProvider,
+            model,
+            upstreamHeadersMs: upstreamHeadersAt - streamProviderStartedAt,
+            timeToFirstTokenMs: firstDeltaAt === null
+              ? null
+              : firstDeltaAt - streamProviderStartedAt,
+            providerStreamMs: Date.now() - upstreamHeadersAt,
+            totalMs: Date.now() - requestStartedAt,
+            answerCharacters: answer.length,
+          }));
+
+          controller.close();
+        } catch {
+          try {
+            emit({
+              type: "error",
+              error: "The response stream was interrupted. Please try again.",
+            });
+            controller.close();
+          } catch {
+            // The client may already have cancelled the stream.
+          }
+        } finally {
+          try {
+            sourceReader.releaseLock();
+          } catch {
+            // Ignore a reader that is already released.
+          }
+        }
+      },
+      cancel(reason) {
+        void sourceReader.cancel(reason).catch(() => undefined);
+      },
+    });
+
+    return new Response(eventStream, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "X-Content-Type-Options": "nosniff",
+        "X-Accel-Buffering": "no",
+        "Server-Timing": serverTiming,
+      },
+    });
+  }
+
   if (isVoiceChat) {
     if (!apiKey) {
       return reply({
