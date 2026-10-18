@@ -488,6 +488,17 @@ export async function POST(request: Request) {
   authenticatedAt = Date.now();
   stateReadAt = authenticatedAt;
 
+  // Start the user-state request early so its database I/O can overlap
+  // with provider-profile verification and credential preparation.
+  const appStatePromise = requestMode !== "daily-plan"
+    ? supabase
+        .from("user_app_state")
+        .select("data")
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then((result) => result)
+    : null;
+
   let customProviderConfig: {
     baseUrl: string;
     apiKey: string;
@@ -623,12 +634,16 @@ export async function POST(request: Request) {
   // Daily planning receives its task and free-window snapshot from Today.
   // Avoid loading and sending unrelated project, reading, and study context.
   if (requestMode !== "daily-plan") {
-    // RLS is the primary boundary; the signed-in user filter is additional.
-    const { data: stateRow, error: stateError } = await supabase
-      .from("user_app_state")
-      .select("data")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // Reuse the authenticated-user query started earlier in parallel.
+    const pendingStateQuery = appStatePromise;
+
+    if (!pendingStateQuery) {
+      return reply({
+        error: "Your synchronized app data could not be loaded. Please try again.",
+      }, 503);
+    }
+
+    const { data: stateRow, error: stateError } = await pendingStateQuery;
 
     if (stateError) {
       return reply({
