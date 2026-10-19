@@ -857,9 +857,12 @@ export default function AssistantPage() {
 
       const debugAssistantTiming =
         new URLSearchParams(window.location.search).get("debugAssistantTiming") === "1";
+      const assistantEndpoint = debugAssistantTiming
+        ? "/api/assistant?debugAssistantTiming=1"
+        : "/api/assistant";
       const clientRequestStartedAt = performance.now();
 
-      let response = await fetch("/api/assistant", {
+      let response = await fetch(assistantEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestPayload),
@@ -877,7 +880,7 @@ export default function AssistantPage() {
           rejectedPayload.error ===
             "Streaming is not available for this provider configuration."
         ) {
-          response = await fetch("/api/assistant", {
+          response = await fetch(assistantEndpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...requestPayload, streamText: false }),
@@ -898,6 +901,12 @@ export default function AssistantPage() {
         const decoder = new TextDecoder();
         let pending = "";
         let firstTextAt: number | null = null;
+        let serverFirstTextTiming: {
+          serverTimeToFirstTextMs: number;
+          providerRequestToHeadersMs: number;
+          providerHeadersToFirstTextMs: number;
+          providerRequestToFirstTextMs: number;
+        } | null = null;
         let partialAnswer = "";
         let streamError = "";
         const completedResponseRef: {
@@ -950,6 +959,23 @@ export default function AssistantPage() {
           }
 
           const event = parsed as Record<string, unknown>;
+
+          if (
+            event.type === "diagnostic" &&
+            event.name === "server_first_text" &&
+            typeof event.serverTimeToFirstTextMs === "number" &&
+            typeof event.providerRequestToHeadersMs === "number" &&
+            typeof event.providerHeadersToFirstTextMs === "number" &&
+            typeof event.providerRequestToFirstTextMs === "number"
+          ) {
+            serverFirstTextTiming = {
+              serverTimeToFirstTextMs: event.serverTimeToFirstTextMs,
+              providerRequestToHeadersMs: event.providerRequestToHeadersMs,
+              providerHeadersToFirstTextMs: event.providerHeadersToFirstTextMs,
+              providerRequestToFirstTextMs: event.providerRequestToFirstTextMs,
+            };
+            return;
+          }
 
           if (event.type === "delta" && typeof event.text === "string") {
             if (firstTextAt === null) firstTextAt = performance.now();
@@ -1010,6 +1036,7 @@ export default function AssistantPage() {
             afterFirstTextMs: firstTextAt === null
               ? null
               : Math.round(streamFinishedAt - firstTextAt),
+            serverFirstTextTiming,
             completed: completedResponseRef.current !== null,
             interrupted: Boolean(streamError),
           });

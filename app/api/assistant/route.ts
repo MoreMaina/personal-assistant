@@ -370,6 +370,10 @@ function extractCompletedJsonStringField(
 
 export async function POST(request: Request) {
   const requestStartedAt = Date.now();
+  const debugAssistantTimingEnabled =
+    new URL(request.url).searchParams.get("debugAssistantTiming") === "1" &&
+    (process.env.VERCEL_ENV === "preview" ||
+      process.env.NODE_ENV === "development");
   let authenticatedAt = requestStartedAt;
   let stateReadAt = requestStartedAt;
   let promptReadyAt = requestStartedAt;
@@ -932,6 +936,21 @@ export async function POST(request: Request) {
               timeToFirstTokenMs: firstDeltaAt - streamProviderStartedAt,
               upstreamHeadersMs: upstreamHeadersAt - streamProviderStartedAt,
             }));
+
+            // Send timing-only diagnostics to explicitly opted-in Preview clients.
+            if (debugAssistantTimingEnabled) {
+              emit({
+                type: "diagnostic",
+                name: "server_first_text",
+                serverTimeToFirstTextMs: firstDeltaAt - requestStartedAt,
+                providerRequestToHeadersMs:
+                  upstreamHeadersAt - streamProviderStartedAt,
+                providerHeadersToFirstTextMs:
+                  firstDeltaAt - upstreamHeadersAt,
+                providerRequestToFirstTextMs:
+                  firstDeltaAt - streamProviderStartedAt,
+              });
+            }
           }
 
           answer += delta;
