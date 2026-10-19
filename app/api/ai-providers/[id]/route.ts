@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isAIProviderType } from "@/lib/aiProviderTypes";
 import {
   isAIProviderProfileId,
   normalizeAIProviderBaseUrl,
@@ -47,10 +48,16 @@ async function readJson(request: Request): Promise<unknown | null> {
 function summary(row: RecordValue) {
   return {
     id: row.id,
+    providerType: isAIProviderType(row.provider_type)
+      ? row.provider_type
+      : "openai_compatible",
     name: row.name,
     baseUrl: row.base_url,
     models: Array.isArray(row.models)
       ? row.models.filter((item): item is string => typeof item === "string")
+      : [],
+    speechModels: Array.isArray(row.speech_models)
+      ? row.speech_models.filter((item): item is string => typeof item === "string")
       : [],
     selectedModel: typeof row.selected_model === "string"
       ? row.selected_model
@@ -93,7 +100,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const { data: existing, error: readError } = await supabase
     .from("user_ai_provider_profiles")
-    .select("id,name,base_url,models,selected_model,enabled,encrypted_api_key,created_at,updated_at")
+    .select("*")
     .eq("id", id)
     .eq("user_id", authData.user.id)
     .maybeSingle();
@@ -105,6 +112,23 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const current = existing as unknown as RecordValue;
   const updates: RecordValue = { updated_at: new Date().toISOString() };
+
+  if (body.speechModels !== undefined) {
+    const speechModels = normalizeAIProviderModels(body.speechModels);
+    if (!speechModels) {
+      return reply({
+        error: "The speech model list is invalid or too large.",
+      }, 400);
+    }
+    updates.speech_models = speechModels;
+  }
+
+  if (body.providerType !== undefined) {
+    if (!isAIProviderType(body.providerType)) {
+      return reply({ error: "Choose a supported API connection type." }, 400);
+    }
+    updates.provider_type = body.providerType;
+  }
 
   const name = Object.prototype.hasOwnProperty.call(body, "name")
     ? normalizeAIProviderName(body.name)
@@ -175,12 +199,17 @@ export async function PATCH(request: Request, context: RouteContext) {
     .update(updates)
     .eq("id", id)
     .eq("user_id", authData.user.id)
-    .select("id,name,base_url,models,selected_model,enabled,created_at,updated_at")
+    .select("*")
     .maybeSingle();
 
   if (error) {
     if (error.code === "23505") {
       return reply({ error: "A provider with that name already exists." }, 409);
+    }
+    if (error.code === "42703" || error.code === "PGRST204") {
+      return reply({
+        error: "Connection types are not available yet. Apply the AI provider connection-types database migration.",
+      }, 503);
     }
     return reply({ error: "The provider profile could not be updated." }, 503);
   }

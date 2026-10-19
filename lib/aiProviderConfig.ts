@@ -114,7 +114,7 @@ export function normalizeAIProviderModelId(value: unknown): string | null {
   if (
     modelId.length < 1 ||
     modelId.length > MAX_AI_PROVIDER_MODEL_ID_LENGTH ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(modelId)
+    !/^[A-Za-z0-9][A-Za-z0-9._:/_-]*$/.test(modelId)
   ) {
     return null;
   }

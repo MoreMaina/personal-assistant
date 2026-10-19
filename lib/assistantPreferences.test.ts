@@ -1,73 +1,77 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_AI_PREFERENCES,
-  isGeminiReasoningModel,
-  isReasoningProvider,
   isProviderProfileId,
   isCustomProviderModelId,
-  isSpeechProvider,
   isGeminiTtsVoice,
   isElevenLabsVoiceId,
   normalizeAIPreferences,
 } from "./assistantPreferences";
 
 describe("AI preferences", () => {
-  it("defaults to the existing Gemini model and ElevenLabs", () => {
+  it("starts with no built-in connection selected", () => {
     expect(DEFAULT_AI_PREFERENCES).toEqual({
-      reasoningProvider: "gemini",
-      reasoningModel: "gemini-3.1-flash-lite",
-      customProviderProfileId: "",
-      customProviderModel: "",
-      speechProvider: "elevenlabs",
-      browserVoiceURI: "",
-      geminiTtsVoice: "Achird",
-      elevenLabsVoiceId: "JBFqnCBsd6RMkjVDRZzb",
+      reasoningConnectionId: "",
+      reasoningModel: "",
+      speechConnectionId: "",
+      speechModel: "",
+      speechVoiceId: "",
     });
   });
 
-  it("accepts only supported reasoning providers", () => {
-    expect(isReasoningProvider("gemini")).toBe(true);
-    expect(isReasoningProvider("deepseek")).toBe(true);
-    expect(isReasoningProvider("custom")).toBe(true);
-    expect(isReasoningProvider("unknown-provider")).toBe(false);
+  it("validates connection and model IDs", () => {
     expect(isProviderProfileId("550e8400-e29b-41d4-a716-446655440000")).toBe(true);
     expect(isProviderProfileId("not-a-uuid")).toBe(false);
     expect(isCustomProviderModelId("provider/model-v2")).toBe(true);
+    expect(isCustomProviderModelId("eleven_multilingual_v2")).toBe(true);
     expect(isCustomProviderModelId("../invalid")).toBe(false);
     expect(isCustomProviderModelId("model name")).toBe(false);
   });
 
-  it("accepts only supported Gemini model IDs", () => {
-    expect(isGeminiReasoningModel("gemini-3.8-flash")).toBe(true);
-    expect(isGeminiReasoningModel("gemini-2.0-flash")).toBe(false);
-    expect(isGeminiReasoningModel("arbitrary-model")).toBe(false);
-  });
-
-  it("accepts only supported speech providers", () => {
-    expect(isSpeechProvider("elevenlabs")).toBe(true);
-    expect(isSpeechProvider("gemini")).toBe(true);
-    expect(isSpeechProvider("browser")).toBe(true);
-    expect(isSpeechProvider("unknown")).toBe(false);
-  });
-
-  it("accepts only supported Gemini TTS voices and safe ElevenLabs voice IDs", () => {
+  it("validates protocol voice IDs", () => {
     expect(isGeminiTtsVoice("Achird")).toBe(true);
-    expect(isGeminiTtsVoice("Zephyr")).toBe(true);
-    expect(isGeminiTtsVoice("not-a-real-voice")).toBe(false);
     expect(isElevenLabsVoiceId("JBFqnCBsd6RMkjVDRZzb")).toBe(true);
     expect(isElevenLabsVoiceId("../invalid")).toBe(false);
   });
 
-  it("normalizes invalid saved preferences to safe defaults", () => {
+  it("preserves an existing saved custom reasoning connection", () => {
     expect(normalizeAIPreferences({
-      reasoningProvider: "unknown-provider",
-      reasoningModel: "unknown-model",
-      customProviderProfileId: "../../profile",
-      customProviderModel: "../invalid",
-      speechProvider: "unknown-provider",
-      geminiTtsVoice: "not-a-real-voice",
-      elevenLabsVoiceId: "../invalid",
-      browserVoiceURI: "x".repeat(600),
+      reasoningProvider: "custom",
+      customProviderProfileId: "550e8400-e29b-41d4-a716-446655440000",
+      customProviderModel: "provider/model-v2",
+      speechProvider: "elevenlabs",
+      elevenLabsVoiceId: "JBFqnCBsd6RMkjVDRZzb",
+    })).toEqual({
+      reasoningConnectionId: "550e8400-e29b-41d4-a716-446655440000",
+      reasoningModel: "provider/model-v2",
+      speechConnectionId: "",
+      speechModel: "",
+      speechVoiceId: "JBFqnCBsd6RMkjVDRZzb",
+    });
+  });
+
+  it("does not restore legacy built-in services as selected connections", () => {
+    expect(normalizeAIPreferences({
+      reasoningProvider: "gemini",
+      reasoningModel: "gemini-3.1-flash-lite",
+      speechProvider: "gemini",
+      geminiTtsVoice: "Achird",
+    })).toEqual({
+      reasoningConnectionId: "",
+      reasoningModel: "",
+      speechConnectionId: "",
+      speechModel: "",
+      speechVoiceId: "Achird",
+    });
+  });
+
+  it("normalizes malformed preferences safely", () => {
+    expect(normalizeAIPreferences({
+      reasoningConnectionId: "../../profile",
+      reasoningModel: "../invalid",
+      speechConnectionId: "invalid",
+      speechModel: "model name",
+      speechVoiceId: "../invalid",
     })).toEqual(DEFAULT_AI_PREFERENCES);
   });
 });

@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isAIProviderType } from "@/lib/aiProviderTypes";
 import {
   isAIProviderProfileId,
   normalizeAIProviderBaseUrl,
   normalizeAIProviderModels,
 } from "@/lib/aiProviderConfig";
 import { decryptAIProviderApiKey } from "@/lib/server/aiProviderCrypto";
-import { secureOpenAICompatibleRequest } from "@/lib/server/secureProviderHttp";
+import {
+  secureOpenAICompatibleRequest,
+  secureProviderHttpRequest,
+} from "@/lib/server/secureProviderHttp";
 
 
 type RecordValue = Record<string, unknown>;
@@ -71,6 +75,17 @@ export async function POST(request: Request) {
     return reply({ error: "Invalid saved provider profile ID." }, 400);
   }
 
+  const requestedProviderType: unknown =
+    body.providerType === undefined
+      ? "openai_compatible"
+      : body.providerType;
+
+  if (!isAIProviderType(requestedProviderType)) {
+    return reply({ error: "Choose a supported API connection type." }, 400);
+  }
+
+  let providerType = requestedProviderType;
+
   if (savedProfileId && (
     body.baseUrl !== undefined || body.apiKey !== undefined
   )) {
@@ -111,7 +126,7 @@ export async function POST(request: Request) {
   if (savedProfileId) {
     const { data: profile, error: profileError } = await supabase
       .from("user_ai_provider_profiles")
-      .select("base_url,encrypted_api_key")
+      .select("*")
       .eq("id", savedProfileId)
       .eq("user_id", authData.user.id)
       .maybeSingle();
@@ -122,6 +137,10 @@ export async function POST(request: Request) {
     if (!profile) {
       return reply({ error: "Saved provider profile not found." }, 404);
     }
+
+    providerType = isAIProviderType(profile.provider_type)
+      ? profile.provider_type
+      : "openai_compatible";
 
     baseUrl = normalizeAIProviderBaseUrl(profile.base_url);
     try {
@@ -143,16 +162,28 @@ export async function POST(request: Request) {
 
   let upstream;
   try {
-    upstream = await secureOpenAICompatibleRequest({
-      baseUrl,
-      apiKey,
-      path: "/models",
-      method: "GET",
-      timeoutMs: 12_000,
-    });
+    if (providerType === "openai_compatible") {
+      upstream = await secureOpenAICompatibleRequest({
+        baseUrl,
+        apiKey,
+        path: "/models",
+        method: "GET",
+        timeoutMs: 12_000,
+      });
+    } else {
+      upstream = await secureProviderHttpRequest({
+        baseUrl,
+        apiKey,
+        path: providerType === "google_generative_language"
+          ? "/google/models"
+          : "/elevenlabs/models",
+        method: "GET",
+        timeoutMs: 12_000,
+      });
+    }
   } catch {
     return reply({
-      error: "Could not safely connect to that provider. Check its HTTPS URL, DNS configuration, and network availability.",
+      error: "Could not safely connect to that provider. Check its connection type, HTTPS URL, DNS configuration, and network availability.",
     }, 502);
   }
 
@@ -163,7 +194,7 @@ export async function POST(request: Request) {
   }
   if (upstream.status === 401 || upstream.status === 403) {
     return reply({
-      error: "The provider rejected the key or does not permit model-list access. If it supports chat completions without model discovery, you can add model IDs manually.",
+      error: "The provider rejected the key or does not permit model-list access. Check the credential and account permissions.",
     }, 400);
   }
   if (upstream.status === 429) {
@@ -175,7 +206,7 @@ export async function POST(request: Request) {
     }, 502);
   }
   if (!upstream.contentType.toLowerCase().includes("json")) {
-    return reply({ error: "The provider did not return JSON from its models endpoint." }, 502);
+    return reply({ error: "The provider did not return JSON from its model-list endpoint." }, 502);
   }
 
   let payload: unknown;
@@ -185,10 +216,97 @@ export async function POST(request: Request) {
     return reply({ error: "The provider returned malformed JSON." }, 502);
   }
 
+  const providerLabel = new URL(baseUrl).hostname;
+
+  // ElevenLabs returns a top-level array. Only models explicitly marked
+  // as text-to-speech capable belong in the speech model selector.
+  if (providerType === "elevenlabs_tts") {
+    if (!Array.isArray(payload)) {
+      return reply({ error: "The speech provider returned an unexpected model-list format." }, 502);
+    }
+
+    const speechModelIds = payload
+      .filter(
+        (item): item is Record<string, unknown> =>
+          isRecord(item) &&
+          item.can_do_text_to_speech === true &&
+          typeof item.model_id === "string",
+      )
+      .slice(0, 100)
+      .map((item) => item.model_id as string);
+
+    const speechModels = normalizeAIProviderModels(speechModelIds);
+    if (!speechModels) {
+      return reply({ error: "The speech provider returned invalid model IDs." }, 502);
+    }
+
+    return reply({
+      models: [],
+      speechModels,
+      truncated: payload.length > 100,
+      providerLabel,
+    });
+  }
+
   if (!isRecord(payload)) {
     return reply({ error: "The provider returned an unexpected model-list format." }, 502);
   }
 
+  // Google's model resources use baseModelId/name plus supported
+  // generation methods, rather than the OpenAI { data: [{ id }] } shape.
+  if (providerType === "google_generative_language") {
+    const rawModels = Array.isArray(payload.models) ? payload.models : null;
+
+    if (!rawModels) {
+      return reply({ error: "No compatible Google model list was found." }, 502);
+    }
+
+    const reasoningCandidates: string[] = [];
+    const speechCandidates: string[] = [];
+
+    for (const item of rawModels.slice(0, 100)) {
+      if (!isRecord(item)) continue;
+
+      const modelId =
+        typeof item.baseModelId === "string"
+          ? item.baseModelId
+          : typeof item.name === "string"
+            ? item.name.replace(/^models\//, "")
+            : "";
+
+      if (!modelId) continue;
+
+      // Gemini TTS model IDs are kept out of the reasoning list.
+      if (/(^|[-_])tts($|[-_])/i.test(modelId)) {
+        speechCandidates.push(modelId);
+        continue;
+      }
+
+      const methods = Array.isArray(item.supportedGenerationMethods)
+        ? item.supportedGenerationMethods
+        : [];
+
+      if (methods.includes("generateContent")) {
+        reasoningCandidates.push(modelId);
+      }
+    }
+
+    const models = normalizeAIProviderModels(reasoningCandidates);
+    const speechModels = normalizeAIProviderModels(speechCandidates);
+
+    if (!models || !speechModels) {
+      return reply({ error: "Google returned invalid model IDs." }, 502);
+    }
+
+    return reply({
+      models,
+      speechModels,
+      truncated: rawModels.length > 100,
+      providerLabel,
+    });
+  }
+
+  // Retain support for existing OpenAI-compatible chat connections.
   const rawModels = Array.isArray(payload.data)
     ? payload.data
     : Array.isArray(payload.models)
@@ -207,7 +325,8 @@ export async function POST(request: Request) {
   // The supplied credential is never persisted or reflected in the response.
   return reply({
     models,
+    speechModels: [],
     truncated: rawModels.length > 100,
-    providerLabel: new URL(baseUrl).hostname,
+    providerLabel,
   });
 }

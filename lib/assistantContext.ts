@@ -326,6 +326,20 @@ export function selectRelevantAssistantContext(
 ): Record<string, unknown> {
   const normalized = question.toLowerCase();
 
+  // General advice and hypothetical scenarios should not receive personal
+  // records unless the question explicitly asks about the user's own data.
+  const asksForGeneralGuidance =
+    /\b(?:difference between|productivity system for someone|general (?:advice|guidance)|hypothetical|in general)\b/i
+      .test(question);
+
+  const explicitlyReferencesPersonalRecords =
+    /\b(?:my|mine|do i have|what do i have|what should i focus on|what needs my attention|tasks? i (?:need|have|should|must)|(?:tasks?|deadlines?|events?|classes?|projects?|books?|courses?) (?:i need|i have|i should|i must)|today|tomorrow|overdue|saved|recorded|on my calendar|assigned to me|for me)\b/i
+      .test(question);
+
+  if (asksForGeneralGuidance && !explicitlyReferencesPersonalRecords) {
+    return { contextScope: "general question" };
+  }
+
   if (isWeeklyReviewQuestion(question)) {
     return { ...context, contextScope: "full weekly review" };
   }

@@ -3,7 +3,20 @@ import {
   isElevenLabsVoiceId,
   isGeminiTtsVoice,
 } from "@/lib/assistantPreferences";
+import {
+  isAIProviderProfileId,
+  normalizeAIProviderBaseUrl,
+  normalizeAIProviderModelId,
+  normalizeAIProviderModels,
+} from "@/lib/aiProviderConfig";
+import {
+  isAIProviderType,
+  supportsAICapability,
+  type AIProviderType,
+} from "@/lib/aiProviderTypes";
 import { createClient } from "@/lib/supabase/server";
+import { decryptAIProviderApiKey } from "@/lib/server/aiProviderCrypto";
+import { secureProviderHttpStream } from "@/lib/server/secureProviderHttp";
 
 const MAX_TEXT_LENGTH = 4000;
 const MAX_REQUESTS_PER_DAY = 30;
@@ -67,31 +80,51 @@ export async function POST(request: Request) {
     return reply({ error: "Text to read aloud is required." }, 400);
   }
 
-  const speechProvider =
-    body.provider === undefined || body.provider === "elevenlabs"
+  const requestedProfileId =
+    body.providerProfileId === undefined
+      ? null
+      : isAIProviderProfileId(body.providerProfileId)
+        ? body.providerProfileId
+        : null;
+
+  if (body.providerProfileId !== undefined && !requestedProfileId) {
+    return reply({ error: "Invalid saved provider profile ID." }, 400);
+  }
+
+  if (requestedProfileId && body.provider !== undefined) {
+    return reply({
+      error: "Send either a saved provider profile ID or a legacy provider selection, not both.",
+    }, 400);
+  }
+
+  let speechProvider: "elevenlabs" | "gemini" | null = requestedProfileId
+    ? null
+    : body.provider === undefined || body.provider === "elevenlabs"
       ? "elevenlabs"
       : body.provider === "gemini"
         ? "gemini"
         : null;
 
-  if (!speechProvider) {
+  if (!speechProvider && !requestedProfileId) {
     return reply({ error: "Unsupported speech provider." }, 400);
   }
 
   if (
+    !requestedProfileId &&
     body.provider === "gemini" &&
     body.voice !== undefined &&
     !isGeminiTtsVoice(body.voice)
   ) {
-    return reply({ error: "Unsupported Gemini TTS voice." }, 400);
+    return reply({ error: "Unsupported Google TTS voice." }, 400);
   }
 
   if (
+    !requestedProfileId &&
     speechProvider === "elevenlabs" &&
     body.voiceId !== undefined &&
     !isElevenLabsVoiceId(body.voiceId)
   ) {
-    return reply({ error: "Invalid ElevenLabs voice ID." }, 400);
+    return reply({ error: "Invalid speech voice ID." }, 400);
   }
 
   const text = body.text.trim();
@@ -113,6 +146,103 @@ export async function POST(request: Request) {
     return reply({ error: "Please sign in to use natural voice." }, 401);
   }
 
+  let savedSpeechConfig: {
+    providerType: AIProviderType;
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+  } | null = null;
+
+  if (requestedProfileId) {
+    const { data: savedProfile, error: profileError } = await supabase
+      .from("user_ai_provider_profiles")
+      .select("*")
+      .eq("id", requestedProfileId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      return reply({
+        error: "The saved speech connection could not be loaded. Confirm that the provider migrations are applied.",
+      }, 503);
+    }
+    if (!savedProfile) {
+      return reply({ error: "Saved speech connection not found." }, 404);
+    }
+
+    const profileRow = savedProfile as unknown as Record<string, unknown>;
+    const providerType = isAIProviderType(profileRow.provider_type)
+      ? profileRow.provider_type
+      : null;
+
+    if (!providerType || !supportsAICapability(providerType, "speech")) {
+      return reply({
+        error: "This saved connection does not support speech generation.",
+      }, 409);
+    }
+    if (profileRow.enabled !== true) {
+      return reply({
+        error: "Enable this speech connection in AI & Voice Settings before using it.",
+      }, 409);
+    }
+
+    const baseUrl = normalizeAIProviderBaseUrl(profileRow.base_url);
+    if (
+      !baseUrl ||
+      typeof profileRow.encrypted_api_key !== "string" ||
+      !profileRow.encrypted_api_key
+    ) {
+      return reply({
+        error: "The saved speech connection is missing required configuration.",
+      }, 503);
+    }
+
+    const speechModels = normalizeAIProviderModels(profileRow.speech_models);
+    const selectedSpeechModel = normalizeAIProviderModelId(body.model);
+    if (
+      !speechModels ||
+      !selectedSpeechModel ||
+      !speechModels.includes(selectedSpeechModel)
+    ) {
+      return reply({
+        error: "Choose a speech model from this connection's saved speech model list.",
+      }, 400);
+    }
+
+    if (providerType === "google_generative_language") {
+      if (body.voice !== undefined && !isGeminiTtsVoice(body.voice)) {
+        return reply({ error: "Unsupported Google speech voice." }, 400);
+      }
+      speechProvider = "gemini";
+    } else if (providerType === "elevenlabs_tts") {
+      if (!isElevenLabsVoiceId(body.voiceId)) {
+        return reply({ error: "Choose a valid voice for this speech connection." }, 400);
+      }
+      speechProvider = "elevenlabs";
+    } else {
+      return reply({
+        error: "This connection protocol does not support speech generation.",
+      }, 409);
+    }
+
+    try {
+      savedSpeechConfig = {
+        providerType,
+        baseUrl,
+        apiKey: decryptAIProviderApiKey(profileRow.encrypted_api_key),
+        model: selectedSpeechModel,
+      };
+    } catch {
+      return reply({
+        error: "The saved speech credential could not be decrypted. Verify AI_PROVIDER_ENCRYPTION_KEY on the server.",
+      }, 503);
+    }
+  }
+
+  if (!speechProvider) {
+    return reply({ error: "Choose a saved speech connection." }, 400);
+  }
+
   if (!takeDailySlot(user.id)) {
     return reply({
       error: "The development limit of 30 spoken responses has been reached for today. Try again tomorrow.",
@@ -121,7 +251,8 @@ export async function POST(request: Request) {
 
   if (speechProvider === "gemini") {
     const googleApiKey =
-      process.env.GEMINI_API_KEY?.trim() ||
+      savedSpeechConfig?.apiKey ??
+      process.env.GEMINI_API_KEY?.trim() ??
       process.env.GOOGLE_API_KEY?.trim();
 
     if (!googleApiKey) {
@@ -131,15 +262,49 @@ export async function POST(request: Request) {
     }
 
     const geminiTtsModel =
-      process.env.GEMINI_TTS_MODEL?.trim() || "gemini-3.8-flash-lite-tts";
+      savedSpeechConfig?.model ??
+      process.env.GEMINI_TTS_MODEL?.trim() ??
+      "gemini-3.8-flash-lite-tts";
     const geminiTtsVoice =
       typeof body.voice === "string"
         ? body.voice
         : process.env.GEMINI_TTS_VOICE?.trim() || "Achird";
 
+    const geminiSpeechBody = {
+      contents: [{
+        parts: [{
+          text: `Speak in a warm, natural, friendly conversational style with clear pronunciation and relaxed pacing:\n${text}`,
+        }],
+      }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: geminiTtsVoice },
+          },
+        },
+      },
+    };
+
     let geminiResponse: Response;
     try {
-      geminiResponse = await fetch(
+      if (savedSpeechConfig) {
+        const streamed = await secureProviderHttpStream({
+          baseUrl: savedSpeechConfig.baseUrl,
+          apiKey: savedSpeechConfig.apiKey,
+          path: "/google/stream-generate-content",
+          model: savedSpeechConfig.model,
+          body: JSON.stringify(geminiSpeechBody),
+          timeoutMs: 45_000,
+        });
+        geminiResponse = new Response(streamed.body, {
+          status: streamed.status,
+          headers: {
+            "Content-Type": streamed.contentType || "text/event-stream",
+          },
+        });
+      } else {
+        geminiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiTtsModel)}:streamGenerateContent?alt=sse`,
         {
           method: "POST",
@@ -147,27 +312,14 @@ export async function POST(request: Request) {
             "Content-Type": "application/json",
             "x-goog-api-key": googleApiKey,
           },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `Speak in a warm, natural, friendly conversational style with clear pronunciation and relaxed pacing:\n${text}`,
-              }],
-            }],
-            generationConfig: {
-              responseModalities: ["AUDIO"],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: { voiceName: geminiTtsVoice },
-                },
-              },
-            },
-          }),
+          body: JSON.stringify(geminiSpeechBody),
           cache: "no-store",
           signal: AbortSignal.timeout(45_000),
         },
       );
+      }
     } catch {
-      return reply({ error: "Gemini TTS could not be reached. Please try again." }, 502);
+      return reply({ error: "Google TTS could not be reached. Please try again." }, 502);
     }
 
     if (!geminiResponse.ok) {
@@ -288,7 +440,7 @@ export async function POST(request: Request) {
     });
   }
 
-  const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
+  const apiKey = savedSpeechConfig?.apiKey ?? process.env.ELEVENLABS_API_KEY?.trim();
 
   if (!apiKey) {
     return reply({
@@ -303,12 +455,42 @@ export async function POST(request: Request) {
       ? body.voiceId
       : process.env.ELEVENLABS_VOICE_ID?.trim() || "JBFqnCBsd6RMkjVDRZzb";
   const model =
-    process.env.ELEVENLABS_TTS_MODEL?.trim() || "eleven_flash_v2_5";
+    savedSpeechConfig?.model ??
+    process.env.ELEVENLABS_TTS_MODEL?.trim() ??
+    "eleven_flash_v2_5";
+
+  const elevenLabsSpeechBody = {
+    text,
+    model_id: model,
+    voice_settings: {
+      stability: 0.45,
+      similarity_boost: 0.75,
+      style: 0.2,
+      use_speaker_boost: true,
+    },
+  };
 
   let upstream: Response;
 
   try {
-    upstream = await fetch(
+    if (savedSpeechConfig) {
+      const streamed = await secureProviderHttpStream({
+        baseUrl: savedSpeechConfig.baseUrl,
+        apiKey: savedSpeechConfig.apiKey,
+        path: "/elevenlabs/tts",
+        model,
+        voiceId,
+        body: JSON.stringify(elevenLabsSpeechBody),
+        timeoutMs: 45_000,
+      });
+      upstream = new Response(streamed.body, {
+        status: streamed.status,
+        headers: {
+          "Content-Type": streamed.contentType || "audio/pcm",
+        },
+      });
+    } else {
+      upstream = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}/stream?output_format=pcm_24000`,
       {
         method: "POST",
@@ -316,23 +498,15 @@ export async function POST(request: Request) {
           "Content-Type": "application/json",
           "xi-api-key": apiKey,
         },
-        body: JSON.stringify({
-          text,
-          model_id: model,
-          voice_settings: {
-            stability: 0.45,
-            similarity_boost: 0.75,
-            style: 0.2,
-            use_speaker_boost: true,
-          },
-        }),
+        body: JSON.stringify(elevenLabsSpeechBody),
         cache: "no-store",
         signal: AbortSignal.timeout(45_000),
       },
     );
+    }
   } catch {
     return reply({
-      error: "ElevenLabs could not be reached. Please try again.",
+      error: "The speech provider could not be reached. Please try again.",
     }, 502);
   }
 

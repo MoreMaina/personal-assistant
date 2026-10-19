@@ -52,7 +52,7 @@ describe("custom provider request configuration", () => {
     expect(options).not.toHaveProperty("response_format");
   });
 
-  it("preserves JSON Object Mode for other GPT-OSS requests", () => {
+  it("uses strict structured output for GPT-OSS chat", () => {
     const options = buildCustomProviderRequestOptions({
       isGroqGPTOSS: true,
       mode: "chat",
@@ -62,7 +62,22 @@ describe("custom provider request configuration", () => {
     expect(options).toMatchObject({
       max_tokens: 700,
       include_reasoning: false,
-      response_format: { type: "json_object" },
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "assistant_chat",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              answer: { type: "string" },
+              spokenSummary: { type: "string" },
+            },
+            required: ["answer", "spokenSummary"],
+            additionalProperties: false,
+          },
+        },
+      },
     });
     expect(options).not.toHaveProperty("max_completion_tokens");
   });

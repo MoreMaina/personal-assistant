@@ -43,7 +43,26 @@ export function buildCustomProviderRequestOptions(input: {
     ...(input.isGroqGPTOSS ? { include_reasoning: false } : {}),
     ...(input.isGroqGPTOSS && isDailyPlan
       ? {}
-      : { response_format: { type: "json_object" } }),
+      : input.isGroqGPTOSS && !isTaskProposal
+        ? {
+            response_format: {
+              type: "json_schema",
+              json_schema: {
+                name: "assistant_chat",
+                strict: true,
+                schema: {
+                  type: "object",
+                  properties: {
+                    answer: { type: "string" },
+                    spokenSummary: { type: "string" },
+                  },
+                  required: ["answer", "spokenSummary"],
+                  additionalProperties: false,
+                },
+              },
+            },
+          }
+        : { response_format: { type: "json_object" } }),
   };
 }
 

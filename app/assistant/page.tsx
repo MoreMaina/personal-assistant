@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { addCalendarTask, type CalendarTask } from "@/lib/calendarItemStorage";
 import { getVoiceRequestMode } from "@/lib/assistantVoiceIntent";
 import { SpeechAudioCache } from "@/lib/speechAudioCache";
+import AssistantMarkdown from "@/lib/assistantMarkdown";
 import {
   DEFAULT_AI_PREFERENCES,
   loadAIPreferences,
   type AIPreferences,
 } from "@/lib/assistantPreferences";
 
-type Message = { role: "user" | "assistant"; content: string; spokenSummary?: string };
+type Message = { role: "user" | "assistant"; content: string; spokenSummary?: string; streaming?: boolean };
 type RequestMode = "chat" | "task-proposal" | "voice-chat";
 type TaskProposal = {
   title: string;
@@ -117,6 +118,9 @@ export default function AssistantPage() {
   const [proposalError, setProposalError] = useState("");
   const proposalSaveLock = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const questionInputRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
+  const [showJumpToInput, setShowJumpToInput] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
@@ -146,6 +150,18 @@ export default function AssistantPage() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, sending]);
+
+  useEffect(() => {
+    const input = questionInputRef.current;
+    if (!input) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setShowJumpToInput(!entry.isIntersecting);
+    });
+
+    observer.observe(input);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const audioSources = audioSourcesRef.current;
@@ -272,17 +288,8 @@ export default function AssistantPage() {
 
       window.speechSynthesis.cancel();
 
-      const selectedBrowserVoice = aiPreferences.browserVoiceURI
-        ? window.speechSynthesis
-            .getVoices()
-            .find((voice) => voice.voiceURI === aiPreferences.browserVoiceURI)
-        : undefined;
-
       const utterance = new SpeechSynthesisUtterance(content);
-      utterance.lang = selectedBrowserVoice?.lang || "en-GB";
-      if (selectedBrowserVoice) {
-        utterance.voice = selectedBrowserVoice;
-      }
+      utterance.lang = "en-GB";
       utterance.onstart = () => {
         if (requestId === speechRequestRef.current) {
           setSpeakingMessageIndex(index);
@@ -382,7 +389,7 @@ export default function AssistantPage() {
         setSpeakingMessageIndex(index);
         logDiagnostic("[voice timing]", JSON.stringify({
           stage: "cached_audio_replay",
-          provider: aiPreferences.speechProvider,
+          provider: aiPreferences.speechConnectionId,
         }));
         return true;
       } catch {
@@ -390,18 +397,16 @@ export default function AssistantPage() {
       }
     }
 
-    if (aiPreferences.speechProvider === "browser") {
-      playBrowserVoice("");
+    if (!aiPreferences.speechConnectionId || !aiPreferences.speechModel) {
+      playBrowserVoice(
+        "Choose an enabled speech connection in AI & Voice Settings for generated speech. Using your browser's voice for now.",
+      );
       return;
     }
-
-    const selectedSpeechVoice =
-      aiPreferences.speechProvider === "gemini"
-        ? aiPreferences.geminiTtsVoice
-        : aiPreferences.elevenLabsVoiceId;
+    const selectedSpeechVoice = aiPreferences.speechVoiceId;
 
     const cacheKey = await makeSpeechCacheKey(
-      aiPreferences.speechProvider,
+      aiPreferences.speechConnectionId + ":" + aiPreferences.speechModel,
       selectedSpeechVoice,
       content,
     );
@@ -638,10 +643,10 @@ export default function AssistantPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: content,
-          provider: aiPreferences.speechProvider,
-          ...(aiPreferences.speechProvider === "gemini"
-            ? { voice: aiPreferences.geminiTtsVoice }
-            : { voiceId: aiPreferences.elevenLabsVoiceId }),
+          providerProfileId: aiPreferences.speechConnectionId,
+          model: aiPreferences.speechModel,
+          voice: aiPreferences.speechVoiceId,
+          voiceId: aiPreferences.speechVoiceId,
         }),
       });
 
@@ -840,24 +845,229 @@ export default function AssistantPage() {
     setSending(true);
 
     try {
-      const response = await fetch("/api/assistant", {
+      const requestPayload = {
+        question,
+        history,
+        mode,
+        streamText: mode === "chat",
+        provider: "custom",
+        providerProfileId: aiPreferences.reasoningConnectionId,
+        model: aiPreferences.reasoningModel,
+      };
+
+      const debugAssistantTiming =
+        new URLSearchParams(window.location.search).get("debugAssistantTiming") === "1";
+      const assistantEndpoint = debugAssistantTiming
+        ? "/api/assistant?debugAssistantTiming=1"
+        : "/api/assistant";
+      const clientRequestStartedAt = performance.now();
+
+      let response = await fetch(assistantEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          history,
-          mode,
-          provider: aiPreferences.reasoningProvider,
-          ...(aiPreferences.reasoningProvider === "gemini"
-            ? { model: aiPreferences.reasoningModel }
-            : aiPreferences.reasoningProvider === "custom"
-              ? {
-                  providerProfileId: aiPreferences.customProviderProfileId,
-                  model: aiPreferences.customProviderModel,
-                }
-              : {}),
-        }),
+        body: JSON.stringify(requestPayload),
       });
+
+      // Preserve normal chat for providers that do not support streaming.
+      if (mode === "chat" && response.status === 409) {
+        const rejectedPayload: unknown = await response.clone().json().catch(() => null);
+
+        if (
+          rejectedPayload &&
+          typeof rejectedPayload === "object" &&
+          !Array.isArray(rejectedPayload) &&
+          "error" in rejectedPayload &&
+          rejectedPayload.error ===
+            "Streaming is not available for this provider configuration."
+        ) {
+          response = await fetch(assistantEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...requestPayload, streamText: false }),
+          });
+        }
+      }
+
+      if (
+        mode === "chat" &&
+        response.headers.get("content-type")?.toLowerCase().includes("text/event-stream")
+      ) {
+        if (!response.ok || !response.body) {
+          setError("The assistant could not start a streaming response. Please try again.");
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let pending = "";
+        let firstTextAt: number | null = null;
+        let serverFirstTextTiming: {
+          serverTimeToFirstTextMs: number;
+          providerRequestToHeadersMs: number;
+          providerHeadersToFirstTextMs: number;
+          providerRequestToFirstTextMs: number;
+        } | null = null;
+        let partialAnswer = "";
+        let streamError = "";
+        const completedResponseRef: {
+          current: { answer: string; spokenSummary: string } | null;
+        } = { current: null };
+
+        function publishStreamedMessage(
+          content: string,
+          complete: boolean,
+          spokenSummary?: string,
+        ) {
+          setMessages((old) => {
+            const lastIndex = old.length - 1;
+            const last = old[lastIndex];
+
+            const message: Message = {
+              role: "assistant",
+              content,
+              ...(complete
+                ? (spokenSummary ? { spokenSummary } : {})
+                : { streaming: true }),
+            };
+
+            if (last?.role === "assistant" && last.streaming) {
+              return [...old.slice(0, lastIndex), message];
+            }
+
+            return [...old, message];
+          });
+        }
+
+        function processTextEvent(eventText: string) {
+          const data = eventText
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim())
+            .join("\n");
+
+          if (!data) return;
+
+          let parsed: unknown;
+          try {
+            parsed = JSON.parse(data);
+          } catch {
+            return;
+          }
+
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            return;
+          }
+
+          const event = parsed as Record<string, unknown>;
+
+          if (
+            event.type === "diagnostic" &&
+            event.name === "server_first_text" &&
+            typeof event.serverTimeToFirstTextMs === "number" &&
+            typeof event.providerRequestToHeadersMs === "number" &&
+            typeof event.providerHeadersToFirstTextMs === "number" &&
+            typeof event.providerRequestToFirstTextMs === "number"
+          ) {
+            serverFirstTextTiming = {
+              serverTimeToFirstTextMs: event.serverTimeToFirstTextMs,
+              providerRequestToHeadersMs: event.providerRequestToHeadersMs,
+              providerHeadersToFirstTextMs: event.providerHeadersToFirstTextMs,
+              providerRequestToFirstTextMs: event.providerRequestToFirstTextMs,
+            };
+            return;
+          }
+
+          if (event.type === "delta" && typeof event.text === "string") {
+            if (firstTextAt === null) firstTextAt = performance.now();
+            partialAnswer += event.text;
+            publishStreamedMessage(partialAnswer, false);
+            return;
+          }
+
+          if (
+            event.type === "complete" &&
+            typeof event.answer === "string" &&
+            typeof event.spokenSummary === "string"
+          ) {
+            completedResponseRef.current = {
+              answer: event.answer,
+              spokenSummary: event.spokenSummary,
+            };
+            return;
+          }
+
+          if (event.type === "error" && typeof event.error === "string") {
+            streamError = event.error;
+          }
+        }
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            pending += decoder.decode(value, { stream: true });
+            const events = pending.split(/\r?\n\r?\n/);
+            pending = events.pop() ?? "";
+
+            for (const event of events) processTextEvent(event);
+          }
+
+          pending += decoder.decode();
+          if (pending.trim()) processTextEvent(pending);
+        } catch {
+          streamError = "The response stream was interrupted. Please try again.";
+        } finally {
+          try {
+            reader.releaseLock();
+          } catch {
+            // Ignore an already released reader.
+          }
+        }
+
+        const streamFinishedAt = performance.now();
+
+        if (debugAssistantTiming) {
+          console.info("[assistant client timing]", {
+            requestMs: Math.round(streamFinishedAt - clientRequestStartedAt),
+            timeToFirstTextMs: firstTextAt === null
+              ? null
+              : Math.round(firstTextAt - clientRequestStartedAt),
+            afterFirstTextMs: firstTextAt === null
+              ? null
+              : Math.round(streamFinishedAt - firstTextAt),
+            serverFirstTextTiming,
+            completed: completedResponseRef.current !== null,
+            interrupted: Boolean(streamError),
+          });
+        }
+
+        const completedResponse = completedResponseRef.current;
+
+        if (streamError) {
+          if (partialAnswer) publishStreamedMessage(partialAnswer, true);
+          setError(streamError);
+          return;
+        }
+
+        if (!completedResponse) {
+          if (partialAnswer) publishStreamedMessage(partialAnswer, true);
+          setError("The assistant response stream ended unexpectedly. Please try again.");
+          return;
+        }
+
+        publishStreamedMessage(
+          completedResponse.answer,
+          true,
+          completedResponse.spokenSummary,
+        );
+
+        if (voiceModeRef.current) {
+          void speakMessage(completedResponse.spokenSummary, messages.length + 1);
+        }
+        return;
+      }
+
       if (mode === "voice-chat") {
         if (!response.ok) {
           const failedPayload: unknown = await response.json().catch(() => null);
@@ -1148,7 +1358,7 @@ export default function AssistantPage() {
               <span className="ai-copilot__message-label">
                 {message.role === "user" ? "You" : "AI Copilot"}
               </span>
-              <p>{message.content}</p>
+              <AssistantMarkdown content={message.content} />
               {message.role === "assistant" && (
                 <div className="ai-copilot__message-actions">
                   <button
@@ -1279,13 +1489,14 @@ export default function AssistantPage() {
 
         {error && <p className="ai-copilot__error" role="alert">{error}</p>}
 
-        <form className="ai-copilot__form" onSubmit={submit}>
+        <form ref={composerRef} className="ai-copilot__form" onSubmit={submit}>
           <label className="ai-copilot__label" htmlFor="ai-question">Your question</label>
           {voiceError && (
             <p className="ai-copilot__voice-error" role="alert">{voiceError}</p>
           )}
           <textarea
             id="ai-question"
+            ref={questionInputRef}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Ask about your saved records…"
@@ -1395,6 +1606,37 @@ export default function AssistantPage() {
             </div>
           </div>
         </form>
+
+        {showJumpToInput && (
+          <button
+            type="button"
+            className="ai-copilot__jump-to-input"
+            aria-label="Jump to bottom of page"
+            title="Jump to bottom of page"
+            onClick={() =>
+              window.scrollTo({
+                top: document.documentElement.scrollHeight,
+                behavior: "smooth",
+              })
+            }
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 4v12" />
+              <path d="m6 10 6 6 6-6" />
+              <path d="M5 20h14" />
+            </svg>
+          </button>
+        )}
       </div>
     </section>
   );

@@ -18,7 +18,16 @@ import {
   normalizeAIProviderModels,
 } from "@/lib/aiProviderConfig";
 import { decryptAIProviderApiKey } from "@/lib/server/aiProviderCrypto";
-import { secureOpenAICompatibleRequest } from "@/lib/server/secureProviderHttp";
+import {
+  isAIProviderType,
+  supportsAICapability,
+  type AIProviderType,
+} from "@/lib/aiProviderTypes";
+import {
+  secureOpenAICompatibleRequest,
+  secureProviderHttpRequest,
+  secureProviderHttpStream,
+} from "@/lib/server/secureProviderHttp";
 import {
   buildCustomProviderRequestOptions,
   getEmptyAssistantResponseMessage,
@@ -31,6 +40,98 @@ function logDiagnostic(label: string, details: string): void {
   if (process.env.NODE_ENV === "development") {
     console.info(label, details);
   }
+}
+
+// Performance-only diagnostics are safe to inspect in Vercel Preview.
+// Do not enable all diagnostic logs there, since some contain provider errors.
+function logPerformance(label: string, details: string): void {
+  if (
+    process.env.NODE_ENV === "development" ||
+    process.env.VERCEL_ENV === "preview"
+  ) {
+    console.info(label, details);
+  }
+}
+
+type SafeFailedGenerationDiagnostic = {
+  kind: string;
+  length?: number;
+  looksLikeJson?: boolean;
+  reasonCategory?: string;
+};
+
+function classifyCustomProviderError(details: {
+  message: string | null;
+  type: string | null;
+  code: string | null;
+}):
+  | "schema-validation"
+  | "context-limit"
+  | "output-limit"
+  | "rate-limit"
+  | "json-generation"
+  | "authentication"
+  | "other" {
+  const text = [details.message, details.type, details.code]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    /schema|response.?format|additional.?properties|required field|type mismatch/
+      .test(text)
+  ) {
+    return "schema-validation";
+  }
+
+  if (
+    /context|prompt.{0,24}(long|limit|token)|too many tokens/
+      .test(text)
+  ) {
+    return "context-limit";
+  }
+
+  if (/token|length|truncat|maximum|completion/.test(text)) {
+    return "output-limit";
+  }
+
+  if (/quota|rate.?limit/.test(text)) {
+    return "rate-limit";
+  }
+
+  if (/json|parse|syntax|generation|validation/.test(text)) {
+    return "json-generation";
+  }
+
+  if (/auth|api.?key|permission/.test(text)) {
+    return "authentication";
+  }
+
+  return "other";
+}
+
+function logCustomProviderFailureDiagnostic(details: {
+  mode: string;
+  model: string;
+  status: number;
+  responseFormat: "omitted" | "json_schema" | "json_object";
+  promptCharacters: number;
+  systemInstructionCharacters: number;
+  elapsedMs: number;
+  providerErrorCategory: ReturnType<typeof classifyCustomProviderError>;
+  failedGeneration: SafeFailedGenerationDiagnostic | null;
+}): void {
+  if (
+    process.env.NODE_ENV !== "development" &&
+    process.env.VERCEL_ENV !== "preview"
+  ) {
+    return;
+  }
+
+  console.warn(
+    "[assistant custom provider error]",
+    JSON.stringify(details),
+  );
 }
 
 const MAX_QUESTION = 1200;
@@ -66,6 +167,31 @@ Use appContext.taskSummary only when supplied and needed to answer a question
 about task totals or a weekly review. Never infer totals from a short task list.
 Keep the answer scoped to the request; do not add unrelated study, course, unit,
 reading, or project details.
+For headings, use standard Markdown syntax: start a heading line with
+one, two, or three # characters followed by a space and the heading text.
+Never escape heading hashes with a backslash, and never use four or more
+leading # characters.
+
+Use clean, scannable, adaptive Markdown. Match the formatting to the
+complexity of the answer; write prose first and use lists when they improve
+clarity. Keep short answers as plain prose. For medium answers, use a brief
+lead and a few useful bullets when appropriate. For long or multi-part answers,
+use clear sections with short paragraphs and a logical hierarchy.
+
+Use sentence-case headings only for distinct sections. Keep bold formatting
+sparse and limited to key terms. Use bullets for unordered items and numbered
+lists for sequences. Use tables only for genuine comparisons involving at least
+three items across at least two attributes. Avoid excessive nesting, repetitive
+templates, decorative separators, emojis unless requested, and unnecessary
+formatting. Use inline code for commands, filenames, and technical identifiers;
+use fenced code blocks with a language tag for code.
+
+Format human-readable dates as the full month name followed by the ordinal day
+with the correct suffix, such as "October 16th". Omit the year unless needed;
+when needed, write "October 16th, 2026". Do not use numeric dates, abbreviated
+month names, or dates without the ordinal suffix in prose. Preserve machine-
+readable date formats wherever the required JSON contract depends on them.
+
 For normal chat requests, return only a JSON object with exactly two string
 fields: "answer" and "spokenSummary". The answer is the full response for the
 chat transcript. spokenSummary is a natural conversational version for speech,
@@ -244,6 +370,10 @@ function extractCompletedJsonStringField(
 
 export async function POST(request: Request) {
   const requestStartedAt = Date.now();
+  const debugAssistantTimingEnabled =
+    new URL(request.url).searchParams.get("debugAssistantTiming") === "1" &&
+    (process.env.VERCEL_ENV === "preview" ||
+      process.env.NODE_ENV === "development");
   let authenticatedAt = requestStartedAt;
   let stateReadAt = requestStartedAt;
   let promptReadyAt = requestStartedAt;
@@ -339,9 +469,9 @@ export async function POST(request: Request) {
     return reply({ error: "Unknown assistant request mode." }, 400);
   }
 
-  if (requestMode === "voice-chat" && reasoningProvider !== "gemini") {
+  if (requestMode === "voice-chat" && reasoningProvider === "deepseek") {
     return reply({
-      error: "Streaming Voice Mode currently requires Gemini. Switch to Google Gemini in AI & Voice Settings, or use typed chat with DeepSeek.",
+      error: "Streaming Voice Mode requires a Google connection. Select a saved Google connection or the legacy Gemini connection.",
     }, 409);
   }
 
@@ -360,11 +490,24 @@ export async function POST(request: Request) {
   }
 
   authenticatedAt = Date.now();
+  stateReadAt = authenticatedAt;
+
+  // Start the user-state request early so its database I/O can overlap
+  // with provider-profile verification and credential preparation.
+  const appStatePromise = requestMode !== "daily-plan"
+    ? supabase
+        .from("user_app_state")
+        .select("data")
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then((result) => result)
+    : null;
 
   let customProviderConfig: {
     baseUrl: string;
     apiKey: string;
     model: string;
+    providerType: AIProviderType;
   } | null = null;
 
   if (reasoningProvider === "custom") {
@@ -376,7 +519,7 @@ export async function POST(request: Request) {
 
     const { data: customProfile, error: customProfileError } = await supabase
       .from("user_ai_provider_profiles")
-      .select("id,base_url,models,enabled,encrypted_api_key")
+      .select("*")
       .eq("id", customProviderProfileId)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -394,6 +537,15 @@ export async function POST(request: Request) {
     }
 
     const profileRow = customProfile as unknown as Record<string, unknown>;
+    const profileProviderType = isAIProviderType(profileRow.provider_type)
+      ? profileRow.provider_type
+      : "openai_compatible";
+
+    if (!supportsAICapability(profileProviderType, "reasoning")) {
+      return reply({
+        error: "This saved connection does not support reasoning.",
+      }, 409);
+    }
 
     if (profileRow.enabled !== true) {
       return reply({
@@ -429,6 +581,7 @@ export async function POST(request: Request) {
         baseUrl: profileRow.base_url,
         apiKey: decryptAIProviderApiKey(profileRow.encrypted_api_key),
         model: customProviderModel,
+        providerType: profileProviderType,
       };
     } catch {
       return reply({
@@ -437,13 +590,29 @@ export async function POST(request: Request) {
     }
   }
 
+  if (
+    requestMode === "voice-chat" &&
+    reasoningProvider === "custom" &&
+    customProviderConfig?.providerType !== "google_generative_language"
+  ) {
+    return reply({
+      error: "Streaming Voice Mode currently supports Google connections only. Select a saved Google connection or the legacy Gemini connection.",
+    }, 409);
+  }
+
   if (!takeDailySlot(user.id)) {
     return reply({
       error: "You've reached the development limit of 20 questions today. Try again tomorrow.",
     }, 429);
   }
 
+  const savedGoogleConfig =
+    customProviderConfig?.providerType === "google_generative_language"
+      ? customProviderConfig
+      : null;
+
   const apiKey =
+    savedGoogleConfig?.apiKey ||
     process.env.GEMINI_API_KEY?.trim() ||
     process.env.GOOGLE_API_KEY?.trim();
   const deepseekApiKey =
@@ -469,12 +638,16 @@ export async function POST(request: Request) {
   // Daily planning receives its task and free-window snapshot from Today.
   // Avoid loading and sending unrelated project, reading, and study context.
   if (requestMode !== "daily-plan") {
-    // RLS is the primary boundary; the signed-in user filter is additional.
-    const { data: stateRow, error: stateError } = await supabase
-      .from("user_app_state")
-      .select("data")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // Reuse the authenticated-user query started earlier in parallel.
+    const pendingStateQuery = appStatePromise;
+
+    if (!pendingStateQuery) {
+      return reply({
+        error: "Your synchronized app data could not be loaded. Please try again.",
+      }, 503);
+    }
+
+    const { data: stateRow, error: stateError } = await pendingStateQuery;
 
     if (stateError) {
       return reply({
@@ -482,16 +655,16 @@ export async function POST(request: Request) {
       }, 503);
     }
 
+    stateReadAt = Date.now();
     context = buildAssistantContext(
       normalizeSnapshot(stateRow?.data),
       currentDate,
     );
   }
 
-  stateReadAt = Date.now();
   const history = requestMode === "daily-plan" ? [] : cleanHistory(body.history);
   const configuredModel = process.env.GEMINI_MODEL?.trim();
-  const model = selectedModel ?? (
+  const model = selectedModel ?? customProviderConfig?.model ?? (
     isGeminiReasoningModel(configuredModel)
       ? configuredModel
       : "gemini-3.1-flash-lite"
@@ -500,6 +673,7 @@ export async function POST(request: Request) {
   const isTaskProposal = requestMode === "task-proposal";
   const isDailyPlan = requestMode === "daily-plan";
   const isVoiceChat = requestMode === "voice-chat";
+  const wantsTextStream = body.streamText === true && requestMode === "chat";
   const relevantContext = context
     ? selectRelevantAssistantContext(context, question)
     : undefined;
@@ -521,6 +695,386 @@ export async function POST(request: Request) {
         : SYSTEM_INSTRUCTIONS;
 
   promptReadyAt = Date.now();
+
+  // Ordinary text chat can stream across supported provider protocols.
+  // Voice Mode and structured task proposals keep their existing flows.
+  if (wantsTextStream) {
+    const streamSystemInstructions = systemInstructions.replace(
+      /For normal chat requests, return only a JSON object with exactly two string[\s\S]*?If the answer\s+is short, summarize it faithfully in one concise sentence\./,
+      "For streamed text chat, return only the complete answer as Markdown. " +
+      "Do not wrap the answer in JSON or generate a separate spokenSummary. " +
+      "Keep the answer accurate, concise, and grounded in the supplied context.",
+    );
+
+    if (
+      streamSystemInstructions === systemInstructions &&
+      systemInstructions.includes("For normal chat requests, return only a JSON object")
+    ) {
+      return reply({ error: "The streamed chat instructions could not be prepared." }, 500);
+    }
+
+    const googleBody = JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: streamSystemInstructions }],
+      },
+      contents: [{
+        role: "user",
+        parts: [{ text: prompt }],
+      }],
+      generationConfig: {
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+      },
+    });
+
+    const makeOpenAIStreamBody = (providerModel: string) => JSON.stringify({
+      model: providerModel,
+      messages: [
+        { role: "system", content: streamSystemInstructions },
+        { role: "user", content: prompt },
+      ],
+      stream: true,
+      max_tokens: MAX_OUTPUT_TOKENS,
+    });
+
+    let upstreamStatus = 502;
+    let upstreamBody: ReadableStream<Uint8Array> | null = null;
+    let streamFormat: "google" | "openai" = "google";
+    const streamProvider =
+      savedGoogleConfig?.providerType ??
+      customProviderConfig?.providerType ??
+      reasoningProvider;
+    const streamProviderStartedAt = Date.now();
+
+    try {
+      if (savedGoogleConfig) {
+        const upstream = await secureProviderHttpStream({
+          baseUrl: savedGoogleConfig.baseUrl,
+          apiKey: savedGoogleConfig.apiKey,
+          path: "/google/stream-generate-content",
+          model: savedGoogleConfig.model,
+          body: googleBody,
+          timeoutMs: 60_000,
+        });
+
+        upstreamStatus = upstream.status;
+        upstreamBody = upstream.body;
+        streamFormat = "google";
+      } else if (customProviderConfig?.providerType === "openai_compatible") {
+        const upstream = await secureProviderHttpStream({
+          baseUrl: customProviderConfig.baseUrl,
+          apiKey: customProviderConfig.apiKey,
+          path: "/openai/chat/completions",
+          model: customProviderConfig.model,
+          body: makeOpenAIStreamBody(customProviderConfig.model),
+          timeoutMs: 60_000,
+        });
+
+        upstreamStatus = upstream.status;
+        upstreamBody = upstream.body;
+        streamFormat = "openai";
+      } else if (reasoningProvider === "gemini" && apiKey) {
+        const upstream = await secureProviderHttpStream({
+          baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+          apiKey,
+          path: "/google/stream-generate-content",
+          model,
+          body: googleBody,
+          timeoutMs: 60_000,
+        });
+
+        upstreamStatus = upstream.status;
+        upstreamBody = upstream.body;
+        streamFormat = "google";
+      } else if (reasoningProvider === "deepseek" && deepseekApiKey) {
+        const upstream = await fetch("https://api.deepseek.com/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${deepseekApiKey}`,
+          },
+          body: makeOpenAIStreamBody(
+            process.env.DEEPSEEK_MODEL?.trim() || "deepseek-flash",
+          ),
+          cache: "no-store",
+          signal: AbortSignal.timeout(60_000),
+        });
+
+        upstreamStatus = upstream.status;
+        upstreamBody = upstream.body;
+        streamFormat = "openai";
+      } else {
+        return reply({
+          error: "Streaming is not available for this provider configuration.",
+        }, 409);
+      }
+    } catch {
+      return reply({
+        error: "The assistant could not open the provider stream. Check the connection and try again.",
+      }, 502);
+    }
+
+    const upstreamHeadersAt = Date.now();
+
+    if (!upstreamBody) {
+      return reply({ error: "The provider returned no response stream." }, 502);
+    }
+
+    if (upstreamStatus >= 300 && upstreamStatus < 400) {
+      await upstreamBody.cancel().catch(() => undefined);
+      return reply({ error: "The provider returned a redirect, which is blocked for security." }, 502);
+    }
+
+    if (upstreamStatus < 200 || upstreamStatus >= 300) {
+      await upstreamBody.cancel().catch(() => undefined);
+
+      if (upstreamStatus === 429) {
+        return reply({ error: "The provider rate limit was reached. Try again shortly." }, 429);
+      }
+      if (upstreamStatus === 401 || upstreamStatus === 403) {
+        return reply({ error: "The provider rejected the saved API key or its permissions." }, 503);
+      }
+      return reply({
+        error: `The provider could not start a streaming response (HTTP ${upstreamStatus}).`,
+      }, 502);
+    }
+
+    const sourceReader = upstreamBody.getReader();
+    const encoder = new TextEncoder();
+
+    const serverTiming = [
+      `setup;dur=${Math.max(0, authenticatedAt - requestStartedAt)}`,
+      `state;dur=${Math.max(0, stateReadAt - authenticatedAt)}`,
+      `context;dur=${Math.max(0, promptReadyAt - stateReadAt)}`,
+      `upstream;dur=${Math.max(0, upstreamHeadersAt - streamProviderStartedAt)}`,
+    ].join(", ");
+
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+    let clientCancelled = false;
+
+    const eventStream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        let pending = "";
+        let answer = "";
+        let firstDeltaAt: number | null = null;
+
+        function emit(event: Record<string, unknown>) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+          );
+        }
+
+        function processEvent(eventText: string) {
+          const data = eventText
+            .split(/\r?\n/)
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim())
+            .join("\n");
+
+          if (!data || data === "[DONE]") return;
+
+          let payload: unknown;
+          try {
+            payload = JSON.parse(data);
+          } catch {
+            return;
+          }
+
+          if (!isRecord(payload)) return;
+
+          let delta = "";
+
+          if (streamFormat === "google") {
+            const candidates = Array.isArray(payload.candidates)
+              ? payload.candidates
+              : [];
+            const candidate = candidates[0];
+            const content =
+              isRecord(candidate) && isRecord(candidate.content)
+                ? candidate.content
+                : null;
+            const parts = content && Array.isArray(content.parts)
+              ? content.parts
+              : [];
+
+            delta = parts
+              .filter((part): part is Record<string, unknown> =>
+                isRecord(part) &&
+                typeof part.text === "string" &&
+                part.thought !== true)
+              .map((part) => part.text as string)
+              .join("");
+          } else {
+            const choices = Array.isArray(payload.choices)
+              ? payload.choices
+              : [];
+            const choice = choices[0];
+            const detail =
+              isRecord(choice) && isRecord(choice.delta)
+                ? choice.delta
+                : null;
+            const content = detail?.content;
+
+            if (typeof content === "string") {
+              delta = content;
+            } else if (Array.isArray(content)) {
+              delta = content
+                .filter((part): part is Record<string, unknown> =>
+                  isRecord(part) && typeof part.text === "string")
+                .map((part) => part.text as string)
+                .join("");
+            }
+          }
+
+          if (!delta) return;
+
+          if (firstDeltaAt === null) {
+            firstDeltaAt = Date.now();
+            logPerformance("[assistant stream timing]", JSON.stringify({
+              stage: "first_text_delta",
+              provider: streamProvider,
+              model,
+              timeToFirstTokenMs: firstDeltaAt - streamProviderStartedAt,
+              upstreamHeadersMs: upstreamHeadersAt - streamProviderStartedAt,
+            }));
+
+            // Send timing-only diagnostics to explicitly opted-in Preview clients.
+            if (debugAssistantTimingEnabled) {
+              emit({
+                type: "diagnostic",
+                name: "server_first_text",
+                serverTimeToFirstTextMs: firstDeltaAt - requestStartedAt,
+                providerRequestToHeadersMs:
+                  upstreamHeadersAt - streamProviderStartedAt,
+                providerHeadersToFirstTextMs:
+                  firstDeltaAt - upstreamHeadersAt,
+                providerRequestToFirstTextMs:
+                  firstDeltaAt - streamProviderStartedAt,
+              });
+            }
+          }
+
+          answer += delta;
+          emit({ type: "delta", text: delta });
+        }
+
+        const upstreamDecoder = new TextDecoder();
+
+        try {
+          // Flush headers/body immediately; real text follows as the model generates it.
+          controller.enqueue(encoder.encode(": stream-open\n\n"));
+
+          heartbeatTimer = setInterval(() => {
+            if (clientCancelled) return;
+            try {
+              controller.enqueue(encoder.encode(": keep-alive\n\n"));
+            } catch {
+              if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
+              heartbeatTimer = null;
+            }
+          }, 10_000);
+
+          while (true) {
+            const { done, value } = await sourceReader.read();
+            if (done) break;
+
+            pending += upstreamDecoder.decode(value, { stream: true });
+            const events = pending.split(/\r?\n\r?\n/);
+            pending = events.pop() ?? "";
+
+            for (const event of events) processEvent(event);
+          }
+
+          pending += upstreamDecoder.decode();
+          if (pending.trim()) processEvent(pending);
+
+          const completedAnswer = answer.trim();
+
+          if (!completedAnswer) {
+            emit({
+              type: "error",
+              error: "The provider stream ended without any answer text. Try again or disable streaming for this connection.",
+            });
+          } else {
+            const words = completedAnswer.split(/\s+/);
+            const spokenSummary = words.length > 35
+              ? words.slice(0, 35).join(" ") + "…"
+              : completedAnswer;
+
+            emit({
+              type: "complete",
+              answer: completedAnswer,
+              spokenSummary,
+            });
+          }
+
+          logPerformance("[assistant stream timing]", JSON.stringify({
+            stage: "complete",
+            provider: streamProvider,
+            model,
+            upstreamHeadersMs: upstreamHeadersAt - streamProviderStartedAt,
+            timeToFirstTokenMs: firstDeltaAt === null
+              ? null
+              : firstDeltaAt - streamProviderStartedAt,
+            providerStreamMs: Date.now() - upstreamHeadersAt,
+            totalMs: Date.now() - requestStartedAt,
+            answerCharacters: answer.length,
+          }));
+
+          controller.close();
+        } catch (error) {
+          if (!clientCancelled) {
+            logPerformance("[assistant stream timing]", JSON.stringify({
+              stage: "stream_interrupted",
+              provider: streamProvider,
+              model,
+              errorName: error instanceof Error ? error.name : "UnknownError",
+              providerStreamMs: Date.now() - upstreamHeadersAt,
+              answerCharacters: answer.length,
+            }));
+          }
+
+          try {
+            if (!clientCancelled) {
+              emit({
+                type: "error",
+                error: "The response stream was interrupted. Please try again.",
+              });
+            }
+            controller.close();
+          } catch {
+            // The client may already have cancelled the stream.
+          }
+        } finally {
+          if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+
+          try {
+            sourceReader.releaseLock();
+          } catch {
+            // Ignore a reader that is already released.
+          }
+        }
+      },
+      cancel(reason) {
+        clientCancelled = true;
+        if (heartbeatTimer !== null) clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+        void sourceReader.cancel(reason).catch(() => undefined);
+      },
+    });
+
+    return new Response(eventStream, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "X-Content-Type-Options": "nosniff",
+        "X-Accel-Buffering": "no",
+        "Server-Timing": serverTiming,
+      },
+    });
+  }
+
   if (isVoiceChat) {
     if (!apiKey) {
       return reply({
@@ -528,11 +1082,58 @@ export async function POST(request: Request) {
       }, 503);
     }
 
+    const voiceRequestBody = {
+      systemInstruction: {
+        parts: [{ text: systemInstructions }],
+      },
+      contents: [{
+        role: "user",
+        parts: [{
+          text: prompt + "\n\nFor this voice turn, generate the spokenSummary first, followed by the full answer. Keep the spokenSummary concise and useful.",
+        }],
+      }],
+      generationConfig: {
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            spokenSummary: {
+              type: "STRING",
+              description:
+                "A faithful, natural spoken summary, normally 1–3 sentences and no more than 45 words. Put this field first.",
+            },
+            answer: {
+              type: "STRING",
+              description: "The full written response for the chat transcript.",
+            },
+          },
+          required: ["spokenSummary", "answer"],
+        },
+      },
+    };
+
     const voiceStartedAt = Date.now();
     let upstream: Response;
 
     try {
-      upstream = await fetch(
+      if (savedGoogleConfig) {
+        const streamed = await secureProviderHttpStream({
+          baseUrl: savedGoogleConfig.baseUrl,
+          apiKey: savedGoogleConfig.apiKey,
+          path: "/google/stream-generate-content",
+          model: savedGoogleConfig.model,
+          body: JSON.stringify(voiceRequestBody),
+          timeoutMs: 30_000,
+        });
+        upstream = new Response(streamed.body, {
+          status: streamed.status,
+          headers: {
+            "Content-Type": streamed.contentType || "text/event-stream",
+          },
+        });
+      } else {
+        upstream = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
         {
           method: "POST",
@@ -540,42 +1141,14 @@ export async function POST(request: Request) {
             "Content-Type": "application/json",
             "x-goog-api-key": apiKey,
           },
-          body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: systemInstructions }],
-            },
-            contents: [{
-              role: "user",
-              parts: [{
-                text: prompt + "\n\nFor this voice turn, generate the spokenSummary first, followed by the full answer. Keep the spokenSummary concise and useful.",
-              }],
-            }],
-            generationConfig: {
-              maxOutputTokens: MAX_OUTPUT_TOKENS,
-              responseMimeType: "application/json",
-              responseSchema: {
-                type: "OBJECT",
-                properties: {
-                  spokenSummary: {
-                    type: "STRING",
-                    description:
-                      "A faithful, natural spoken summary, normally 1–3 sentences and no more than 45 words. Put this field first.",
-                  },
-                  answer: {
-                    type: "STRING",
-                    description: "The full written response for the chat transcript.",
-                  },
-                },
-                required: ["spokenSummary", "answer"],
-              },
-            },
-          }),
+          body: JSON.stringify(voiceRequestBody),
           cache: "no-store",
           signal: AbortSignal.timeout(30_000),
         },
       );
+      }
     } catch {
-      return reply({ error: "Gemini could not be reached. Please try again." }, 502);
+      return reply({ error: "Google could not be reached. Please try again." }, 502);
     }
 
     if (!upstream.ok) {
@@ -655,7 +1228,7 @@ export async function POST(request: Request) {
 
               if (summary?.trim()) {
                 summarySent = true;
-                logDiagnostic("[assistant voice stream]", JSON.stringify({
+                logPerformance("[assistant voice stream]", JSON.stringify({
                   stage: "spoken_summary_ready",
                   elapsedMs: Date.now() - voiceStartedAt,
                   summaryCharacters: summary.length,
@@ -718,7 +1291,7 @@ export async function POST(request: Request) {
             spokenSummary,
           });
           completed = true;
-          logDiagnostic("[assistant voice stream]", JSON.stringify({
+          logPerformance("[assistant voice stream]", JSON.stringify({
             stage: "complete",
             elapsedMs: Date.now() - voiceStartedAt,
             summaryWasEarly: summarySent,
@@ -765,7 +1338,10 @@ export async function POST(request: Request) {
   let customProviderFinishReason: string | null = null;
   let isGroqGPTOSSDailyPlan = false;
 
-  if (reasoningProvider === "custom") {
+  if (
+    reasoningProvider === "custom" &&
+    customProviderConfig?.providerType === "openai_compatible"
+  ) {
     const activeProvider = customProviderConfig;
 
     // Do not fall back to another provider if the custom configuration is
@@ -782,6 +1358,7 @@ export async function POST(request: Request) {
     );
     isGroqGPTOSSDailyPlan = isGroqGPTOSS && isDailyPlan;
 
+    const customProviderRequestStartedAt = Date.now();
     let upstream;
     try {
       upstream = await secureOpenAICompatibleRequest({
@@ -808,6 +1385,45 @@ export async function POST(request: Request) {
       return reply({
         error: "The custom provider request was blocked or could not be reached. Check the saved HTTPS URL and public DNS configuration.",
       }, 502);
+    }
+
+    // Retry Groq GPT-OSS chat once if constrained JSON generation fails.
+    // The normal response validation below still checks both required fields.
+    if (
+      isGroqGPTOSS &&
+      requestMode === "chat" &&
+      upstream.status === 400 &&
+      /failed to (?:generate|validate) json|json_validate_failed|json_generation_failed/i.test(
+        upstream.body,
+      )
+    ) {
+      try {
+        upstream = await secureOpenAICompatibleRequest({
+          baseUrl: activeProvider.baseUrl,
+          apiKey: activeProvider.apiKey,
+          path: "/chat/completions",
+          method: "POST",
+          timeoutMs: 30_000,
+          body: JSON.stringify({
+            model: activeProvider.model,
+            messages: [
+              { role: "system", content: systemInstructions },
+              { role: "user", content: prompt },
+            ],
+            stream: false,
+            ...buildCustomProviderRequestOptions({
+              isGroqGPTOSS,
+              mode: requestMode,
+              maxOutputTokens: MAX_OUTPUT_TOKENS,
+            }),
+            response_format: { type: "json_object" },
+          }),
+        });
+      } catch {
+        return reply({
+          error: "The custom provider could not complete JSON generation after one retry. Please try again.",
+        }, 502);
+      }
     }
 
     if (upstream.status === 429) {
@@ -918,18 +1534,37 @@ export async function POST(request: Request) {
         }
       })();
 
-      logDiagnostic("[assistant custom provider error]", JSON.stringify({
+      const failedGeneration = providerErrorDetails.failedGeneration;
+
+      logCustomProviderFailureDiagnostic({
         mode: requestMode,
         model: activeProvider.model,
         status: upstream.status,
         responseFormat: isGroqGPTOSS && isDailyPlan
           ? "omitted"
-          : "json_object",
-        providerMessage: providerErrorDetails.message,
-        providerErrorType: providerErrorDetails.type,
-        providerErrorCode: providerErrorDetails.code,
-        failedGeneration: providerErrorDetails.failedGeneration,
-      }));
+          : isGroqGPTOSS && !isTaskProposal
+            ? "json_schema"
+            : "json_object",
+        promptCharacters: prompt.length,
+        systemInstructionCharacters: systemInstructions.length,
+        elapsedMs: Date.now() - customProviderRequestStartedAt,
+        providerErrorCategory:
+          classifyCustomProviderError(providerErrorDetails),
+        failedGeneration: failedGeneration
+          ? {
+              kind: failedGeneration.kind,
+              ...(typeof failedGeneration.length === "number"
+                ? { length: failedGeneration.length }
+                : {}),
+              ...(typeof failedGeneration.looksLikeJson === "boolean"
+                ? { looksLikeJson: failedGeneration.looksLikeJson }
+                : {}),
+              ...(typeof failedGeneration.reasonCategory === "string"
+                ? { reasonCategory: failedGeneration.reasonCategory }
+                : {}),
+            }
+          : null,
+      });
 
       return reply({
         error: providerErrorDetails.message
@@ -1088,18 +1723,7 @@ export async function POST(request: Request) {
       }, 503);
     }
 
-    let upstream: Response;
-    try {
-      upstream = await fetchGeminiWithRetries(
-        () => fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": apiKey,
-            },
-            body: JSON.stringify({
+    const generationRequestBody = {
               systemInstruction: {
                 parts: [{
                   text: systemInstructions,
@@ -1182,7 +1806,36 @@ export async function POST(request: Request) {
                         },
                       }),
               },
-            }),
+            };
+
+    let upstream: Response;
+    try {
+      if (savedGoogleConfig) {
+        const secureResult = await secureProviderHttpRequest({
+          baseUrl: savedGoogleConfig.baseUrl,
+          apiKey: savedGoogleConfig.apiKey,
+          path: "/google/generate-content",
+          model: savedGoogleConfig.model,
+          method: "POST",
+          body: JSON.stringify(generationRequestBody),
+          timeoutMs: isDailyPlan ? 60_000 : 30_000,
+        });
+
+        upstream = new Response(secureResult.body, {
+          status: secureResult.status,
+          headers: { "Content-Type": secureResult.contentType },
+        });
+      } else {
+        upstream = await fetchGeminiWithRetries(
+        () => fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": apiKey,
+            },
+            body: JSON.stringify(generationRequestBody),
             cache: "no-store",
             signal: AbortSignal.timeout(isDailyPlan ? 60_000 : 30_000),
           },
@@ -1194,6 +1847,7 @@ export async function POST(request: Request) {
           logDiagnostic,
         },
       );
+      }
     } catch (error) {
       const cause =
         error instanceof Error && "cause" in error ? error.cause : null;
@@ -1323,8 +1977,10 @@ export async function POST(request: Request) {
   }
 
   const providerFinishedAt = Date.now();
-  logDiagnostic("[assistant timing]", JSON.stringify({
-    provider: reasoningProvider,
+  logPerformance("[assistant timing]", JSON.stringify({
+    provider: customProviderConfig?.providerType ?? reasoningProvider,
+    mode: requestMode,
+    model,
     authMs: authenticatedAt - requestStartedAt,
     synchronizedStateMs: stateReadAt - authenticatedAt,
     contextPreparationMs: promptReadyAt - stateReadAt,
@@ -1332,8 +1988,28 @@ export async function POST(request: Request) {
     totalMs: providerFinishedAt - requestStartedAt,
   }));
 
+  // Expose timings through browser DevTools without changing the JSON body.
+  const serverTiming = [
+    `setup;dur=${Math.max(0, authenticatedAt - requestStartedAt)}`,
+    `state;dur=${Math.max(0, stateReadAt - authenticatedAt)}`,
+    `context;dur=${Math.max(0, promptReadyAt - stateReadAt)}`,
+    `provider;dur=${Math.max(0, providerFinishedAt - promptReadyAt)}`,
+  ].join(", ");
+
+  function replyWithPerformance(
+    body: Record<string, unknown>,
+    status = 200,
+  ) {
+    const response = reply(body, status);
+    response.headers.set(
+      "Server-Timing",
+      `${serverTiming}, total;dur=${Math.max(0, Date.now() - requestStartedAt)}`,
+    );
+    return response;
+  }
+
   if (!answer) {
-    return reply({
+    return replyWithPerformance({
       error: getEmptyAssistantResponseMessage({
         isDailyPlan,
         isGroqGPTOSS: isGroqGPTOSSDailyPlan,
@@ -1357,7 +2033,7 @@ export async function POST(request: Request) {
         containsCodeFence: answer.includes("```"),
       }));
 
-      return reply({
+      return replyWithPerformance({
         error: "Gemini returned an unreadable daily plan. Please refresh and try again.",
       }, 502);
     }
@@ -1369,7 +2045,7 @@ export async function POST(request: Request) {
       !Array.isArray(parsedPlan.blocks) ||
       parsedPlan.blocks.length > 3
     ) {
-      return reply({
+      return replyWithPerformance({
         error: "Gemini returned an invalid daily plan. Please refresh and try again.",
       }, 502);
     }
@@ -1394,7 +2070,7 @@ export async function POST(request: Request) {
         !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.end) ||
         typeof item.reason !== "string"
       ) {
-        return reply({
+        return replyWithPerformance({
           error: "Gemini returned an invalid work block. Please refresh and try again.",
         }, 502);
       }
@@ -1408,7 +2084,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return reply({
+    return replyWithPerformance({
       dailyPlan: {
         summary: parsedPlan.summary.trim().slice(0, 400),
         blocks,
@@ -1421,7 +2097,7 @@ export async function POST(request: Request) {
     try {
       parsedProposal = JSON.parse(answer);
     } catch {
-      return reply({
+      return replyWithPerformance({
         error: "Gemini returned an unreadable task draft. Please try again.",
       }, 502);
     }
@@ -1437,12 +2113,12 @@ export async function POST(request: Request) {
         isValidDateOnly(parsedProposal.dueDate)
       )
     ) {
-      return reply({
+      return replyWithPerformance({
         error: "Gemini returned an invalid task draft. Please try again.",
       }, 502);
     }
 
-    return reply({
+    return replyWithPerformance({
       taskProposal: {
         title: parsedProposal.title.trim().slice(0, 120),
         dueDate: parsedProposal.dueDate ?? "",
@@ -1455,7 +2131,7 @@ export async function POST(request: Request) {
   try {
     parsedChat = JSON.parse(answer);
   } catch {
-    return reply({
+    return replyWithPerformance({
       error: "The assistant returned an unreadable response. Please try again.",
     }, 502);
   }
@@ -1467,12 +2143,12 @@ export async function POST(request: Request) {
     typeof parsedChat.spokenSummary !== "string" ||
     !parsedChat.spokenSummary.trim()
   ) {
-    return reply({
+    return replyWithPerformance({
       error: "The assistant returned an incomplete response. Please try again.",
     }, 502);
   }
 
-  return reply({
+  return replyWithPerformance({
     answer: parsedChat.answer.trim(),
     spokenSummary: parsedChat.spokenSummary.trim().slice(0, 800),
   });

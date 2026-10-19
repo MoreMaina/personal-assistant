@@ -183,6 +183,53 @@ describe("buildAssistantContext", () => {
     expect(selected).toHaveProperty("projects");
   });
 
+  it("keeps general productivity advice separate from personal records", () => {
+    const context = buildAssistantContext({
+      "personal-assistant-calendar-items": JSON.stringify([
+        {
+          id: "task-1",
+          type: "task",
+          title: "Submit report",
+          dueDate: "2026-10-21",
+          priority: "high",
+          completed: false,
+        },
+      ]),
+      "personal-assistant-projects": JSON.stringify([
+        { id: "project-1", name: "Research project", status: "active" },
+      ]),
+      "personal-assistant-study-v2": JSON.stringify({
+        courses: [{ id: "course-1", name: "Computer Science" }],
+      }),
+    });
+
+    const generalTaskAdvice = selectRelevantAssistantContext(
+      context,
+      "Explain the difference between urgent and important tasks. Give three practical examples and one simple way to prioritize them.",
+    );
+
+    const hypotheticalProductivitySystem = selectRelevantAssistantContext(
+      context,
+      "Design a practical productivity system for someone who works full-time, studies six hours per week, and manages a personal project. Include a realistic weekly schedule, daily routines, task prioritization, study techniques, project milestones, habit-building strategies, and a weekly review.",
+    );
+
+    expect(generalTaskAdvice).toEqual({
+      contextScope: "general question",
+    });
+
+    expect(hypotheticalProductivitySystem).toEqual({
+      contextScope: "general question",
+    });
+
+    const personalTaskQuestion = selectRelevantAssistantContext(
+      context,
+      "What are the tasks I need to finish?",
+    );
+
+    expect(personalTaskQuestion.contextScope).toBe("tasks");
+    expect(personalTaskQuestion).toHaveProperty("prioritizedTasks");
+  });
+
   it("does not attach personal records to unrelated general-knowledge questions", () => {
     const context = buildAssistantContext({
       "personal-assistant-projects": JSON.stringify([
