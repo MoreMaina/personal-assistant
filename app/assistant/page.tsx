@@ -855,6 +855,10 @@ export default function AssistantPage() {
         model: aiPreferences.reasoningModel,
       };
 
+      const debugAssistantTiming =
+        new URLSearchParams(window.location.search).get("debugAssistantTiming") === "1";
+      const clientRequestStartedAt = performance.now();
+
       let response = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -893,6 +897,7 @@ export default function AssistantPage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let pending = "";
+        let firstTextAt: number | null = null;
         let partialAnswer = "";
         let streamError = "";
         const completedResponseRef: {
@@ -947,6 +952,7 @@ export default function AssistantPage() {
           const event = parsed as Record<string, unknown>;
 
           if (event.type === "delta" && typeof event.text === "string") {
+            if (firstTextAt === null) firstTextAt = performance.now();
             partialAnswer += event.text;
             publishStreamedMessage(partialAnswer, false);
             return;
@@ -991,6 +997,22 @@ export default function AssistantPage() {
           } catch {
             // Ignore an already released reader.
           }
+        }
+
+        const streamFinishedAt = performance.now();
+
+        if (debugAssistantTiming) {
+          console.info("[assistant client timing]", {
+            requestMs: Math.round(streamFinishedAt - clientRequestStartedAt),
+            timeToFirstTextMs: firstTextAt === null
+              ? null
+              : Math.round(firstTextAt - clientRequestStartedAt),
+            afterFirstTextMs: firstTextAt === null
+              ? null
+              : Math.round(streamFinishedAt - firstTextAt),
+            completed: completedResponseRef.current !== null,
+            interrupted: Boolean(streamError),
+          });
         }
 
         const completedResponse = completedResponseRef.current;
