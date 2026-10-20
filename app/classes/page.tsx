@@ -1436,13 +1436,13 @@ export default function ClassesPage() {
               <article
                 key={item.id}
                 id={`calendar-item-${item.id}`}
-                className={`card bg-[var(--surface)] p-4 sm:p-5 ${
+                className={`card bg-[var(--surface)] p-3 sm:p-5 ${
                   searchHighlightCalendarId === item.id
                     ? "ring-2 ring-[var(--accent)]"
                     : ""
                 }`}
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-row items-start justify-between gap-2 sm:gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--accent-dark)]">
                       {formatDate(item.date)}
@@ -1770,7 +1770,7 @@ export default function ClassesPage() {
               <article
                 key={item.id}
                 id={`calendar-item-${item.id}`}
-                className={`card bg-[var(--surface)] p-4 sm:p-5 ${
+                className={`card bg-[var(--surface)] p-3 sm:p-5 ${
                   item.completed ? "opacity-75" : ""
                 } ${
                   searchHighlightCalendarId === item.id
@@ -1778,7 +1778,7 @@ export default function ClassesPage() {
                     : ""
                 }`}
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-row items-start justify-between gap-2 sm:gap-3">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     {item.recurrence ? (
                         <span
@@ -1836,7 +1836,7 @@ export default function ClassesPage() {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 gap-2 pl-8 sm:pl-0">
+                  <div className="flex shrink-0 gap-2">
                     <details data-smart-menu className="relative">
                       <summary
                         aria-label={`More actions for ${item.title}`}

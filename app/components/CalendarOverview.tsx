@@ -381,7 +381,7 @@ export default function CalendarOverview({
         onClick={() => setSelectedDate(date)}
         className={`relative min-w-0 overflow-hidden rounded-xl border-2 p-1.5 text-left transition sm:p-2 ${
           monthCell
-            ? "h-24 sm:h-28"
+            ? "h-20 sm:h-28"
             : "min-h-36"
         } ${
           isSelected
@@ -421,7 +421,7 @@ export default function CalendarOverview({
             </span>
           </div>
           <span
-              className={`shrink-0 min-w-6 rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold ${monthCell ? "absolute bottom-2 right-2 z-10" : ""} ${
+              className={`shrink-0 min-w-5 rounded-full px-1 py-0.5 text-center text-[9px] font-extrabold leading-none sm:min-w-6 sm:px-1.5 sm:text-[10px] ${
                 dayEntries.length > 0
                   ? "bg-[var(--yellow-soft)] text-[var(--ink)]"
                   : "bg-[var(--surface)] text-[var(--muted)]"
@@ -432,7 +432,7 @@ export default function CalendarOverview({
         </div>
 
 {monthCell ? (
-            <div className="mt-1.5 flex min-w-0 flex-col items-start gap-1">
+            <div className="mt-1 flex min-w-0 items-center justify-between gap-0.5 sm:mt-1.5 sm:flex-col sm:items-start sm:justify-start sm:gap-1">
               {(["class", "event", "task"] as const).map((kind) => {
                 const count = dayEntries.filter(
                   (entry) => entry.kind === kind,
