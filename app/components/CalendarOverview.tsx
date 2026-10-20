@@ -181,12 +181,41 @@ export default function CalendarOverview({
   const [cancelledByDate, setCancelledByDate] = useState<
     Record<string, number[]>
   >({});
+  const [visibleKinds, setVisibleKinds] = useState<Record<EntryKind, boolean>>({
+    class: true,
+    event: true,
+    task: true,
+  });
+  const [isMobile, setIsMobile] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isAgendaOpen, setIsAgendaOpen] = useState(false);
 
   useEffect(() => {
     const currentDate = localTodayKey();
     setSelectedDate(currentDate);
     setToday(currentDate);
     setDateReady(true);
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+
+    const updateViewport = () => {
+      const mobile = media.matches;
+      setIsMobile(mobile);
+
+      if (mobile) {
+        setView("month");
+        setIsExpanded(true);
+      } else {
+        setIsExpanded(false);
+      }
+    };
+
+    updateViewport();
+    media.addEventListener("change", updateViewport);
+
+    return () => media.removeEventListener("change", updateViewport);
   }, []);
 
   const visibleDates = useMemo(
@@ -306,7 +335,11 @@ export default function CalendarOverview({
     );
   }, [classes, events, tasks, visibleDates, cancelledByDate]);
 
-  const selectedEntries = entries.filter(
+  const visibleEntries = entries.filter(
+    (entry) => visibleKinds[entry.kind],
+  );
+
+  const selectedEntries = visibleEntries.filter(
     (entry) => entry.date === selectedDate,
   );
 
@@ -355,22 +388,12 @@ export default function CalendarOverview({
     showWeekday: boolean,
     monthCell: boolean,
   ) {
-    const dayEntries = entries.filter((entry) => entry.date === date);
+    const dayEntries = visibleEntries.filter((entry) => entry.date === date);
     const isSelected = date === selectedDate;
     const isToday = date === today;
     const isCurrentMonth = date.slice(0, 7) === selectedMonthKey;
 
-    // Keep weekday columns aligned, but don't show dates belonging to
-    // neighbouring months.
-    if (monthCell && !isCurrentMonth) {
-      return (
-        <div
-          key={date}
-          aria-hidden="true"
-          className="h-16 rounded-lg sm:h-28 sm:rounded-xl"
-        />
-      );
-    }
+    // Adjacent-month dates remain visible with muted styling.
 
     return (
       <button
@@ -378,10 +401,15 @@ export default function CalendarOverview({
         type="button"
         aria-pressed={isSelected}
         aria-label={`${formatLongDate(date)}, ${dayEntries.length} calendar items`}
-        onClick={() => setSelectedDate(date)}
-        className={`relative min-w-0 overflow-hidden text-left transition ${
+        onClick={() => {
+          setSelectedDate(date);
+          if (isMobile && isExpanded) setIsAgendaOpen(true);
+        }}
+        className={`relative flex min-w-0 flex-col overflow-hidden text-left transition ${
           monthCell
-            ? "h-16 rounded-lg border p-1 sm:h-28 sm:rounded-xl sm:border-2 sm:p-2"
+            ? isMobile && isExpanded
+              ? "h-full min-h-0 rounded-md border p-1"
+              : "h-16 rounded-lg border p-1 sm:h-28 sm:rounded-xl sm:border-2 sm:p-2"
             : "min-h-36 rounded-xl border-2 p-1.5 sm:p-2"
         } ${
           isSelected
@@ -432,6 +460,33 @@ export default function CalendarOverview({
         </div>
 
 {monthCell ? (
+            isMobile && isExpanded ? (
+              <div className="mt-1 min-w-0 space-y-0.5 overflow-hidden">
+                {dayEntries.slice(0, 2).map((entry) => (
+                  <span
+                    key={entry.id}
+                    title={entry.title}
+                    className={[
+                      "block truncate rounded-sm px-1 py-0.5 text-[9px] font-semibold leading-tight",
+                      entry.cancelled
+                        ? "bg-[var(--border)] text-[var(--muted)] line-through"
+                        : entry.kind === "class"
+                          ? "bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                          : entry.kind === "event"
+                            ? "bg-[#fff0b3] text-[#684000]"
+                            : "bg-[var(--accent-soft)] text-[var(--accent-dark)]",
+                    ].join(" ")}
+                  >
+                    {entry.title}
+                  </span>
+                ))}
+                {dayEntries.length > 2 && (
+                  <span className="block truncate px-1 text-[9px] font-extrabold text-[var(--muted)]">
+                    +{dayEntries.length - 2}
+                  </span>
+                )}
+              </div>
+            ) : (
             <div className="mt-1 flex min-w-0 items-center justify-center gap-1 sm:mt-1.5 sm:flex-col sm:items-start sm:justify-start sm:gap-1">
               {(["class", "event", "task"] as const).map((kind) => {
                 const count = dayEntries.filter(
@@ -477,6 +532,7 @@ export default function CalendarOverview({
                 );
               })}
             </div>
+            )
           ) : (
           <div className="mt-1 space-y-1">
           {dayEntries.slice(0, 4).map((entry) => (
@@ -542,15 +598,27 @@ export default function CalendarOverview({
   }
 
   return (
-    <section className="card mb-8 bg-[var(--surface)] p-4 sm:p-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="stat-label">Classes · Events · Tasks</p>
-            <h2 className="mt-1 text-2xl sm:text-3xl">
+    <section
+      className={
+        isMobile && isExpanded
+          ? "fixed inset-0 z-50 m-0 flex h-[100dvh] min-h-0 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] p-3"
+          : "card mb-8 bg-[var(--surface)] p-4 sm:p-6"
+      }
+    >
+      <div
+        className={
+          isMobile && isExpanded
+            ? "flex min-h-0 flex-1 flex-col gap-2"
+            : "flex flex-col gap-4"
+        }
+      >
+        <div className={isMobile && isExpanded ? "flex shrink-0 items-center justify-between gap-2" : "flex flex-wrap items-start justify-between gap-3"}>
+          <div className="min-w-0">
+            <p className={isMobile && isExpanded ? "hidden" : "stat-label"}>Classes · Events · Tasks</p>
+            <h2 className={isMobile && isExpanded ? "mt-0 text-lg font-extrabold" : "mt-1 text-2xl sm:text-3xl"}>
               Calendar overview
             </h2>
-            <p className="mt-1 text-sm text-[var(--ink-soft)]">
+            <p className={isMobile && isExpanded ? "hidden" : "mt-1 text-sm text-[var(--ink-soft)]"}>
               Your week and month, together. Tasks appear on their due dates,
               without taking up a fixed time slot.
             </p>
@@ -559,7 +627,7 @@ export default function CalendarOverview({
           <div
             role="group"
             aria-label="Calendar view"
-            className="flex shrink-0 rounded-xl border-2 border-[var(--border)] p-1"
+            className={["flex shrink-0 rounded-xl border-2 border-[var(--border)] p-1", isMobile && isExpanded ? "hidden" : ""].join(" ")}
           >
             {(["week", "month"] as const).map((option) => (
               <button
@@ -577,9 +645,21 @@ export default function CalendarOverview({
               </button>
             ))}
           </div>
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsExpanded((current) => !current);
+                setIsAgendaOpen(false);
+              }}
+              className="shrink-0 rounded-full border border-[var(--border)] px-3 py-2 text-sm font-extrabold"
+            >
+              {isExpanded ? "Done" : "Full screen"}
+            </button>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-y border-[var(--border)] py-3">
+        <div className={isMobile && isExpanded ? "flex shrink-0 items-center justify-between gap-2 border-y border-[var(--border)] py-2" : "flex flex-wrap items-center justify-between gap-3 border-y border-[var(--border)] py-3"}>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -605,7 +685,43 @@ export default function CalendarOverview({
               →
             </button>
           </div>
-          <h3 className="text-lg font-extrabold">{heading}</h3>
+          <h3 className={isMobile && isExpanded ? "text-base font-extrabold" : "text-lg font-extrabold"}>{heading}</h3>
+        </div>
+
+        <div
+          role="group"
+          aria-label="Filter calendar categories"
+          className={isMobile && isExpanded && isAgendaOpen ? "hidden" : "flex shrink-0 flex-wrap gap-2"}
+        >
+          {([
+            { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
+            { kind: "event", label: "Events", marker: "bg-[#946200]" },
+            { kind: "task", label: "Tasks", marker: "bg-[var(--accent-dark)]" },
+          ] as const).map(({ kind, label, marker }) => (
+            <button
+              key={kind}
+              type="button"
+              aria-pressed={visibleKinds[kind]}
+              onClick={() =>
+                setVisibleKinds((current) => ({
+                  ...current,
+                  [kind]: !current[kind],
+                }))
+              }
+              className={[
+                "inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-2 text-xs font-extrabold transition",
+                visibleKinds[kind]
+                  ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]",
+              ].join(" ")}
+            >
+              <span
+                aria-hidden="true"
+                className={["h-2.5 w-2.5 rounded-full", marker, visibleKinds[kind] ? "" : "opacity-40"].join(" ")}
+              />
+              {label}
+            </button>
+          ))}
         </div>
 
         {view === "week" ? (
@@ -615,7 +731,7 @@ export default function CalendarOverview({
               {visibleDates.map((date, index) => {
                 const isSelected = date === selectedDate;
                 const isToday = date === today;
-                const count = entries.filter(
+                const count = visibleEntries.filter(
                   (entry) => entry.date === date,
                 ).length;
 
@@ -658,7 +774,10 @@ export default function CalendarOverview({
             </div>
           </>
         ) : (
-          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          <div
+            className={isMobile && isExpanded && !isAgendaOpen ? "grid min-h-0 flex-1 grid-cols-7 gap-x-1 gap-y-1" : isMobile && isExpanded ? "hidden" : "grid grid-cols-7 gap-1 sm:gap-2"}
+            style={isMobile && isExpanded && !isAgendaOpen ? { gridTemplateRows: "auto repeat(" + visibleDates.length / 7 + ", minmax(0, 1fr))" } : undefined}
+          >
             {SHORT_WEEKDAYS.map((weekday) => (
               <div
                 key={weekday}
@@ -671,7 +790,17 @@ export default function CalendarOverview({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-bold text-[var(--ink-soft)]">
+        {isMobile && isExpanded && isAgendaOpen && (
+          <button
+            type="button"
+            onClick={() => setIsAgendaOpen(false)}
+            className="shrink-0 rounded-xl border border-[var(--border)] px-3 py-2 text-left text-sm font-extrabold"
+          >
+            ← Back to month
+          </button>
+        )}
+
+        <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap gap-x-4 gap-y-2 text-xs font-bold text-[var(--ink-soft)]"}>
           <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-sm bg-[var(--primary-soft)]" />
             Classes
@@ -686,7 +815,7 @@ export default function CalendarOverview({
           </span>
         </div>
 
-        <div className="border-t border-[var(--border)] pt-4">
+        <div className={isMobile && isExpanded && !isAgendaOpen ? "hidden" : isMobile && isExpanded ? "min-h-0 flex-1 overflow-y-auto border-t border-[var(--border)] pt-3" : "border-t border-[var(--border)] pt-4"}>
           <div className="flex items-start justify-between gap-3">
             <p className="stat-label">Selected day</p>
             <details data-smart-menu className="relative">
