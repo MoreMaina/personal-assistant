@@ -367,7 +367,7 @@ export default function CalendarOverview({
         <div
           key={date}
           aria-hidden="true"
-          className="h-24 rounded-xl sm:h-28"
+          className="h-16 rounded-lg sm:h-28 sm:rounded-xl"
         />
       );
     }
@@ -379,10 +379,10 @@ export default function CalendarOverview({
         aria-pressed={isSelected}
         aria-label={`${formatLongDate(date)}, ${dayEntries.length} calendar items`}
         onClick={() => setSelectedDate(date)}
-        className={`relative min-w-0 overflow-hidden rounded-xl border-2 p-1.5 text-left transition sm:p-2 ${
+        className={`relative min-w-0 overflow-hidden text-left transition ${
           monthCell
-            ? "h-20 sm:h-28"
-            : "min-h-36"
+            ? "h-16 rounded-lg border p-1 sm:h-28 sm:rounded-xl sm:border-2 sm:p-2"
+            : "min-h-36 rounded-xl border-2 p-1.5 sm:p-2"
         } ${
           isSelected
             ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] shadow-[0_3px_0_var(--primary-dark)]"
@@ -403,14 +403,14 @@ export default function CalendarOverview({
               </span>
             )}
             <span
-              className={`inline-flex items-center justify-center rounded-full border-2 px-1 font-extrabold transition ${
+              className={`inline-flex items-center justify-center rounded-full font-extrabold transition ${
                   monthCell
-                    ? `h-8 min-w-8 text-sm sm:h-9 sm:min-w-9 sm:text-base ${
+                    ? `h-5 min-w-0 border-0 px-0 text-xs sm:h-9 sm:min-w-9 sm:border-2 sm:px-1 sm:text-base ${
                         isToday
-                          ? "border-[var(--primary-dark)] bg-[var(--primary)] text-white shadow-sm"
-                          : "border-[var(--primary-soft)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                          ? "text-[var(--primary-dark)] sm:border-[var(--primary-dark)] sm:bg-[var(--primary)] sm:text-white sm:shadow-sm"
+                          : "text-[var(--ink)] sm:border-[var(--primary-soft)] sm:bg-[var(--primary-soft)] sm:text-[var(--primary-dark)]"
                       }`
-                    : `h-6 min-w-6 text-xs sm:h-7 sm:min-w-7 sm:text-sm ${
+                    : `h-6 min-w-6 border-2 px-1 text-xs sm:h-7 sm:min-w-7 sm:text-sm ${
                         isToday
                           ? "bg-[var(--primary)] text-white"
                           : "text-[var(--ink)]"
@@ -421,10 +421,10 @@ export default function CalendarOverview({
             </span>
           </div>
           <span
-              className={`shrink-0 min-w-5 rounded-full px-1 py-0.5 text-center text-[9px] font-extrabold leading-none sm:min-w-6 sm:px-1.5 sm:text-[10px] ${
+              className={`inline-flex shrink-0 items-center justify-center min-w-0 px-0 text-[9px] font-extrabold leading-none sm:min-w-6 sm:rounded-full sm:px-1.5 sm:py-0.5 sm:text-[10px] ${
                 dayEntries.length > 0
-                  ? "bg-[var(--yellow-soft)] text-[var(--ink)]"
-                  : "bg-[var(--surface)] text-[var(--muted)]"
+                  ? "text-[var(--ink)] sm:bg-[var(--yellow-soft)]"
+                  : "hidden sm:inline-flex sm:bg-[var(--surface)] sm:text-[var(--muted)]"
               }`}
             >
               {dayEntries.length}
@@ -432,7 +432,7 @@ export default function CalendarOverview({
         </div>
 
 {monthCell ? (
-            <div className="mt-1 flex min-w-0 items-center justify-between gap-0.5 sm:mt-1.5 sm:flex-col sm:items-start sm:justify-start sm:gap-1">
+            <div className="mt-1 flex min-w-0 items-center justify-center gap-1 sm:mt-1.5 sm:flex-col sm:items-start sm:justify-start sm:gap-1">
               {(["class", "event", "task"] as const).map((kind) => {
                 const count = dayEntries.filter(
                   (entry) => entry.kind === kind,
@@ -464,13 +464,13 @@ export default function CalendarOverview({
                   <span
                     key={kind}
                     title={`${count} ${label}`}
-                    className={`inline-flex h-3 shrink-0 items-center gap-0.5 ${count === 0 ? "opacity-30" : ""}`}
+                    className={`inline-flex h-3 shrink-0 items-center gap-0.5 ${count === 0 ? "hidden sm:inline-flex sm:opacity-30" : ""}`}
                   >
                     <span
                       aria-hidden="true"
                       className={`h-1.5 w-1.5 rounded-full ${markerColor}`}
                     />
-                    <span className={`text-[9px] font-extrabold leading-none sm:text-[10px] ${countColor}`}>
+                    <span className={`hidden text-[9px] font-extrabold leading-none sm:inline sm:text-[10px] ${countColor}`}>
                       {count}
                     </span>
                   </span>
