@@ -794,7 +794,7 @@ export default function TodayPage() {
           Today
         </p>
 
-        <h1 className="mt-2 text-3xl sm:text-4xl lg:text-5xl">
+        <h1 className="mt-2 text-2xl sm:text-3xl lg:text-4xl">
           {new Intl.DateTimeFormat(
             "en-US",
             {
@@ -806,24 +806,22 @@ export default function TodayPage() {
         </h1>
 
         <p className="mt-3 text-[var(--ink-soft)]">
-          Your day, reduced to
-          the next useful thing.
+          Focus on what&apos;s next.
         </p>
       </div>
 
       <section
         aria-labelledby="daily-plan-heading"
-        className="card mb-6 bg-[var(--surface)] p-5 sm:p-6"
+        className="card mb-6 bg-[var(--surface)] p-4 sm:p-5"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="stat-label">AI planning</p>
-            <h2 id="daily-plan-heading" className="mt-1 text-2xl">
+            <h2 id="daily-plan-heading" className="mt-1 text-xl sm:text-2xl">
               Plan my day
             </h2>
             <p className="mt-2 text-[var(--ink-soft)]">
-              Plan today and tomorrow around your classes, deadlines and free windows.
-              Planning hours are 7 AM–10 PM; overnight gaps are excluded. Nothing will be changed automatically.
+              Build a suggested schedule around your classes and free time. Nothing changes without your approval.
             </p>
           </div>
 
@@ -854,7 +852,7 @@ export default function TodayPage() {
         )}
 
         {dailyPlan && (
-          <div className="mt-5 rounded-[16px] border-2 border-[var(--border)] bg-white/60 p-4 sm:p-5">
+          <div className="mt-4 rounded-[16px] border-2 border-[var(--border)] bg-white/60 p-3 sm:p-4">
             <p className="mb-2 text-sm font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
               Your suggested plan
             </p>
@@ -865,20 +863,22 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="card bg-[var(--surface)] p-6 sm:p-8">
+      <section className="card bg-[var(--surface)] p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="stat-label">
               Right now
             </p>
 
-            <h2 className="mt-2 break-words text-2xl sm:text-3xl">
+            <h2 className="mt-2 break-words text-xl sm:text-2xl">
               {recommendation
                 ? recommendation.task.title
                 : "Nothing urgent"}
             </h2>
             {recommendation?.task.type === "study" &&
-              recommendation.task.unitName && (
+              recommendation.task.unitName &&
+              recommendation.task.unitName.trim().toLocaleLowerCase() !==
+                recommendation.task.title.trim().toLocaleLowerCase() && (
                 <p className="mt-1 break-words text-sm text-[var(--ink-soft)]">
                   {recommendation.task.unitName}
                 </p>
@@ -897,13 +897,13 @@ export default function TodayPage() {
 
         {recommendation ? (
           <>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[16px] bg-[var(--primary-soft)] p-4">
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="rounded-[12px] bg-[var(--primary-soft)] p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary)]">
                   Time
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary)]">
+                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold text-[var(--primary)] sm:text-xl">
                   {formatDuration(
                     recommendation
                       .task
@@ -912,12 +912,12 @@ export default function TodayPage() {
                 </div>
               </div>
 
-              <div className="rounded-[16px] bg-[var(--accent-soft)] p-4">
+              <div className="rounded-[12px] bg-[var(--accent-soft)] p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--accent-dark)]">
-                  Window
+                  Free time
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--accent-dark)]">
+                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold text-[var(--accent-dark)] sm:text-xl">
                   {formatDuration(
                     recommendation
                       .window
@@ -926,12 +926,12 @@ export default function TodayPage() {
                 </div>
               </div>
 
-              <div className="rounded-[16px] bg-[var(--yellow-soft)] p-4">
+              <div className="rounded-[12px] bg-[var(--yellow-soft)] p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary-dark)]">
-                  Start
+                  Starts
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary-dark)]">
+                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold text-[var(--primary-dark)] sm:text-xl">
                   {formatTime(
                     recommendation
                       .window
@@ -941,15 +941,16 @@ export default function TodayPage() {
               </div>
             </div>
 
-            <div className="mt-6 rounded-[16px] border-2 border-[var(--border)] bg-white/60 p-4">
+            <div className="mt-4 rounded-[12px] border-2 border-[var(--border)] bg-white/60 p-3">
               <p className="text-sm font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
                 Why this?
               </p>
 
               <p className="mt-1 text-[var(--ink-soft)]">
                 {
-                  recommendation
-                    .explanation
+                  recommendation.explanation
+                    .replace(/^It is\b/, "It's")
+                    .replace(/\s+\+\s+/, ", and ")
                 }
               </p>
             </div>
@@ -958,13 +959,13 @@ export default function TodayPage() {
               href={getTaskHref(
                 recommendation.task,
               )}
-              className="right-now-start-button mt-6 inline-flex min-h-[52px] items-center justify-center rounded-[16px] border-2 border-[var(--accent-dark)] bg-[var(--accent)] px-6 text-base font-black uppercase tracking-[0.03em] text-white shadow-[0_4px_0_var(--accent-dark)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-none"
+              className="right-now-start-button mt-4 inline-flex min-h-[48px] items-center justify-center rounded-[16px] border-2 border-[var(--accent-dark)] bg-[var(--accent)] px-5 text-base font-black uppercase tracking-[0.03em] text-white shadow-[0_4px_0_var(--accent-dark)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-none"
             >
               Start
             </Link>
           </>
         ) : (
-          <div className="mt-6 rounded-[16px] bg-[var(--primary-soft)] p-5">
+          <div className="mt-4 rounded-[12px] bg-[var(--primary-soft)] p-4">
             <p className="font-semibold text-[var(--ink-soft)]">
               Nothing fits your
               current schedule.
@@ -975,14 +976,10 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="mt-8">
-        <div className="mb-4">
-          <p className="stat-label">
+      <section className="mt-6">
+        <div className="mb-3">
+          <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">
             Up next
-          </p>
-
-          <h2 className="mt-1 text-2xl">
-            Other good options
           </h2>
         </div>
 
@@ -995,7 +992,7 @@ export default function TodayPage() {
                   href={getTaskHref(
                     task,
                   )}
-                  className="card flex items-center justify-between gap-4 bg-[var(--surface)] p-5 transition hover:-translate-y-1"
+                  className="card flex items-center justify-between gap-4 bg-[var(--surface)] p-4 sm:p-5 transition hover:-translate-y-1"
                 >
                   <div className="min-w-0">
                     <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
@@ -1008,10 +1005,13 @@ export default function TodayPage() {
                       )}
                     </div>
 
-                    <h3 className="mt-1 break-words text-xl">
+                    <h3 className="mt-1 break-words text-lg sm:text-xl">
                       {task.title}
                     </h3>
-                    {task.type === "study" && task.unitName && (
+                    {task.type === "study" &&
+                      task.unitName &&
+                      task.unitName.trim().toLocaleLowerCase() !==
+                        task.title.trim().toLocaleLowerCase() && (
                       <p className="mt-1 break-words text-sm text-[var(--ink-soft)]">
                         {task.unitName}
                       </p>
@@ -1034,16 +1034,11 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="mt-8">
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <section className="mt-6">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="stat-label">
+            <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">
               Your day
-            </p>
-
-            <h2 className="mt-1 text-2xl">
-              What the day looks
-              like
             </h2>
           </div>
 
@@ -1060,15 +1055,15 @@ export default function TodayPage() {
           </div>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-2">
           {dayTimeline.map((item) =>
             item.kind === "class" ? (
               <div
                 key={item.id}
-                className="rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--primary)] p-4 text-[var(--surface)] shadow-[0_3px_0_var(--primary-dark)]"
+                className="rounded-[12px] border-2 border-[var(--primary-dark)] bg-[var(--primary)] p-3 text-[var(--surface)] shadow-[0_3px_0_var(--primary-dark)]"
               >
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] opacity-75">Class</div>
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold">{item.title}</div>
+                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold sm:text-xl">{item.title}</div>
                 <div className="mt-1 text-sm font-bold opacity-80">
                   {formatTime(item.startAt)} — {formatTime(item.endAt)}
                 </div>
@@ -1076,10 +1071,10 @@ export default function TodayPage() {
             ) : (
               <div
                 key={item.id}
-                className="timeline-free-slot rounded-[16px] border-2 border-dashed border-[var(--primary-dark)] bg-[var(--surface)] p-4"
+                className="timeline-free-slot rounded-[12px] border-2 border-dashed border-[var(--primary-dark)] bg-[var(--surface)] p-3"
               >
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">Free time</div>
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary)]">
+                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold text-[var(--primary)] sm:text-xl">
                   {formatTime(item.startAt)} — {formatTime(item.endAt)}
                 </div>
                 <div className="mt-1 text-sm font-bold text-[var(--ink-soft)]">
