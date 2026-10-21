@@ -160,6 +160,7 @@ export default function ClassesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [plannerError, setPlannerError] = useState("");
   const [managementTab, setManagementTab] = useState<ManagementTab>("events");
+  const [expandedTaskTitles, setExpandedTaskTitles] = useState<Set<string>>(() => new Set());
   const [searchHighlightCalendarId, setSearchHighlightCalendarId] =
     useState<string | null>(null);
   const [searchHighlightClassId, setSearchHighlightClassId] =
@@ -812,15 +813,8 @@ export default function ClassesPage() {
 
   return (
     <main>
-      <header className="mb-7">
-        <p className="stat-label">Your time, in one place</p>
-
-        <h1 className="mt-2 text-4xl sm:text-5xl">Calendar</h1>
-
-        <p className="mt-3 max-w-2xl text-[var(--ink-soft)]">
-          Plan your recurring classes, one-off commitments and flexible
-          tasks in one place.
-        </p>
+      <header className="mb-5">
+        <h1 className="text-3xl sm:text-4xl">Calendar</h1>
       </header>
 
       {notice && (
@@ -856,9 +850,9 @@ export default function ClassesPage() {
 
         <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)] sm:p-4">
           <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary-dark)]">
-            Class time
+            Time
           </p>
-          <p className="mt-2 font-[var(--font-heading)] text-xl font-bold text-[var(--primary-dark)] sm:text-3xl">
+          <p className="mt-2 whitespace-nowrap font-[var(--font-heading)] text-[11px] font-bold leading-tight tracking-tight text-[var(--primary-dark)] sm:text-2xl">
             {formatDuration(weeklyMinutes)}
           </p>
           <p className="text-xs font-bold text-[var(--ink-soft)]">per week</p>
@@ -894,33 +888,23 @@ export default function ClassesPage() {
       />
 
       {/* Calendar management: one tab visible at a time */}
-      <section className="mt-10">
-        <div className="mb-4">
+      <section className="mt-7">
+        <div className="mb-3">
           <p className="stat-label">Manage your plan</p>
-          <h2 className="mt-1 text-2xl sm:text-3xl">Classes, events & tasks</h2>
-          <p className="mt-1 text-sm text-[var(--ink-soft)]">
-            Keep each kind of item organised here. The calendar overview above
-            brings them all together.
-          </p>
+          <h2 className="mt-1 text-xl sm:text-2xl">Classes, events & tasks</h2>
         </div>
 
         <details className="mb-5 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4">
           <summary className="cursor-pointer list-none font-extrabold">
             Manage weekly classes
             <span className="mt-1 block text-sm font-normal text-[var(--ink-soft)]">
-              Add and review your weekly class patterns. Individual sessions can
-              still be cancelled or restored from the selected-day agenda.
+              Edit your recurring class schedule.
             </span>
           </summary>
           <div className="mt-4 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="stat-label">Recurring weekly schedule</p>
                 <h3 className="mt-1 text-2xl">Your classes</h3>
-                <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                  Manage your weekly class pattern. Cancel or restore individual
-                  sessions from the selected-day agenda above.
-                </p>
               </div>
               {!showClassForm && (
                 <Button
@@ -1181,7 +1165,7 @@ export default function ClassesPage() {
             aria-selected={managementTab === "events"}
             aria-controls="calendar-panel-events"
             onClick={() => switchManagementTab("events")}
-            className={`flex-1 rounded-full px-3 py-2.5 text-sm font-extrabold transition sm:px-4 ${
+            className={`calendar-management-tab flex-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition sm:px-4 ${
               managementTab === "events"
                 ? "bg-[var(--primary)] text-white shadow-sm"
                 : "text-[var(--muted)] hover:bg-[var(--primary-soft)]"
@@ -1196,7 +1180,7 @@ export default function ClassesPage() {
             aria-selected={managementTab === "tasks"}
             aria-controls="calendar-panel-tasks"
             onClick={() => switchManagementTab("tasks")}
-            className={`flex-1 rounded-full px-3 py-2.5 text-sm font-extrabold transition sm:px-4 ${
+            className={`calendar-management-tab flex-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition sm:px-4 ${
               managementTab === "tasks"
                 ? "bg-[var(--primary)] text-white shadow-sm"
                 : "text-[var(--muted)] hover:bg-[var(--primary-soft)]"
@@ -1518,16 +1502,13 @@ export default function ClassesPage() {
           >
 {/* Flexible tasks */}
       <section className="mt-3">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="stat-label">Work around your schedule</p>
-            <h2 className="mt-1 text-2xl">Tasks & to-dos</h2>
-            <p className="mt-1 text-sm text-[var(--ink-soft)]">
-              Flexible work with deadlines and priorities, not fixed calendar slots.
-            </p>
+            <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">Tasks & to-dos</h2>
+            <p className="mt-1 text-sm text-[var(--ink-soft)]">Flexible deadlines.</p>
           </div>
           <Button variant="primary" onClick={() => openPlannerForm("task")}>
-            + Add task
+            Add task
           </Button>
         </div>
 
@@ -1770,7 +1751,7 @@ export default function ClassesPage() {
               <article
                 key={item.id}
                 id={`calendar-item-${item.id}`}
-                className={`card bg-[var(--surface)] p-3 sm:p-5 ${
+                className={`card bg-[var(--surface)] p-3 sm:p-4 ${
                   item.completed ? "opacity-75" : ""
                 } ${
                   searchHighlightCalendarId === item.id
@@ -1799,8 +1780,23 @@ export default function ClassesPage() {
                       )}
 
                       <div className="min-w-0 flex-1">
-                      <h3 className={`break-words text-lg ${item.completed ? "line-through" : ""}`}>
-                        {item.title}
+                      <h3 className={`min-w-0 text-base sm:text-lg ${item.completed ? "line-through" : ""}`}>
+                        <button
+                          type="button"
+                          className="calendar-task-title-button bg-transparent focus-visible:outline-2 focus-visible:outline-[var(--primary-dark)]"
+                          aria-expanded={expandedTaskTitles.has(item.id)}
+                          title={item.title}
+                          onClick={() => setExpandedTaskTitles((current) => {
+                            const next = new Set(current);
+                            if (next.has(item.id)) next.delete(item.id);
+                            else next.add(item.id);
+                            return next;
+                          })}
+                        >
+                          <span className={expandedTaskTitles.has(item.id) ? "block whitespace-normal break-words" : "block truncate"}>
+                            {item.title}
+                          </span>
+                        </button>
                       </h3>
                       <div className="mt-2 flex flex-wrap gap-2 text-xs font-extrabold">
                         <span className="rounded-full border border-[var(--border)] px-2 py-1 text-[var(--ink-soft)]">

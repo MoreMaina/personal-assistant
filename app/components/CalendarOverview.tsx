@@ -617,16 +617,11 @@ export default function CalendarOverview({
             : "flex flex-col gap-4"
         }
       >
-        <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap items-start justify-between gap-3"}>
+        <div className={isMobile && isExpanded ? "hidden" : "flex flex-col items-start gap-2"}>
           <div className="min-w-0">
-            <p className={isMobile && isExpanded ? "hidden" : "stat-label"}>Classes · Events · Tasks</p>
-            <h2 className={isMobile && isExpanded ? "mt-0 text-lg font-extrabold" : "mt-1 text-2xl sm:text-3xl"}>
+            <h2 className={isMobile && isExpanded ? "mt-0 text-lg font-extrabold" : "text-xl sm:text-2xl"}>
               Calendar overview
             </h2>
-            <p className={isMobile && isExpanded ? "hidden" : "mt-1 text-sm text-[var(--ink-soft)]"}>
-              Your week and month, together. Tasks appear on their due dates,
-              without taking up a fixed time slot.
-            </p>
           </div>
 
           <div
@@ -665,14 +660,14 @@ export default function CalendarOverview({
               type="button"
               aria-label="Previous week or month"
               onClick={() => movePeriod(-1)}
-              className="rounded-xl border-2 border-[var(--border)] px-3 py-2 font-extrabold"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-[var(--border)] p-0 font-extrabold"
             >
               ←
             </button>
             <button
               type="button"
               onClick={() => setSelectedDate(today)}
-              className="rounded-xl border-2 border-[var(--border)] px-3 py-2 text-sm font-extrabold"
+              className="flex h-11 shrink-0 items-center justify-center rounded-xl border-2 border-[var(--border)] px-4 py-0 text-sm font-extrabold"
             >
               Today
             </button>
@@ -680,7 +675,7 @@ export default function CalendarOverview({
               type="button"
               aria-label="Next week or month"
               onClick={() => movePeriod(1)}
-              className="rounded-xl border-2 border-[var(--border)] px-3 py-2 font-extrabold"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-[var(--border)] p-0 font-extrabold"
             >
               →
             </button>
@@ -765,9 +760,11 @@ export default function CalendarOverview({
               {visibleDates.map((date, index) => {
                 const isSelected = date === selectedDate;
                 const isToday = date === today;
-                const count = visibleEntries.filter(
-                  (entry) => entry.date === date,
-                ).length;
+                const dayKinds = Array.from(new Set(
+                  visibleEntries
+                    .filter((entry) => entry.date === date)
+                    .map((entry) => entry.kind),
+                ));
 
                 return (
                   <button
@@ -794,8 +791,19 @@ export default function CalendarOverview({
                     >
                       {dateFromKey(date).getDate()}
                     </span>
-                    <span className="mt-1 block text-[10px] font-bold text-[var(--muted)]">
-                      {count > 0 ? `· ${count}` : "·"}
+                    <span aria-hidden="true" className="mt-1 flex min-h-2 items-center justify-center gap-1">
+                      {dayKinds.map((kind) => (
+                        <span
+                          key={kind}
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            kind === "class"
+                              ? "bg-[var(--primary-dark)]"
+                              : kind === "event"
+                                ? "bg-[#946200]"
+                                : "bg-[var(--accent-dark)]"
+                          }`}
+                        />
+                      ))}
                     </span>
                   </button>
                 );
@@ -826,25 +834,13 @@ export default function CalendarOverview({
 
 
 
-        <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap gap-x-4 gap-y-2 text-xs font-bold text-[var(--ink-soft)]"}>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[var(--primary-soft)]" />
-            Classes
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[var(--yellow-soft)]" />
-            Events
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[var(--accent-soft)]" />
-            Tasks
-          </span>
-        </div>
 
         <div className={isMobile && isExpanded && !isAgendaOpen ? "hidden" : isMobile && isExpanded ? "min-h-0 flex-1 overflow-y-auto border-t border-[var(--border)] pt-3" : "border-t border-[var(--border)] pt-4"}>
-          <div className="flex items-start justify-between gap-3">
-            <p className="stat-label">Selected day</p>
-            <details data-smart-menu className="relative">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="min-w-0 flex-1 break-words text-base font-extrabold sm:text-xl">
+              {formatLongDate(selectedDate)}
+            </h3>
+            <details data-smart-menu className="relative shrink-0">
               <summary
                 aria-label="Selected day actions"
                 className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
@@ -881,9 +877,6 @@ export default function CalendarOverview({
               </div>
             </details>
           </div>
-          <h3 className="mt-1 text-xl sm:text-2xl">
-            {formatLongDate(selectedDate)}
-          </h3>
 
           {selectedEntries.length === 0 ? (
             <p className="mt-3 rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--ink-soft)]">
@@ -904,20 +897,39 @@ export default function CalendarOverview({
                           : "border-[var(--accent-dark)] bg-[var(--accent-soft)]"
                   }`}
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-row items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
                         {entryKindLabel(entry)} · {formatTime(entry)}
                       </p>
-                      <h4
-                        className={`mt-1 break-words text-lg font-extrabold ${
-                          entry.cancelled || (entry.taskOccurrence?.completed ?? entry.task?.completed)
-                            ? "line-through"
-                            : ""
-                        }`}
-                      >
-                        {entry.title}
-                      </h4>
+                      <div className="mt-1 flex min-w-0 items-start gap-2">
+                        {entry.kind === "task" && entry.task && (
+                          <input
+                            type="checkbox"
+                            aria-label={`Mark ${entry.title} ${(entry.taskOccurrence?.completed ?? entry.task.completed) ? "incomplete" : "complete"}`}
+                            checked={entry.taskOccurrence?.completed ?? entry.task.completed}
+                            onChange={() =>
+                              onToggleTask(
+                                entry.task!,
+                                entry.taskOccurrence?.recurring
+                                  ? entry.taskOccurrence.originalDate
+                                  : undefined,
+                                entry.taskOccurrence?.completed ?? entry.task!.completed,
+                              )
+                            }
+                            className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[var(--primary)]"
+                          />
+                        )}
+                        <h4
+                          className={`min-w-0 break-words text-base font-extrabold sm:text-lg ${
+                            entry.cancelled || (entry.taskOccurrence?.completed ?? entry.task?.completed)
+                              ? "line-through"
+                              : ""
+                          }`}
+                        >
+                          {entry.title}
+                        </h4>
+                      </div>
                       {entry.detail && (
                         <p className="mt-1 text-sm text-[var(--ink-soft)]">
                           {entry.detail}
@@ -1005,22 +1017,6 @@ export default function CalendarOverview({
 
                       {entry.kind === "task" && entry.task && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onToggleTask(
-                                entry.task!,
-                                entry.taskOccurrence?.recurring
-                                  ? entry.taskOccurrence.originalDate
-                                  : undefined,
-                                entry.taskOccurrence?.completed ??
-                                  entry.task!.completed,
-                              )
-                            }
-                            className="rounded-lg border-2 border-[var(--accent-dark)] px-3 py-2 text-sm font-extrabold text-[var(--accent-dark)]"
-                          >
-                            {(entry.taskOccurrence?.completed ?? entry.task.completed) ? "Reopen" : "Complete"}
-                          </button>
                           <details data-smart-menu className="relative">
                             <summary
                               aria-label={`More actions for ${entry.title}`}

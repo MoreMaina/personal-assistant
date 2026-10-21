@@ -1409,3 +1409,45 @@ button.card-menu__cancel {
   transform: translateY(4px);
   box-shadow: 0 0 0 transparent;
 }
+
+
+/* Compact Calendar management tabs without the raised-button treatment. */
+.app-content button.calendar-management-tab:not(.topbar__icon-button) {
+  min-height: 36px;
+  height: 36px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 9999px;
+  box-shadow: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.app-content button.calendar-management-tab:not(.topbar__icon-button):hover,
+.app-content button.calendar-management-tab:not(.topbar__icon-button):active {
+  transform: none;
+  box-shadow: none;
+}
+
+/* One-line Calendar task titles that expand on tap. */
+.app-content button.calendar-task-title-button:not(.topbar__icon-button) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  box-shadow: none;
+  font: inherit;
+  font-weight: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-content button.calendar-task-title-button:not(.topbar__icon-button):hover,
+.app-content button.calendar-task-title-button:not(.topbar__icon-button):active {
+  transform: none;
+  box-shadow: none;
+}
