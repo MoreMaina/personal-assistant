@@ -393,7 +393,16 @@ export default function CalendarOverview({
     const isToday = date === today;
     const isCurrentMonth = date.slice(0, 7) === selectedMonthKey;
 
-    // Adjacent-month dates remain visible with muted styling.
+    // Keep weekday alignment without displaying dates outside this month.
+    if (monthCell && !isCurrentMonth) {
+      return (
+        <div
+          key={date}
+          aria-hidden="true"
+          className={isMobile && isExpanded ? "min-h-0 rounded-md" : "h-16 rounded-lg sm:h-28 sm:rounded-xl"}
+        />
+      );
+    }
 
     return (
       <button
@@ -453,7 +462,7 @@ export default function CalendarOverview({
                 dayEntries.length > 0
                   ? "text-[var(--ink)] sm:bg-[var(--yellow-soft)]"
                   : "hidden sm:inline-flex sm:bg-[var(--surface)] sm:text-[var(--muted)]"
-              }`}
+              } ${isMobile && isExpanded ? "hidden" : ""}`}
             >
               {dayEntries.length}
             </span>
@@ -601,18 +610,18 @@ export default function CalendarOverview({
     <section
       className={
         isMobile && isExpanded
-          ? "fixed inset-0 z-50 m-0 flex h-[100dvh] min-h-0 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] p-3"
+          ? "fixed inset-0 z-[70] m-0 flex h-[100dvh] min-h-0 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] p-2"
           : "card mb-8 bg-[var(--surface)] p-4 sm:p-6"
       }
     >
       <div
         className={
           isMobile && isExpanded
-            ? "flex min-h-0 flex-1 flex-col gap-2"
+            ? "flex min-h-0 flex-1 flex-col gap-1"
             : "flex flex-col gap-4"
         }
       >
-        <div className={isMobile && isExpanded ? "flex shrink-0 items-center justify-between gap-2" : "flex flex-wrap items-start justify-between gap-3"}>
+        <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap items-start justify-between gap-3"}>
           <div className="min-w-0">
             <p className={isMobile && isExpanded ? "hidden" : "stat-label"}>Classes · Events · Tasks</p>
             <h2 className={isMobile && isExpanded ? "mt-0 text-lg font-extrabold" : "mt-1 text-2xl sm:text-3xl"}>
@@ -659,7 +668,7 @@ export default function CalendarOverview({
           )}
         </div>
 
-        <div className={isMobile && isExpanded ? "flex shrink-0 items-center justify-between gap-2 border-y border-[var(--border)] py-2" : "flex flex-wrap items-center justify-between gap-3 border-y border-[var(--border)] py-3"}>
+        <div className={isMobile && isExpanded ? "flex shrink-0 items-center justify-between gap-1 border-b border-[var(--border)] py-1" : "flex flex-wrap items-center justify-between gap-3 border-y border-[var(--border)] py-3"}>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -685,13 +694,34 @@ export default function CalendarOverview({
               →
             </button>
           </div>
-          <h3 className={isMobile && isExpanded ? "text-base font-extrabold" : "text-lg font-extrabold"}>{heading}</h3>
+          <h3 className={isMobile && isExpanded ? "min-w-0 flex-1 truncate px-1 text-center text-sm font-extrabold" : "text-lg font-extrabold"}>{heading}</h3>
+          {isMobile && isExpanded && (
+            <details data-smart-menu className="relative z-40 shrink-0">
+              <summary aria-label="Calendar filters" title="Calendar filters" className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--border)] text-xl font-extrabold">
+                <span aria-hidden="true">⋮</span>
+              </summary>
+              <div data-smart-menu-panel className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
+                <p className="px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Show on calendar</p>
+                {([
+                  { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
+                  { kind: "event", label: "Events", marker: "bg-[#946200]" },
+                  { kind: "task", label: "Tasks", marker: "bg-[var(--accent-dark)]" },
+                ] as const).map(({ kind, label, marker }) => (
+                  <button key={kind} type="button" aria-pressed={visibleKinds[kind]} onClick={() => setVisibleKinds((current) => ({ ...current, [kind]: !current[kind] }))} className={["flex w-full items-center gap-2 rounded-lg px-2 py-2.5 text-left text-sm font-bold transition", visibleKinds[kind] ? "bg-[var(--primary-soft)] text-[var(--primary-dark)]" : "text-[var(--muted)]"].join(" ")}>
+                    <span aria-hidden="true" className={["h-2.5 w-2.5 shrink-0 rounded-full", marker, visibleKinds[kind] ? "" : "opacity-40"].join(" ")} />
+                    <span className="flex-1">{label}</span>
+                    <span aria-hidden="true" className="w-4 text-right">{visibleKinds[kind] ? "✓" : ""}</span>
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
 
         <div
           role="group"
           aria-label="Filter calendar categories"
-          className={isMobile && isExpanded && isAgendaOpen ? "hidden" : "flex shrink-0 flex-wrap gap-2"}
+          className={isMobile && isExpanded ? "hidden" : "flex shrink-0 flex-wrap gap-2"}
         >
           {([
             { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
