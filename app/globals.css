@@ -1377,3 +1377,35 @@ button.card-menu__cancel {
     white-space: nowrap;
   }
 }
+
+
+/* Focused tactile styling for Today's planning actions. */
+.app-content button.plan-generate-button:not(.topbar__icon-button) {
+  box-shadow: 0 4px 0 var(--primary-dark);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.app-content .plan-generate-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--primary-dark);
+}
+
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+
+.app-content .right-now-start-button {
+  box-shadow: 0 4px 0 var(--accent-dark);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.app-content .right-now-start-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark);
+}
+
+.app-content .right-now-start-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}

@@ -831,7 +831,7 @@ export default function TodayPage() {
             type="button"
             disabled={isPlanning}
             onClick={() => void handleGenerateDailyPlan()}
-            className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-5 py-3 font-black text-[var(--primary-dark)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
+            className="plan-generate-button inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-5 py-3 font-black text-[var(--primary-dark)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
           >
             {isPlanning
               ? "Planning your day..."
@@ -958,7 +958,7 @@ export default function TodayPage() {
               href={getTaskHref(
                 recommendation.task,
               )}
-              className="mt-6 inline-flex min-h-[52px] items-center justify-center rounded-[16px] border-2 border-[var(--accent-dark)] bg-[var(--accent)] px-6 text-base font-black uppercase tracking-[0.03em] text-white shadow-[0_4px_0_var(--accent-dark)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-none"
+              className="right-now-start-button mt-6 inline-flex min-h-[52px] items-center justify-center rounded-[16px] border-2 border-[var(--accent-dark)] bg-[var(--accent)] px-6 text-base font-black uppercase tracking-[0.03em] text-white shadow-[0_4px_0_var(--accent-dark)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-none"
             >
               Start
             </Link>
@@ -1076,7 +1076,7 @@ export default function TodayPage() {
             ) : (
               <div
                 key={item.id}
-                className="rounded-[16px] border-2 border-[var(--border)] bg-[var(--surface)] p-4"
+                className="timeline-free-slot rounded-[16px] border-2 border-dashed border-[var(--primary-dark)] bg-[var(--surface)] p-4"
               >
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">Free time</div>
                 <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary)]">
