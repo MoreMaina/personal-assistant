@@ -80,15 +80,17 @@ export default function Navigation() {
             key={item.href}
             href={item.href}
             aria-current={isActive(item.href) ? "page" : undefined}
-            className={`mobile-nav__item ${
-              isActive(item.href) ? "mobile-nav__item--active" : ""
-            }`}
+            className="mobile-nav__item"
           >
-            <span className="mobile-nav__icon" aria-hidden="true">
-              <AppIcon name={item.icon} size={22} />
-            </span>
-            <span className="mobile-nav__label">
-              {item.mobileLabel}
+            <span className={`mobile-nav__content ${
+              isActive(item.href) ? "mobile-nav__content--active" : ""
+            }`}>
+              <span className="mobile-nav__icon" aria-hidden="true">
+                <AppIcon name={item.icon} size={22} />
+              </span>
+              <span className="mobile-nav__label">
+                {item.mobileLabel}
+              </span>
             </span>
           </Link>
         ))}

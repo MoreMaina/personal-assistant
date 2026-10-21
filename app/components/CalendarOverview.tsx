@@ -203,20 +203,16 @@ export default function CalendarOverview({
     const updateViewport = () => {
       const mobile = media.matches;
       setIsMobile(mobile);
+      setIsExpanded(mobile && view === "month");
 
-      if (mobile) {
-        setView("month");
-        setIsExpanded(true);
-      } else {
-        setIsExpanded(false);
-      }
+      if (!mobile) setIsAgendaOpen(false);
     };
 
     updateViewport();
     media.addEventListener("change", updateViewport);
 
     return () => media.removeEventListener("change", updateViewport);
-  }, []);
+  }, [view]);
 
   const visibleDates = useMemo(
     () =>
@@ -643,7 +639,13 @@ export default function CalendarOverview({
                 key={option}
                 type="button"
                 aria-pressed={view === option}
-                onClick={() => setView(option)}
+                onClick={() => {
+                  setView(option);
+                  if (isMobile) {
+                    setIsExpanded(option === "month");
+                    setIsAgendaOpen(false);
+                  }
+                }}
                 className={`rounded-lg px-3 py-2 text-sm font-extrabold capitalize ${
                   view === option
                     ? "bg-[var(--primary)] text-white"
@@ -654,18 +656,7 @@ export default function CalendarOverview({
               </button>
             ))}
           </div>
-          {isMobile && (
-            <button
-              type="button"
-              onClick={() => {
-                setIsExpanded((current) => !current);
-                setIsAgendaOpen(false);
-              }}
-              className="shrink-0 rounded-full border border-[var(--border)] px-3 py-2 text-sm font-extrabold"
-            >
-              {isExpanded ? "Done" : "Full screen"}
-            </button>
-          )}
+
         </div>
 
         <div className={isMobile && isExpanded ? "flex shrink-0 items-center justify-between gap-1 border-b border-[var(--border)] py-1" : "flex flex-wrap items-center justify-between gap-3 border-y border-[var(--border)] py-3"}>
@@ -695,12 +686,25 @@ export default function CalendarOverview({
             </button>
           </div>
           <h3 className={isMobile && isExpanded ? "min-w-0 flex-1 truncate px-1 text-center text-sm font-extrabold" : "text-lg font-extrabold"}>{heading}</h3>
-          {isMobile && isExpanded && (
+          {isMobile && isExpanded && !isAgendaOpen && (
             <details data-smart-menu className="relative z-40 shrink-0">
               <summary aria-label="Calendar filters" title="Calendar filters" className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--border)] text-xl font-extrabold">
                 <span aria-hidden="true">⋮</span>
               </summary>
               <div data-smart-menu-panel className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest("details")?.removeAttribute("open");
+                    setIsAgendaOpen(false);
+                    setView("week");
+                    setIsExpanded(false);
+                  }}
+                  className="w-full rounded-lg px-2 py-2.5 text-left text-sm font-extrabold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
+                >
+                  Switch to week view
+                </button>
+                <div className="my-1 border-t border-[var(--border)]" />
                 <p className="px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Show on calendar</p>
                 {([
                   { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
@@ -820,15 +824,7 @@ export default function CalendarOverview({
           </div>
         )}
 
-        {isMobile && isExpanded && isAgendaOpen && (
-          <button
-            type="button"
-            onClick={() => setIsAgendaOpen(false)}
-            className="shrink-0 rounded-xl border border-[var(--border)] px-3 py-2 text-left text-sm font-extrabold"
-          >
-            ← Back to month
-          </button>
-        )}
+
 
         <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap gap-x-4 gap-y-2 text-xs font-bold text-[var(--ink-soft)]"}>
           <span className="flex items-center gap-1.5">
@@ -856,6 +852,18 @@ export default function CalendarOverview({
                 <span aria-hidden="true">⋮</span>
               </summary>
               <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                {isMobile && isExpanded && isAgendaOpen && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      setIsAgendaOpen(false);
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm font-extrabold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
+                  >
+                    Back to month view
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onAddEvent(selectedDate)}
