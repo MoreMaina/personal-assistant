@@ -821,7 +821,7 @@ export default function TodayPage() {
               Plan my day
             </h2>
             <p className="mt-2 text-[var(--ink-soft)]">
-              Build a suggested schedule around your classes and free time. Nothing changes without your approval.
+              Auto-schedule around your classes.
             </p>
           </div>
 
@@ -864,8 +864,8 @@ export default function TodayPage() {
       </section>
 
       <section className="card bg-[var(--surface)] p-4 sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <p className="stat-label">
               Right now
             </p>
@@ -886,7 +886,7 @@ export default function TodayPage() {
           </div>
 
           {recommendation && (
-            <span className="rounded-full border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-3 py-1 text-sm font-extrabold text-[var(--primary-dark)]">
+            <span className="shrink-0 whitespace-nowrap rounded-full border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-2.5 py-1 text-xs font-bold text-[var(--primary-dark)]">
               {getTypeLabel(
                 recommendation
                   .task.type,
@@ -897,13 +897,13 @@ export default function TodayPage() {
 
         {recommendation ? (
           <>
-            <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
-              <div className="rounded-[12px] bg-[var(--primary-soft)] p-3">
+            <div className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-3">
+              <div className="min-w-0 rounded-[12px] bg-[var(--primary-soft)] p-2 sm:p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary)]">
                   Time
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold text-[var(--primary)] sm:text-xl">
+                <div className="mt-1 min-w-0 break-words font-[var(--font-heading)] text-base font-semibold leading-tight tracking-tight text-[var(--primary)] sm:text-xl sm:font-bold">
                   {formatDuration(
                     recommendation
                       .task
@@ -912,12 +912,12 @@ export default function TodayPage() {
                 </div>
               </div>
 
-              <div className="rounded-[12px] bg-[var(--accent-soft)] p-3">
+              <div className="min-w-0 rounded-[12px] bg-[var(--accent-soft)] p-2 sm:p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--accent-dark)]">
                   Free time
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold text-[var(--accent-dark)] sm:text-xl">
+                <div className="mt-1 min-w-0 break-words font-[var(--font-heading)] text-base font-semibold leading-tight tracking-tight text-[var(--accent-dark)] sm:text-xl sm:font-bold">
                   {formatDuration(
                     recommendation
                       .window
@@ -926,12 +926,12 @@ export default function TodayPage() {
                 </div>
               </div>
 
-              <div className="rounded-[12px] bg-[var(--yellow-soft)] p-3">
+              <div className="min-w-0 rounded-[12px] bg-[var(--yellow-soft)] p-2 sm:p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary-dark)]">
                   Starts
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold text-[var(--primary-dark)] sm:text-xl">
+                <div className="mt-1 min-w-0 break-words font-[var(--font-heading)] text-base font-semibold leading-tight tracking-tight text-[var(--primary-dark)] sm:text-xl sm:font-bold">
                   {formatTime(
                     recommendation
                       .window

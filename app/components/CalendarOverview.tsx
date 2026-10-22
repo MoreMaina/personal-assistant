@@ -617,17 +617,11 @@ export default function CalendarOverview({
             : "flex flex-col gap-4"
         }
       >
-        <div className={isMobile && isExpanded ? "hidden" : "flex flex-col items-start gap-2"}>
-          <div className="min-w-0">
-            <h2 className={isMobile && isExpanded ? "mt-0 text-lg font-extrabold" : "text-xl sm:text-2xl"}>
-              Calendar overview
-            </h2>
-          </div>
-
+        <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap items-center justify-between gap-2"}>
           <div
             role="group"
             aria-label="Calendar view"
-            className={["flex shrink-0 rounded-xl border-2 border-[var(--border)] p-1", isMobile && isExpanded ? "hidden" : ""].join(" ")}
+            className="flex shrink-0 rounded-lg border border-[var(--border)] p-0.5"
           >
             {(["week", "month"] as const).map((option) => (
               <button
@@ -641,7 +635,7 @@ export default function CalendarOverview({
                     setIsAgendaOpen(false);
                   }
                 }}
-                className={`rounded-lg px-3 py-2 text-sm font-extrabold capitalize ${
+                className={`rounded-md px-2 py-1.5 text-xs font-bold capitalize ${
                   view === option
                     ? "bg-[var(--primary)] text-white"
                     : "text-[var(--ink-soft)]"
@@ -652,35 +646,73 @@ export default function CalendarOverview({
             ))}
           </div>
 
+          <div
+            role="group"
+            aria-label="Filter calendar categories"
+            className="flex min-w-0 items-center gap-1"
+          >
+            {([
+              { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
+              { kind: "event", label: "Events", marker: "bg-[#946200]" },
+              { kind: "task", label: "Tasks", marker: "bg-[var(--accent-dark)]" },
+            ] as const).map(({ kind, label, marker }) => (
+              <button
+                key={kind}
+                type="button"
+                title={label}
+                aria-label={`Show ${label.toLowerCase()}`}
+                aria-pressed={visibleKinds[kind]}
+                onClick={() =>
+                  setVisibleKinds((current) => ({
+                    ...current,
+                    [kind]: !current[kind],
+                  }))
+                }
+                className={[
+                  "inline-flex min-h-8 items-center gap-1 rounded-full px-1.5 py-1 text-[10px] font-semibold transition",
+                  visibleKinds[kind]
+                    ? "bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                    : "text-[var(--muted)]",
+                ].join(" ")}
+              >
+                <span
+                  aria-hidden="true"
+                  className={["h-2 w-2 shrink-0 rounded-full", marker, visibleKinds[kind] ? "" : "opacity-40"].join(" ")}
+                />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className={isMobile && isExpanded ? "flex shrink-0 items-center justify-between gap-1 border-b border-[var(--border)] py-1" : "flex flex-wrap items-center justify-between gap-3 border-y border-[var(--border)] py-3"}>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Previous week or month"
-              onClick={() => movePeriod(-1)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-[var(--border)] p-0 font-extrabold"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDate(today)}
-              className="flex h-11 shrink-0 items-center justify-center rounded-xl border-2 border-[var(--border)] px-4 py-0 text-sm font-extrabold"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              aria-label="Next week or month"
-              onClick={() => movePeriod(1)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-[var(--border)] p-0 font-extrabold"
-            >
-              →
-            </button>
-          </div>
-          <h3 className={isMobile && isExpanded ? "min-w-0 flex-1 truncate px-1 text-center text-sm font-extrabold" : "text-lg font-extrabold"}>{heading}</h3>
+        <div className={isMobile && isExpanded ? "flex shrink-0 items-center gap-1 border-b border-[var(--border)] py-1" : "flex items-center gap-2 border-y border-[var(--border)] py-2"}>
+          <button
+            type="button"
+            aria-label="Previous week or month"
+            onClick={() => movePeriod(-1)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] font-bold"
+          >
+            ←
+          </button>
+          <h3 className="min-w-0 flex-1 truncate text-center text-sm font-bold sm:text-lg">
+            {heading}
+          </h3>
+          <button
+            type="button"
+            aria-label="Next week or month"
+            onClick={() => movePeriod(1)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] font-bold"
+          >
+            →
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedDate(today)}
+            className="flex h-9 shrink-0 items-center justify-center rounded-lg px-2 text-xs font-bold text-[var(--primary-dark)]"
+          >
+            Today
+          </button>
+
           {isMobile && isExpanded && !isAgendaOpen && (
             <details data-smart-menu className="relative z-40 shrink-0">
               <summary aria-label="Calendar filters" title="Calendar filters" className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--border)] text-xl font-extrabold">
@@ -715,42 +747,6 @@ export default function CalendarOverview({
               </div>
             </details>
           )}
-        </div>
-
-        <div
-          role="group"
-          aria-label="Filter calendar categories"
-          className={isMobile && isExpanded ? "hidden" : "flex shrink-0 flex-wrap gap-2"}
-        >
-          {([
-            { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
-            { kind: "event", label: "Events", marker: "bg-[#946200]" },
-            { kind: "task", label: "Tasks", marker: "bg-[var(--accent-dark)]" },
-          ] as const).map(({ kind, label, marker }) => (
-            <button
-              key={kind}
-              type="button"
-              aria-pressed={visibleKinds[kind]}
-              onClick={() =>
-                setVisibleKinds((current) => ({
-                  ...current,
-                  [kind]: !current[kind],
-                }))
-              }
-              className={[
-                "inline-flex min-h-10 items-center gap-2 rounded-full border px-3 py-2 text-xs font-extrabold transition",
-                visibleKinds[kind]
-                  ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
-                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]",
-              ].join(" ")}
-            >
-              <span
-                aria-hidden="true"
-                className={["h-2.5 w-2.5 rounded-full", marker, visibleKinds[kind] ? "" : "opacity-40"].join(" ")}
-              />
-              {label}
-            </button>
-          ))}
         </div>
 
         {view === "week" ? (

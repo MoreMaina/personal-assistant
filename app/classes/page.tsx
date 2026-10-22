@@ -143,6 +143,7 @@ function formatDuration(minutes: number) {
 
 export default function ClassesPage() {
   const [classList, setClassList] = useState(getClasses);
+  const [selectedClassOverviewDay, setSelectedClassOverviewDay] = useState("Monday");
   const [showClassForm, setShowClassForm] = useState(false);
 
   const [name, setName] = useState("");
@@ -195,6 +196,7 @@ export default function ClassesPage() {
 
   useEffect(() => {
     setCalendarItems(getCalendarItems());
+    setSelectedClassOverviewDay(days[(new Date().getDay() + 6) % 7]);
   }, []);
 
   useEffect(() => {
@@ -232,6 +234,7 @@ export default function ClassesPage() {
     if (!classItem) return;
 
     setSearchHighlightClassId(classItem.id);
+    setSelectedClassOverviewDay(classItem.day);
     window.history.replaceState({}, "", "/classes");
 
     window.setTimeout(() => {
@@ -894,17 +897,17 @@ export default function ClassesPage() {
           <h2 className="mt-1 text-xl sm:text-2xl">Classes, events & tasks</h2>
         </div>
 
-        <details className="mb-5 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4">
-          <summary className="cursor-pointer list-none font-extrabold">
+        <details className="mb-5">
+          <summary className="cursor-pointer list-none font-semibold text-[var(--ink)]">
             Manage weekly classes
             <span className="mt-1 block text-sm font-normal text-[var(--ink-soft)]">
               Edit your recurring class schedule.
             </span>
           </summary>
-          <div className="mt-4 space-y-4">
+          <div className="mt-3 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="mt-1 text-2xl">Your classes</h3>
+                <h3 className="mt-1 text-lg font-semibold">Your classes</h3>
               </div>
               {!showClassForm && (
                 <Button
@@ -1091,62 +1094,79 @@ export default function ClassesPage() {
                 })}
               </div>
 
-              <div className="space-y-3 md:hidden">
-                {days.map((dayName) => {
-                  const dayClasses = sortedClasses.filter(
-                    (item) => item.day === dayName,
-                  );
+              <div className="space-y-2 md:hidden">
+                <div role="group" aria-label="Choose class day" className="grid grid-cols-7 gap-1">
+                  {days.map((dayName) => {
+                    const classCount = sortedClasses.filter((item) => item.day === dayName).length;
+                    const selected = selectedClassOverviewDay === dayName;
 
-                  return (
-                    <section
-                      key={dayName}
-                      className="rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4"
-                    >
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <h4 className="text-lg font-extrabold">{dayName}</h4>
-                        <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs font-extrabold text-[var(--ink-soft)]">
-                          {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}
+                    return (
+                      <button
+                        key={dayName}
+                        type="button"
+                        aria-pressed={selected}
+                        aria-label={`${dayName}, ${classCount} ${classCount === 1 ? "class" : "classes"}`}
+                        onClick={() => setSelectedClassOverviewDay(dayName)}
+                        className={`min-w-0 rounded-lg border px-0.5 py-1.5 text-center ${
+                          selected
+                            ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                            : "border-[var(--border)] bg-transparent text-[var(--ink-soft)]"
+                        }`}
+                      >
+                        <span className="block text-[10px] font-semibold">{dayName.slice(0, 3)}</span>
+                        <span className={`mx-auto mt-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                          classCount > 0 ? "bg-[var(--surface)]" : "opacity-60"
+                        }`}>
+                          {classCount}
                         </span>
-                      </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                      {dayClasses.length > 0 ? (
-                        <div className="space-y-2">
-                          {dayClasses.map((item) => (
-                            <div key={item.id} className="flex items-stretch gap-3">
-                              <div className="flex w-[88px] shrink-0 flex-col justify-center">
-                                <p className="text-xs font-extrabold text-[var(--primary)]">
-                                  {item.start}
-                                </p>
-                                <p className="text-xs font-bold text-[var(--muted)]">
-                                  {item.end}
-                                </p>
-                              </div>
-                              <article
-                                id={`class-record-mobile-${item.id}`}
-                                className={`min-w-0 flex-1 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3 ${
-                                  searchHighlightClassId === item.id
-                                    ? "ring-2 ring-[var(--accent)]"
-                                    : ""
-                                }`}
-                              >
-                                <p className="break-words font-extrabold text-[var(--ink)]">
-                                  {item.name}
-                                </p>
-                                <p className="mt-1 text-xs font-bold text-[var(--muted)]">
-                                  {item.type}
-                                </p>
-                              </article>
+                <div className="pt-1">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold">{selectedClassOverviewDay}</h4>
+                    <span className="text-xs text-[var(--muted)]">
+                      {sortedClasses.filter((item) => item.day === selectedClassOverviewDay).length} classes
+                    </span>
+                  </div>
+
+                  {sortedClasses.some((item) => item.day === selectedClassOverviewDay) ? (
+                    <div>
+                      {sortedClasses
+                        .filter((item) => item.day === selectedClassOverviewDay)
+                        .map((item) => (
+                          <div
+                            key={item.id}
+                            id={`class-record-mobile-${item.id}`}
+                            className={`flex items-center gap-3 border-b border-[var(--border)] py-2 ${
+                              searchHighlightClassId === item.id
+                                ? "rounded-lg bg-[var(--primary-soft)] px-2 ring-2 ring-[var(--accent)]"
+                                : ""
+                            }`}
+                          >
+                            <p className="w-24 shrink-0 text-xs font-semibold text-[var(--primary-dark)]">
+                              {item.start}–{item.end}
+                            </p>
+                            <div className="min-w-0 flex-1">
+                              <p className="break-words text-sm font-medium text-[var(--ink)]">
+                                {item.name}
+                              </p>
+                              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                                {item.type}
+                              </p>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm font-bold text-[var(--muted)]">
-                          No scheduled classes. Room to breathe.
-                        </p>
-                      )}
-                    </section>
-                  );
-                })}
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="py-3 text-sm text-[var(--muted)]">
+                      No scheduled classes. Room to breathe.
+                    </p>
+                  )}
+                </div>
+
               </div>
                 </>
             )}
@@ -1775,7 +1795,7 @@ export default function ClassesPage() {
                           aria-label={`Mark ${item.title} ${item.completed ? "incomplete" : "complete"}`}
                           checked={item.completed}
                           onChange={() => handleToggleTask(item)}
-                          className="mt-1 h-5 w-5 shrink-0 accent-[var(--primary)]"
+                          className="mt-1 !h-5 !w-5 shrink-0 accent-[var(--primary)]"
                         />
                       )}
 

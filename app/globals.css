@@ -1323,7 +1323,7 @@ button.card-menu__cancel {
 
   .mobile-nav {
     gap: 1px;
-    padding: 4px 6px max(4px, env(safe-area-inset-bottom));
+    padding: 3px 6px max(3px, env(safe-area-inset-bottom));
     border-top-width: 1px;
   }
 
@@ -1353,7 +1353,7 @@ button.card-menu__cancel {
     align-items: center;
     justify-content: center;
     gap: 2px;
-    padding: 4px 7px;
+    padding: 3px 6px;
     border-radius: 10px;
     line-height: 1;
   }
