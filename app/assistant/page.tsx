@@ -1501,13 +1501,15 @@ export default function AssistantPage() {
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Ask about your saved records…"
             maxLength={1200}
-            rows={3}
+            rows={2}
             required
             disabled={sending}
           />
           <div className="ai-copilot__form-footer flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
-              <span>{draft.length}/1200 characters</span>
+              {draft.length >= 1000 && (
+                <span>{draft.length}/1200 characters</span>
+              )}
               <span className="ai-copilot__voice-status" aria-live="polite">
                 {listening
                   ? "Listening…"

@@ -636,7 +636,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                 <article
                   key={project.id}
                   id={`project-${project.id}`}
-                  className={`card bg-[var(--surface)] p-5 sm:p-6 ${
+                  className={`card bg-[var(--surface)] p-4 sm:p-5 ${
                     highlighted
                       ? "ring-2 ring-[var(--accent)]"
                       : ""
@@ -651,7 +651,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                       )}
 
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="break-words text-2xl">
+                        <h2 className="break-words text-xl font-semibold">
                           {project.name}
                         </h2>
 
@@ -685,7 +685,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                     />
                   </div>
 
-                  <div className="mt-5 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-4">
+                  <div className="mt-4 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3">
                     <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary-dark)]">
                       Next action
                     </p>
@@ -695,38 +695,37 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-extrabold">
+                      <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-extrabold">
                         {project.estimatedMinutes} min
                       </span>
 
-                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-extrabold">
+                      <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-extrabold">
                         {project.energy} energy
                       </span>
 
-                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-extrabold">
+                      <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-extrabold">
                         {project.context}
                       </span>
 
                       {project.deadline && (
-                        <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-extrabold">
+                        <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-extrabold">
                           Due {formatDeadline(project.deadline)}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                  <div className="mt-4 grid grid-cols-2 gap-2">
                     <Button
                       variant="primary"
-                      className="w-full sm:w-auto"
+                      className="w-full min-w-0 px-2 text-xs leading-tight sm:text-sm"
                       onClick={() => markWorkedOn(project)}
                     >
                       I worked on this
                     </Button>
-
                     <Button
                       variant="secondary"
-                      className="w-full sm:w-auto"
+                      className="w-full min-w-0 px-2 text-xs leading-tight sm:text-sm"
                       onClick={() => completeProject(project)}
                     >
                       Complete project

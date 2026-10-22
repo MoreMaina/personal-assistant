@@ -1169,8 +1169,8 @@ button.card-menu__cancel {
 .ai-copilot__welcome { max-width:700px; margin:auto; padding-block:20px; text-align:center; }
 .ai-copilot__welcome h2 { margin:0 0 8px; font-size:1.25rem; }
 .ai-copilot__welcome p { max-width:560px; margin:0 auto; line-height:1.6; opacity:.78; }
-.ai-copilot__suggestions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:24px; }
-.ai-copilot__suggestion { min-width:0; border:1px solid #e5ded4; border-radius:12px; background:#fff; color:inherit; padding:12px; text-align:left; line-height:1.4; cursor:pointer; }
+.ai-copilot__suggestions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:16px; }
+.ai-copilot__suggestion { min-width:0; border:1px solid #e5ded4; border-radius:10px; background:#fff; color:inherit; padding:10px; text-align:left; line-height:1.4; font-size:.92rem; cursor:pointer; }
 .ai-copilot__suggestion:hover { background:#f8f4ed; }
 .ai-copilot__message { max-width:min(88%,760px); border:1px solid #e5ded4; border-radius:14px; padding:10px 12px; }
 .ai-copilot__message--user { align-self:flex-end; background:#edf4e9; border-color:#d8e4d2; }
@@ -1207,7 +1207,7 @@ button.card-menu__cancel {
 .ai-copilot__error { margin:0 18px 14px; color:#9f2929; font-size:.9rem; }
 .ai-copilot__form { border-top:1px solid #ece5db; padding:16px; }
 .ai-copilot__label { display:block; margin-bottom:7px; font-size:.83rem; font-weight:650; }
-.ai-copilot__form textarea { display:block; width:100%; min-height:84px; resize:vertical; border:1px solid #dcd3c8; border-radius:11px; background:#fff; color:#25231f; padding:11px 12px; font:inherit; line-height:1.5; }
+.ai-copilot__form textarea { display:block; width:100%; min-height:72px; resize:vertical; border:1px solid #dcd3c8; border-radius:11px; background:#fff; color:#25231f; padding:10px 11px; font:inherit; line-height:1.5; }
 .ai-copilot__form textarea:focus-visible, .ai-copilot__suggestion:focus-visible, .ai-copilot__send:focus-visible, .ai-copilot__voice-button:focus-visible, .ai-copilot__message-action:focus-visible { outline:2px solid #54724e; outline-offset:2px; }
 .ai-copilot__voice-controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:12px 0 6px; }
 .ai-copilot__voice-button, .ai-copilot__message-action { min-height:44px; border:1px solid #dcd3c8; border-radius:10px; background:#fff; color:#25231f; padding:9px 12px; font:inherit; font-size:.88rem; font-weight:650; cursor:pointer; }
@@ -1258,7 +1258,8 @@ button.card-menu__cancel {
 @media (max-width:520px) {
   .ai-copilot__header { gap:8px; }
   .ai-copilot__badge { padding:5px 8px; font-size:.72rem; }
-  .ai-copilot__suggestions { grid-template-columns:1fr; }
+  .ai-copilot__suggestions { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:16px; }
+  .ai-copilot__suggestion { padding:9px 8px; font-size:.84rem; }
   .ai-copilot__form { padding:12px; }
 }
 

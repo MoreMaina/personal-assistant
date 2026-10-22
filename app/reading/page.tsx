@@ -1448,20 +1448,17 @@ export default function ReadingPage() {
   return (
     <main className="min-h-full text-[var(--ink)]">
       <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
-        <header className="mb-8">
+        <header className="mb-5">
           <p className="stat-label">Reading · Essays · Projects</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
             Workspace
           </h1>
-          <p className="mt-2 text-[var(--ink-soft)]">
-            Keep your reading and long-term work moving in one place.
-          </p>
         </header>
 
         <div
           role="group"
           aria-label="Workspace section"
-          className="mb-8 grid grid-cols-3 gap-1 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface-soft)] p-1"
+          className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface-soft)] p-1"
         >
           {(["books", "essays", "projects"] as const).map((option) => (
             <button
@@ -1469,7 +1466,7 @@ export default function ReadingPage() {
               type="button"
               aria-pressed={tab === option}
               onClick={() => changeTab(option)}
-              className={`min-w-0 rounded-xl px-2 py-3 text-sm font-extrabold capitalize transition ${
+              className={`min-w-0 rounded-xl px-2 py-2 text-sm font-extrabold capitalize transition ${
                 tab === option
                   ? "bg-[var(--primary)] text-white shadow-[0_3px_0_var(--primary-dark)]"
                   : "text-[var(--ink-soft)] hover:bg-[var(--surface)]"
@@ -1482,36 +1479,22 @@ export default function ReadingPage() {
 
         {tab === "books" && (
           <>
-            <div className="mb-6 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5">
-                <p className="text-sm text-[var(--ink-soft)]">
-                  Currently reading
-                </p>
-
-                <p className="mt-2 text-2xl font-semibold">
-                  {
-                    currentlyReading.length
-                  }
+            <div className="mb-4 grid grid-cols-3 gap-3">
+              <div className="min-w-0 py-2">
+                <p className="text-xs text-[var(--ink-soft)]">Currently reading</p>
+                <p className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">
+                  {currentlyReading.length}
                 </p>
               </div>
-
-              <div className="rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5">
-                <p className="text-sm text-[var(--ink-soft)]">
-                  Reading this week
-                </p>
-
-                <p className="mt-2 text-2xl font-semibold">
-                  {minutesThisWeek}{" "}
-                  min
+              <div className="min-w-0 py-2">
+                <p className="text-xs text-[var(--ink-soft)]">Reading this week</p>
+                <p className="mt-1 whitespace-nowrap text-base font-extrabold text-[var(--primary-dark)]">
+                  {minutesThisWeek} min
                 </p>
               </div>
-
-              <div className="rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5">
-                <p className="text-sm text-[var(--ink-soft)]">
-                  Finished
-                </p>
-
-                <p className="mt-2 text-2xl font-semibold">
+              <div className="min-w-0 py-2">
+                <p className="text-xs text-[var(--ink-soft)]">Finished</p>
+                <p className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">
                   {finished.length}
                 </p>
               </div>
@@ -1659,7 +1642,7 @@ export default function ReadingPage() {
             )}
 
             <section className="mb-8">
-              <h2 className="mb-5 text-xl font-extrabold text-[var(--ink)]">
+              <h2 className="mb-3 text-lg font-extrabold text-[var(--ink)]">
                 Currently reading
               </h2>
 
@@ -1708,19 +1691,17 @@ export default function ReadingPage() {
                             toggleBookCard(book.id);
                           }
                         }}
-                        className={`cursor-pointer rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 ${
+                        className={`cursor-pointer rounded-[18px] border-2 border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4 ${
                           searchHighlightBookId === book.id
                             ? "ring-2 ring-[var(--accent)]"
                             : ""
                         }`}
                       >
-                        <div className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-3">
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="text-lg font-extrabold text-[var(--ink)]">
-                                {
-                                  book.title
-                                }
+                              <p className="line-clamp-2 text-base font-extrabold text-[var(--ink)]">
+                                {book.title}
                               </p>
 
                               <p className="mt-1 text-sm text-[var(--ink-soft)]">
@@ -1735,7 +1716,7 @@ export default function ReadingPage() {
                             </div>
 
                             <div className="flex shrink-0 items-center gap-2">
-                              <span className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-extrabold text-[var(--ink)]">
+                              <span className="rounded-lg bg-[var(--surface-soft)] px-2 py-1 text-xs font-bold text-[var(--ink)]">
                                 {book.currentPage}/{book.totalPages}
                               </span>
                               <CardMenu
@@ -1749,7 +1730,7 @@ export default function ReadingPage() {
                           {!collapsedBookIds.has(book.id) && (
                             <>
                           <div>
-                            <div className="h-3 overflow-hidden rounded-full border border-[var(--border)] bg-[var(--surface-soft)]">
+                            <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]">
                               <div
                                 className="h-full rounded-full bg-[var(--primary)] transition-[width] duration-300"
                                 style={{
@@ -1758,7 +1739,7 @@ export default function ReadingPage() {
                               />
                             </div>
 
-                            <p className="mt-2 text-sm text-slate-500">
+                            <p className="mt-1 text-xs text-[var(--muted)]">
                               {Math.round(
                                 progress,
                               )}
@@ -1799,33 +1780,30 @@ export default function ReadingPage() {
                               </button>
                             )}
 
-                            <input
-                              type="number"
-                              min="0"
-                              max={
-                                book.totalPages
-                              }
-                              value={
-                                book.currentPage
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                updateProgress(
-                                  book,
-                                  Number(
-                                    event
-                                      .target
-                                      .value,
-                                  ),
-                                )
-                              }
-                              className="min-h-11 w-28 rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-bold text-[var(--ink)]"
-                            />
-
-                            <span className="text-sm text-[var(--ink-soft)]">
-                              current page
-                            </span>
+                            <details
+                              className="relative"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <summary className="cursor-pointer list-none py-2 text-sm font-bold text-[var(--primary-dark)] underline underline-offset-2">
+                                Edit pages
+                              </summary>
+                              <div className="mt-1 flex items-center gap-2">
+                                <label htmlFor={`book-page-${book.id}`} className="text-xs font-bold text-[var(--muted)]">
+                                  Page
+                                </label>
+                                <input
+                                  id={`book-page-${book.id}`}
+                                  type="number"
+                                  min="0"
+                                  max={book.totalPages}
+                                  value={book.currentPage}
+                                  onChange={(event) =>
+                                    updateProgress(book, Number(event.target.value))
+                                  }
+                                  className="min-h-9 w-20 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 text-sm font-bold text-[var(--ink)]"
+                                />
+                              </div>
+                            </details>
                           </div>
                             </>
                           )}
@@ -1964,22 +1942,10 @@ export default function ReadingPage() {
 
         {tab === "essays" && (
           <>
-            <div className="mb-6 rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold">
-                    Your essay practice
-                  </h2>
-
-                  <p className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">
-                    First pass →
-                    second pass →
-                    memory reflection
-                    → criticism.
-                  </p>
-                </div>
-
-                <div className="flex shrink-0 flex-nowrap items-center gap-2">
+            <div className="mb-4 rounded-[16px] border-2 border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-base font-extrabold">Essay practice</h2>
+                <div className="flex shrink-0 items-center gap-2">
                   {essays.length > 0 && (
                     <CardMenu
                       title="Essay workspace actions"
@@ -1988,16 +1954,18 @@ export default function ReadingPage() {
                   )}
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowEssayForm(
-                        true,
-                      )
-                    }
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                    onClick={() => setShowEssayForm(true)}
+                    className="inline-flex min-h-10 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-3 py-1.5 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
                   >
-                    + Add essay
+                    Add essay
                   </button>
                 </div>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-[var(--ink-soft)] sm:text-sm">
+                <span>First pass</span><span aria-hidden="true">›</span>
+                <span>Second pass</span><span aria-hidden="true">›</span>
+                <span>Memory reflection</span><span aria-hidden="true">›</span>
+                <span>Criticism</span>
               </div>
             </div>
 
