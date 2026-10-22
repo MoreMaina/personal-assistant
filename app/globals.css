@@ -1452,3 +1452,172 @@ button.card-menu__cancel {
   transform: none;
   box-shadow: none;
 }
+
+
+/* Coordinated mobile UI refinement: compact controls, calm containers, tactile actions. */
+.app-content button.card-menu__trigger {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--primary-dark);
+  box-shadow: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.app-content button.card-menu__trigger:hover {
+  transform: none;
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+.app-content button.card-menu__trigger:active {
+  transform: none;
+  box-shadow: none;
+}
+.card-menu__panel {
+  width: 210px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(26, 46, 36, 0.16);
+}
+.card-menu__heading {
+  margin: 2px 7px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+ .app-content button.card-menu__action {
+  min-height: 40px;
+  gap: 8px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+button.card-menu__action svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 720px) {
+  .card-menu__panel {
+    position: fixed !important;
+    top: var(--card-menu-top, 12px) !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: var(--card-menu-left, 12px) !important;
+    width: 210px;
+    max-width: calc(100vw - 24px);
+    max-height: min(70dvh, 340px);
+    overflow-y: auto;
+    padding: 8px;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(26, 46, 36, 0.16);
+  }
+  .card-menu__heading {
+    margin-bottom: 7px;
+    font-size: 11px;
+  }
+  .app-content button.card-menu__action {
+    min-height: 42px;
+    font-size: 14px;
+  }
+  button.card-menu__cancel {
+    min-height: 40px;
+    margin-top: 6px;
+  }
+}
+
+/* Passive cards use a quiet neutral shadow; reserve colored depth for actions. */
+.app-content .card {
+  box-shadow: var(--shadow-soft) !important;
+}
+.app-content article.card:hover {
+  transform: none;
+}
+
+details[data-smart-menu] > summary {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: none;
+}
+details[data-smart-menu] > summary:hover,
+details[data-smart-menu] > summary:active {
+  transform: none;
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+div[data-smart-menu-panel] {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface) !important;
+  padding: 4px;
+  box-shadow: 0 8px 22px rgba(26, 46, 36, 0.14);
+}
+div[data-smart-menu-panel] button {
+  min-height: 36px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.app-content button.plan-generate-button:not(.topbar__icon-button) {
+  box-shadow: 0 3px 0 #C9A657;
+}
+.app-content .plan-generate-button:hover:not(:disabled) {
+  box-shadow: 0 5px 0 #C9A657;
+}
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #C9A657;
+}
+.app-content .project-work-action {
+  min-height: 40px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border-radius: 11px;
+  box-shadow: 0 2px 0 var(--accent-dark);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .project-work-action:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 transparent;
+}
+.ai-copilot__suggestion {
+  border-color: #35513a;
+  box-shadow: 0 2px 0 #35513a;
+  background: #fffaf1;
+  transition: background-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+.ai-copilot__suggestion:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 #35513a;
+}
+.ai-copilot__suggestion:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 transparent;
+}
+.ai-copilot__action-menu {
+  background: #fffefa !important;
+  border-color: #dcd3c8;
+  box-shadow: 0 8px 24px rgba(26, 46, 36, 0.16);
+}
+.ai-copilot__action-menu button {
+  min-height: 38px;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-weight: 600;
+}

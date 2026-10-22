@@ -2,6 +2,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -167,6 +168,7 @@ export default function ClassesPage() {
   const [searchHighlightClassId, setSearchHighlightClassId] =
     useState<number | null>(null);
   const plannerFormRef = useRef<HTMLFormElement | null>(null);
+  const classFormRef = useRef<HTMLFormElement | null>(null);
 
   const [plannerTitle, setPlannerTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -416,7 +418,7 @@ export default function ClassesPage() {
     (task) => !task.completed,
   ).length;
 
-  function resetClassForm() {
+  const resetClassForm = useCallback(() => {
     setName("");
     setType("Lecture");
     setDay("Monday");
@@ -424,7 +426,7 @@ export default function ClassesPage() {
     setEnd("");
     setClassError("");
     setShowClassForm(false);
-  }
+  }, []);
 
   function handleClassSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -464,7 +466,7 @@ export default function ClassesPage() {
     }
   }
 
-  function resetPlannerForm() {
+  const resetPlannerForm = useCallback(() => {
     setShowPlannerForm(false);
     setEditingId(null);
     setPlannerError("");
@@ -487,7 +489,30 @@ export default function ClassesPage() {
     setTaskRepeatInterval("1");
     setTaskRepeatWeekdays([]);
     setTaskRepeatUntil("");
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!showClassForm && !showPlannerForm) return;
+
+    function closeOutside(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (
+        classFormRef.current?.contains(target) ||
+        plannerFormRef.current?.contains(target)
+      ) return;
+      if (showClassForm) resetClassForm();
+      if (showPlannerForm) resetPlannerForm();
+    }
+
+    document.addEventListener("pointerdown", closeOutside, true);
+    return () => document.removeEventListener("pointerdown", closeOutside, true);
+  }, [
+    showClassForm,
+    showPlannerForm,
+    resetClassForm,
+    resetPlannerForm,
+  ]);
 
   function switchManagementTab(tab: ManagementTab) {
     resetPlannerForm();
@@ -897,14 +922,14 @@ export default function ClassesPage() {
           <h2 className="mt-1 text-xl sm:text-2xl">Classes, events & tasks</h2>
         </div>
 
-        <details className="mb-5">
-          <summary className="cursor-pointer list-none font-semibold text-[var(--ink)]">
+        <details className="mb-5 overflow-hidden rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--surface)]">
+          <summary className="cursor-pointer list-none bg-[var(--primary-soft)] px-4 py-3 font-bold text-[var(--primary-dark)]">
             Manage weekly classes
             <span className="mt-1 block text-sm font-normal text-[var(--ink-soft)]">
               Edit your recurring class schedule.
             </span>
           </summary>
-          <div className="mt-3 space-y-4">
+          <div className="space-y-4 px-3 pb-4 pt-3 sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="mt-1 text-lg font-semibold">Your classes</h3>
@@ -925,6 +950,7 @@ export default function ClassesPage() {
 
 {showClassForm && (
         <form
+          ref={classFormRef}
           onSubmit={handleClassSubmit}
           className="card mb-6 space-y-5 bg-[var(--surface)] p-5 sm:p-6"
         >
@@ -1022,11 +1048,8 @@ export default function ClassesPage() {
             </p>
           )}
 
-          <div className="grid grid-cols-[1fr_2fr] gap-3 border-t border-[var(--border)] pt-5">
-            <Button variant="secondary" className="w-full" onClick={resetClassForm}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" className="w-full">
+          <div className="flex justify-end border-t border-[var(--border)] pt-5">
+            <Button variant="primary" type="submit" className="w-full sm:w-auto">
               Save class
             </Button>
           </div>
@@ -1418,8 +1441,7 @@ export default function ClassesPage() {
               </p>
             )}
 
-            <div className="grid grid-cols-[1fr_2fr] gap-3 border-t border-[var(--border)] pt-4">
-              <Button variant="secondary" onClick={resetPlannerForm}>Cancel</Button>
+            <div className="flex justify-end border-t border-[var(--border)] pt-4">
               <Button variant="primary" type="submit">
                 {editingId ? "Save changes" : "Save event"}
               </Button>
@@ -1440,7 +1462,7 @@ export default function ClassesPage() {
               <article
                 key={item.id}
                 id={`calendar-item-${item.id}`}
-                className={`card bg-[var(--surface)] p-3 sm:p-5 ${
+                className={`card bg-[var(--surface)] p-3 sm:p-4 ${
                   searchHighlightCalendarId === item.id
                     ? "ring-2 ring-[var(--accent)]"
                     : ""
@@ -1448,16 +1470,16 @@ export default function ClassesPage() {
               >
                 <div className="flex flex-row items-start justify-between gap-2 sm:gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--accent-dark)]">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-dark)]">
                       {formatDate(item.date)}
                     </p>
-                    <h3 className="mt-1 break-words text-xl">{item.title}</h3>
+                    <h3 className="mt-1 break-words text-base font-semibold sm:text-lg">{item.title}</h3>
                     {item.recurrence && (
                       <p className="mt-1 text-xs font-extrabold text-[#684000]">
                         {recurrenceSummary(item.recurrence)}
                       </p>
                     )}
-                    <p className="mt-1 text-sm font-bold text-[var(--primary)]">
+                    <p className="mt-1 text-sm font-medium text-[var(--primary)]">
                       {item.startTime
                         ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ""}`
                         : "Time not set"}
@@ -1533,7 +1555,7 @@ export default function ClassesPage() {
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)]">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] p-3 shadow-none">
             <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary)]">
               To do
             </p>
@@ -1541,7 +1563,7 @@ export default function ClassesPage() {
               {openTaskCount}
             </p>
           </div>
-          <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)]">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--yellow-soft)] p-3 shadow-none">
             <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary-dark)]">
               Completed
             </p>
@@ -1749,8 +1771,7 @@ export default function ClassesPage() {
               </p>
             )}
 
-            <div className="grid grid-cols-[1fr_2fr] gap-3 border-t border-[var(--border)] pt-4">
-              <Button variant="secondary" onClick={resetPlannerForm}>Cancel</Button>
+            <div className="flex justify-end border-t border-[var(--border)] pt-4">
               <Button variant="primary" type="submit">
                 {editingId ? "Save changes" : "Save task"}
               </Button>

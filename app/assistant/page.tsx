@@ -120,6 +120,8 @@ export default function AssistantPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const questionInputRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLFormElement>(null);
+  const copilotActionsMenuRef = useRef<HTMLDivElement>(null);
+  const [copilotActionsMenuOpen, setCopilotActionsMenuOpen] = useState(false);
   const [showJumpToInput, setShowJumpToInput] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -1323,8 +1325,23 @@ export default function AssistantPage() {
     }
   }
 
+
+
   return (
-    <section className="ai-copilot">
+    <section
+      className="ai-copilot"
+      onPointerDownCapture={(event) => {
+        const target = event.target;
+        if (
+          target instanceof Node &&
+          copilotActionsMenuRef.current?.contains(target)
+        ) return;
+        setCopilotActionsMenuOpen(false);
+      }}
+      onKeyDownCapture={(event) => {
+        if (event.key === "Escape") setCopilotActionsMenuOpen(false);
+      }}
+    >
       <header className="ai-copilot__header">
         <div>
           <h1>AI Copilot</h1>
@@ -1552,9 +1569,14 @@ export default function AssistantPage() {
                 </svg>
               </button>
 
-              <details className="relative">
-                <summary
-                  className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-full border-2 border-[var(--border)] bg-[var(--surface)] text-[var(--ink)]"
+              <div ref={copilotActionsMenuRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCopilotActionsMenuOpen((open) => !open)
+                  }
+                  aria-expanded={copilotActionsMenuOpen}
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--ink)]"
                   aria-label="More Copilot actions"
                   title="More Copilot actions"
                 >
@@ -1569,15 +1591,16 @@ export default function AssistantPage() {
                     <circle cx="12" cy="12" r="1.7" />
                     <circle cx="19" cy="12" r="1.7" />
                   </svg>
-                </summary>
+                </button>
 
-                <div className="absolute bottom-full right-0 z-30 mb-2 w-56 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-2 shadow-xl">
+                {copilotActionsMenuOpen && (
+                  <div className="ai-copilot__action-menu absolute bottom-full right-0 z-30 mb-2 w-52 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-lg">
                   <button
                     type="button"
-                    className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-[var(--ink)] hover:bg-[var(--surface-soft)]"
+                    className="w-full rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--surface-soft)]"
                     aria-pressed={voiceMode}
-                    onClick={(event) => {
-                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    onClick={() => {
+                      setCopilotActionsMenuOpen(false);
                       toggleVoiceMode();
                     }}
                   >
@@ -1586,17 +1609,18 @@ export default function AssistantPage() {
 
                   <button
                     type="button"
-                    className="w-full rounded-xl px-3 py-3 text-left text-sm font-bold text-[var(--ink)] hover:bg-[var(--surface-soft)] disabled:opacity-40"
-                    onClick={(event) => {
-                      event.currentTarget.closest("details")?.removeAttribute("open");
+                    className="w-full rounded-lg px-2.5 py-2 text-left text-[13px] font-semibold text-[var(--ink)] hover:bg-[var(--surface-soft)] disabled:opacity-40"
+                    onClick={() => {
+                      setCopilotActionsMenuOpen(false);
                       void sendQuestion(draft.trim(), "task-proposal");
                     }}
                     disabled={sending || listening || !draft.trim() || Boolean(taskProposal)}
                   >
                     Draft task
                   </button>
-                </div>
-              </details>
+                  </div>
+                )}
+              </div>
 
               <button
                 className="ai-copilot__send"

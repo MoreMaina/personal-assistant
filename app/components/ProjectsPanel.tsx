@@ -4,6 +4,7 @@
 import {
   FormEvent,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -37,6 +38,7 @@ const contexts: ContextType[] = [
 export default function ProjectsPanel({ embedded = false }: { embedded?: boolean }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const projectFormRef = useRef<HTMLFormElement>(null);
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
 
   const [name, setName] = useState("");
@@ -72,6 +74,27 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
   useEffect(() => {
     setProjects(getProjects());
   }, []);
+
+  useEffect(() => {
+    if (!showForm) return;
+    function handleOutsidePointer(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node) || projectFormRef.current?.contains(target)) return;
+      setEditingProjectId(null);
+      setName("");
+      setPurpose("");
+      setNextAction("");
+      setEstimatedMinutes("30");
+      setImportance("Medium");
+      setEnergy("Medium");
+      setContext("Anywhere");
+      setDeadline("");
+      setFormError("");
+      setShowForm(false);
+    }
+    document.addEventListener("pointerdown", handleOutsidePointer, true);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer, true);
+  }, [showForm]);
 
   useEffect(() => {
     if (launchHandled || projects.length === 0) {
@@ -417,6 +440,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
 
         {showForm && (
           <form
+            ref={projectFormRef}
             onSubmit={handleSubmit}
             className="card mb-6 space-y-5 bg-[var(--surface)] p-5 sm:p-6"
           >
@@ -582,15 +606,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
               </p>
             )}
 
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button
-                variant="secondary"
-                className="w-full sm:w-auto"
-                onClick={resetForm}
-              >
-                Cancel
-              </Button>
-
+            <div className="flex justify-end gap-3">
               <Button
                 variant="primary"
                 type="submit"
@@ -677,6 +693,10 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                           onSelect: () => pauseProject(project),
                         },
                         {
+                          label: "Complete project",
+                          onSelect: () => completeProject(project),
+                        },
+                        {
                           label: "Delete project",
                           destructive: true,
                           onSelect: () => askToDelete(project),
@@ -715,20 +735,13 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="mt-3 flex">
                     <Button
                       variant="primary"
-                      className="w-full min-w-0 px-2 text-xs leading-tight sm:text-sm"
+                      className="project-work-action w-full min-w-0 px-3 text-xs leading-tight sm:w-auto"
                       onClick={() => markWorkedOn(project)}
                     >
                       I worked on this
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      className="w-full min-w-0 px-2 text-xs leading-tight sm:text-sm"
-                      onClick={() => completeProject(project)}
-                    >
-                      Complete project
                     </Button>
                   </div>
 

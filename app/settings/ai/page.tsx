@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   DEFAULT_AI_PREFERENCES,
@@ -80,6 +80,7 @@ export default function AISettingsPage() {
   const [loadingVoices, setLoadingVoices] = useState(false);
   const [voiceError, setVoiceError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const connectionFormRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<Placement>("reasoning");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ProviderForm>({ ...EMPTY_FORM });
@@ -99,6 +100,36 @@ export default function AISettingsPage() {
   useEffect(() => {
     setPreferences(loadAIPreferences());
     setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!formOpen) return;
+    function closeOutside(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node) || connectionFormRef.current?.contains(target)) return;
+      setFormOpen(false);
+      setEditingId(null);
+      setForm({ ...EMPTY_FORM });
+    }
+    document.addEventListener("pointerdown", closeOutside, true);
+    return () => document.removeEventListener("pointerdown", closeOutside, true);
+  }, [formOpen]);
+
+  useEffect(() => {
+    function closeSettingsMenus(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Element && target.closest("details[data-ai-provider-menu]")) return;
+      document.querySelectorAll<HTMLDetailsElement>("details[data-ai-provider-menu][open]").forEach((item) => item.removeAttribute("open"));
+    }
+    function closeSettingsMenusOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") document.querySelectorAll<HTMLDetailsElement>("details[data-ai-provider-menu][open]").forEach((item) => item.removeAttribute("open"));
+    }
+    document.addEventListener("pointerdown", closeSettingsMenus, true);
+    document.addEventListener("keydown", closeSettingsMenusOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeSettingsMenus, true);
+      document.removeEventListener("keydown", closeSettingsMenusOnEscape);
+    };
   }, []);
 
   const refreshProfiles = useCallback(async () => {
@@ -384,7 +415,7 @@ export default function AISettingsPage() {
     }
   }
 
-  const formPanel = formOpen ? <div className="space-y-4 rounded-xl border-2 border-[var(--primary)]/40 bg-[var(--background)] p-4">
+  const formPanel = formOpen ? <div ref={connectionFormRef} className="space-y-4 rounded-xl border-2 border-[var(--primary)]/40 bg-[var(--background)] p-4">
     <div className="flex items-start justify-between gap-3">
       <div>
         <h3 className="text-lg font-bold">{editingId ? "Edit connection" : "Add a connection"}</h3>
@@ -456,9 +487,9 @@ export default function AISettingsPage() {
         </div>}
         <p className="text-xs opacity-70">Discover model IDs or enter them manually, one per line. A connection can be used for both capabilities when the relevant models are saved.</p>
       </div>
-      <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={!ready || saving || !knownType} className="rounded-full bg-[var(--primary)] px-5 py-3 font-bold text-white">{saving ? "Saving…" : editingId ? "Save connection changes" : "Save connection"}</button>
-        <button type="button" onClick={() => { setFormOpen(false); setEditingId(null); setForm({ ...EMPTY_FORM }); }} className="rounded-full border-2 border-[var(--border)] px-5 py-3 font-bold">Cancel</button>
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+        <button type="button" onClick={() => { setFormOpen(false); setEditingId(null); setForm({ ...EMPTY_FORM }); }} className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--ink-soft)]">Cancel</button>
+        <button type="submit" disabled={!ready || saving || !knownType} className="rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 font-semibold text-white shadow-[0_2px_0_var(--primary-dark)]">{saving ? "Saving…" : "Save"}</button>
       </div>
     </form>
   </div> : null;
@@ -478,6 +509,10 @@ export default function AISettingsPage() {
       <div><h2 className="text-xl font-bold">Reasoning</h2><p className="text-sm opacity-75">Used for Copilot, planning, reviews and task proposals. Only enabled connections with reasoning models appear here.</p></div>
       <div className="flex flex-col gap-3 sm:flex-row">
         <select aria-label="Reasoning connection" value={reasoning?.id ?? ""} disabled={!ready || loadingProfiles} onChange={(e) => {
+          if (e.target.value === "__add_provider__") {
+            addConnection("reasoning");
+            return;
+          }
           const item = reasoningOptions.find((p) => p.id === e.target.value);
           if (item) {
             setFormOpen(false);
@@ -491,10 +526,10 @@ export default function AISettingsPage() {
                 ? item.selectedModel : item?.models[0] ?? "",
           });
         }} className="min-w-0 flex-1 rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3">
-          <option value="">Choose a saved reasoning connection</option>
+          <option value="">Select a reasoning provider</option>
           {reasoningOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <option value="__add_provider__">+ Add provider…</option>
         </select>
-        <button type="button" onClick={() => addConnection("reasoning")} className="rounded-full border-2 border-[var(--border)] px-4 py-3 text-sm font-bold">+ Add provider</button>
       </div>
       {reasoning && <div className="space-y-2 rounded-xl bg-[var(--background)] p-3">
         <label className="block text-sm font-semibold">Reasoning model</label>
@@ -511,6 +546,10 @@ export default function AISettingsPage() {
       <div><h2 className="text-xl font-bold">Speech</h2><p className="text-sm opacity-75">Only enabled connections with saved text-to-speech models appear. Browser speech remains a playback fallback, not a provider choice.</p></div>
       <div className="flex flex-col gap-3 sm:flex-row">
         <select aria-label="Speech connection" value={speech?.id ?? ""} disabled={!ready || loadingProfiles} onChange={(e) => {
+          if (e.target.value === "__add_provider__") {
+            addConnection("speech");
+            return;
+          }
           const item = speechOptions.find((p) => p.id === e.target.value);
           if (item) {
             setFormOpen(false);
@@ -523,10 +562,10 @@ export default function AISettingsPage() {
             speechVoiceId: "",
           });
         }} className="min-w-0 flex-1 rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3">
-          <option value="">Choose a saved speech connection</option>
+          <option value="">Select a speech provider</option>
           {speechOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <option value="__add_provider__">+ Add provider…</option>
         </select>
-        <button type="button" onClick={() => addConnection("speech")} className="rounded-full border-2 border-[var(--border)] px-4 py-3 text-sm font-bold">+ Add provider</button>
       </div>
       {speech && <div className="space-y-3 rounded-xl bg-[var(--background)] p-3">
         <label className="block text-sm font-semibold">Speech model</label>
@@ -545,8 +584,9 @@ export default function AISettingsPage() {
       {formOpen && placement === "speech" && formPanel}
     </section>
 
-    <section className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
-      <div><h2 className="text-xl font-bold">Saved connections</h2><p className="text-sm opacity-75">Saved profiles are collapsed by default. Use the three-dot menu to edit or delete a connection.</p></div>
+    <details className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
+      <summary className="cursor-pointer list-none text-base font-semibold">Saved connections <span className="ml-1 text-xs font-normal text-[var(--ink-soft)]">Manage providers</span></summary>
+      <div className="mt-4 space-y-4">
       {loadingProfiles && <p role="status" className="text-sm opacity-75">Loading saved connections…</p>}
       {profiles.length === 0 && !loadingProfiles && !error && <p className="text-sm opacity-75">No saved connections yet. Check the connection migrations and server-side AI_PROVIDER_ENCRYPTION_KEY before saving.</p>}
       <div className="space-y-3">
@@ -568,7 +608,7 @@ export default function AISettingsPage() {
               </label>
             </div>
           </details>
-          <details className="relative shrink-0">
+          <details data-ai-provider-menu className="relative shrink-0">
             <summary aria-label={"Actions for " + p.name} title="Connection actions" className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--border)] text-xl font-bold">⋮</summary>
             <div className="absolute right-0 z-10 mt-1 min-w-32 space-y-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
               <button type="button" onClick={(e) => { e.currentTarget.closest("details")?.removeAttribute("open"); editConnection(p); }} className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold">Edit</button>
@@ -577,12 +617,12 @@ export default function AISettingsPage() {
           </details>
         </div>)}
       </div>
-    </section>
+      </div>
+    </details>
 
     <p className="text-xs opacity-70">Connection selections are stored in this browser only. API keys are never stored in browser preferences or returned by profile APIs. Browser speech is used if generated speech is unavailable.</p>
-    <div className="flex flex-wrap gap-3">
-      <button type="button" onClick={saveSettings} disabled={!ready} className="rounded-full bg-[var(--primary)] px-5 py-3 font-bold text-white">Save settings and return</button>
-      <button type="button" onClick={() => router.back()} className="rounded-full border-2 border-[var(--border)] px-5 py-3 font-bold">Cancel</button>
+    <div className="flex justify-end">
+      <button type="button" onClick={saveSettings} disabled={!ready} className="rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_2px_0_var(--primary-dark)]">Save</button>
     </div>
   </main>;
 }

@@ -47,13 +47,8 @@ export default function CardMenu({
 
       if (!trigger) return;
 
-      // The phone layout uses a bottom sheet instead.
-      if (window.matchMedia("(max-width: 720px)").matches) {
-        return;
-      }
-
       const rect = trigger.getBoundingClientRect();
-      const menuWidth = 230;
+      const menuWidth = 210;
 
       const left = Math.max(
         12,
@@ -228,13 +223,6 @@ export default function CardMenu({
                 </button>
               ))}
 
-              <button
-                type="button"
-                className="card-menu__cancel"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </button>
             </div>
           </>,
           document.body,
@@ -255,12 +243,12 @@ export default function CardMenu({
           onClick={() => setOpen((current) => !current)}
         >
           <svg
-            width="22"
-            height="22"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.5"
+            strokeWidth="2.25"
             strokeLinecap="round"
             aria-hidden="true"
           >

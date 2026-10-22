@@ -189,6 +189,7 @@ export default function CalendarOverview({
   const [isMobile, setIsMobile] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
+  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
 
   useEffect(() => {
     const currentDate = localTodayKey();
@@ -605,23 +606,42 @@ export default function CalendarOverview({
   return (
     <section
       className={
-        isMobile && isExpanded
+        isMobile && isExpanded && !isCalendarCollapsed
           ? "fixed inset-0 z-[70] m-0 flex h-[100dvh] min-h-0 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] p-2"
           : "card mb-8 bg-[var(--surface)] p-4 sm:p-6"
       }
     >
+      <div className={isMobile && isExpanded && !isCalendarCollapsed ? "hidden" : "mb-3 flex items-center justify-between gap-3"}>
+        <h2 className="text-base font-semibold text-[var(--ink)]">Calendar</h2>
+        <button
+          type="button"
+          aria-expanded={!isCalendarCollapsed}
+          onClick={() => {
+            setIsCalendarCollapsed((current) => !current);
+            if (isExpanded) {
+              setIsExpanded(false);
+              setIsAgendaOpen(false);
+            }
+          }}
+          className="rounded-lg px-2 py-1.5 text-xs font-semibold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
+        >
+          {isCalendarCollapsed ? "Expand calendar" : "Collapse"}
+        </button>
+      </div>
       <div
         className={
-          isMobile && isExpanded
-            ? "flex min-h-0 flex-1 flex-col gap-1"
-            : "flex flex-col gap-4"
+          isCalendarCollapsed
+            ? "hidden"
+            : isMobile && isExpanded
+              ? "flex min-h-0 flex-1 flex-col gap-1"
+              : "flex flex-col gap-4"
         }
       >
         <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap items-center justify-between gap-2"}>
           <div
             role="group"
             aria-label="Calendar view"
-            className="flex shrink-0 rounded-lg border border-[var(--border)] p-0.5"
+            className="order-2 ml-auto flex shrink-0 rounded-lg border border-[var(--border)] p-0.5"
           >
             {(["week", "month"] as const).map((option) => (
               <button
@@ -635,9 +655,9 @@ export default function CalendarOverview({
                     setIsAgendaOpen(false);
                   }
                 }}
-                className={`rounded-md px-2 py-1.5 text-xs font-bold capitalize ${
+                className={`rounded-md px-2 py-1 text-[11px] font-semibold capitalize ${
                   view === option
-                    ? "bg-[var(--primary)] text-white"
+                    ? "bg-[var(--primary)] text-white shadow-[0_2px_0_var(--primary-dark)]"
                     : "text-[var(--ink-soft)]"
                 }`}
               >
@@ -649,7 +669,7 @@ export default function CalendarOverview({
           <div
             role="group"
             aria-label="Filter calendar categories"
-            className="flex min-w-0 items-center gap-1"
+            className="order-1 mr-auto flex min-w-0 items-center gap-1"
           >
             {([
               { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
@@ -669,9 +689,13 @@ export default function CalendarOverview({
                   }))
                 }
                 className={[
-                  "inline-flex min-h-8 items-center gap-1 rounded-full px-1.5 py-1 text-[10px] font-semibold transition",
+                  "inline-flex min-h-7 items-center gap-1 rounded-full px-1.5 py-1 text-[9px] font-medium transition",
                   visibleKinds[kind]
-                    ? "bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                    ? kind === "class"
+                      ? "bg-[var(--primary-soft)] text-[var(--primary-dark)] shadow-[0_2px_0_var(--primary-dark)]"
+                      : kind === "event"
+                        ? "bg-[#fff0b3] text-[#684000] shadow-[0_2px_0_#946200]"
+                        : "bg-[var(--accent-soft)] text-[var(--accent-dark)] shadow-[0_2px_0_var(--accent-dark)]"
                     : "text-[var(--muted)]",
                 ].join(" ")}
               >
@@ -690,7 +714,7 @@ export default function CalendarOverview({
             type="button"
             aria-label="Previous week or month"
             onClick={() => movePeriod(-1)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] font-bold"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-sm font-semibold"
           >
             ←
           </button>
@@ -701,14 +725,14 @@ export default function CalendarOverview({
             type="button"
             aria-label="Next week or month"
             onClick={() => movePeriod(1)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] font-bold"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-sm font-semibold"
           >
             →
           </button>
           <button
             type="button"
             onClick={() => setSelectedDate(today)}
-            className="flex h-9 shrink-0 items-center justify-center rounded-lg px-2 text-xs font-bold text-[var(--primary-dark)]"
+            className="flex h-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] px-2 text-[11px] font-semibold text-white shadow-[0_2px_0_var(--primary-dark)]"
           >
             Today
           </button>
@@ -771,7 +795,7 @@ export default function CalendarOverview({
                     onClick={() => setSelectedDate(date)}
                     className={`min-w-0 rounded-xl border-2 px-0.5 py-2 ${
                       isSelected
-                        ? "border-[var(--primary-dark)] bg-[var(--primary-soft)]"
+                        ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] shadow-[0_2px_0_var(--primary-dark)]"
                         : "border-[var(--border)] bg-[var(--surface)]"
                     }`}
                   >
@@ -859,14 +883,14 @@ export default function CalendarOverview({
                 <button
                   type="button"
                   onClick={() => onAddEvent(selectedDate)}
-                  className="w-full rounded-lg border-l-4 border-[#946200] bg-[#fff0b3] px-3 py-2 text-left text-sm font-extrabold text-[#684000] transition hover:bg-[#ffe68a]"
+                  className="w-full rounded-lg border-l-4 border-[#946200] bg-[#fff0b3] px-2.5 py-1.5 text-left text-xs font-semibold text-[#684000] shadow-[0_2px_0_#946200] transition hover:bg-[#ffe68a]"
                 >
                   Add event
                 </button>
                 <button
                   type="button"
                   onClick={() => onAddTask(selectedDate)}
-                  className="w-full rounded-lg border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] px-3 py-2 text-left text-sm font-extrabold text-[var(--accent-dark)] transition hover:brightness-95"
+                  className="w-full rounded-lg border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] px-2.5 py-1.5 text-left text-xs font-semibold text-[var(--accent-dark)] shadow-[0_2px_0_var(--accent-dark)] transition hover:brightness-95"
                 >
                   Add task
                 </button>
@@ -913,11 +937,15 @@ export default function CalendarOverview({
                                 entry.taskOccurrence?.completed ?? entry.task!.completed,
                               )
                             }
-                            className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[var(--primary)]"
+                            className="mt-1 !h-5 !w-5 shrink-0 cursor-pointer accent-[var(--primary)]"
                           />
                         )}
                         <h4
-                          className={`min-w-0 break-words text-base font-extrabold sm:text-lg ${
+                          className={`min-w-0 break-words ${
+                            entry.kind === "event"
+                              ? "text-sm font-semibold sm:text-base"
+                              : "text-base font-bold sm:text-lg"
+                          } ${
                             entry.cancelled || (entry.taskOccurrence?.completed ?? entry.task?.completed)
                               ? "line-through"
                               : ""

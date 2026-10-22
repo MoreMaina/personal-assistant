@@ -6,6 +6,7 @@ import {
   FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -102,10 +103,12 @@ export default function ReadingPage() {
 
   const [showBookForm, setShowBookForm] =
     useState(false);
+  const bookFormRef = useRef<HTMLFormElement>(null);
   const [editingBookId, setEditingBookId] = useState<number | null>(null);
 
   const [showEssayForm, setShowEssayForm] =
     useState(false);
+  const essayFormRef = useRef<HTMLFormElement>(null);
   const [editingEssayId, setEditingEssayId] = useState<number | null>(null);
   const [exportTarget, setExportTarget] = useState<{
     title: string;
@@ -165,6 +168,32 @@ export default function ReadingPage() {
 
   const [searchHighlightEssayId, setSearchHighlightEssayId] =
     useState<number | null>(null);
+
+  useEffect(() => {
+    if (!showBookForm && !showEssayForm) return;
+    function handleOutsidePointer(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (bookFormRef.current?.contains(target) || essayFormRef.current?.contains(target)) return;
+      if (showBookForm) {
+        setEditingBookId(null);
+        setTitle("");
+        setAuthor("");
+        setCategory("Pleasure");
+        setTotalPages("");
+        setShowBookForm(false);
+      }
+      if (showEssayForm) {
+        setEditingEssayId(null);
+        setEssayTitle("");
+        setEssayAuthor("");
+        setEssaySource("");
+        setShowEssayForm(false);
+      }
+    }
+    document.addEventListener("pointerdown", handleOutsidePointer, true);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer, true);
+  }, [showBookForm, showEssayForm]);
 
   useEffect(() => {
     const loadedBooks = getBooks();
@@ -1449,7 +1478,6 @@ export default function ReadingPage() {
     <main className="min-h-full text-[var(--ink)]">
       <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
         <header className="mb-5">
-          <p className="stat-label">Reading · Essays · Projects</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
             Workspace
           </h1>
@@ -1466,9 +1494,9 @@ export default function ReadingPage() {
               type="button"
               aria-pressed={tab === option}
               onClick={() => changeTab(option)}
-              className={`min-w-0 rounded-xl px-2 py-2 text-sm font-extrabold capitalize transition ${
+              className={`min-w-0 rounded-lg px-2 py-1.5 text-xs font-semibold capitalize transition ${
                 tab === option
-                  ? "bg-[var(--primary)] text-white shadow-[0_3px_0_var(--primary-dark)]"
+                  ? "bg-[var(--primary)] text-white shadow-[0_2px_0_var(--primary-dark)]"
                   : "text-[var(--ink-soft)] hover:bg-[var(--surface)]"
               }`}
             >
@@ -1479,29 +1507,29 @@ export default function ReadingPage() {
 
         {tab === "books" && (
           <>
-            <div className="mb-4 grid grid-cols-3 gap-3">
-              <div className="min-w-0 py-2">
-                <p className="text-xs text-[var(--ink-soft)]">Currently reading</p>
-                <p className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">
+            <div className="mb-4 grid grid-cols-3 gap-2">
+              <div className="min-w-0 rounded-xl bg-[var(--surface)] px-2 py-2">
+                <p className="text-[10px] leading-snug text-[var(--ink-soft)] sm:text-xs">Currently reading</p>
+                <p className="mt-1 text-base font-bold text-[var(--primary-dark)]">
                   {currentlyReading.length}
                 </p>
               </div>
-              <div className="min-w-0 py-2">
-                <p className="text-xs text-[var(--ink-soft)]">Reading this week</p>
-                <p className="mt-1 whitespace-nowrap text-base font-extrabold text-[var(--primary-dark)]">
+              <div className="min-w-0 rounded-xl bg-[var(--surface)] px-2 py-2">
+                <p className="text-[10px] leading-snug text-[var(--ink-soft)] sm:text-xs">This week</p>
+                <p className="mt-1 whitespace-nowrap text-sm font-bold text-[var(--primary-dark)]">
                   {minutesThisWeek} min
                 </p>
               </div>
-              <div className="min-w-0 py-2">
-                <p className="text-xs text-[var(--ink-soft)]">Finished</p>
-                <p className="mt-1 text-lg font-extrabold text-[var(--primary-dark)]">
+              <div className="min-w-0 rounded-xl bg-[var(--surface)] px-2 py-2">
+                <p className="text-[10px] leading-snug text-[var(--ink-soft)] sm:text-xs">Finished</p>
+                <p className="mt-1 text-base font-bold text-[var(--primary-dark)]">
                   {finished.length}
                 </p>
               </div>
             </div>
 
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-[var(--ink)]">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h2 className="text-base font-semibold text-[var(--ink)]">
                 Your books
               </h2>
 
@@ -1520,6 +1548,7 @@ export default function ReadingPage() {
 
             {showBookForm && (
               <form
+                ref={bookFormRef}
                 onSubmit={
                   handleAddBook
                 }
@@ -1623,13 +1652,6 @@ export default function ReadingPage() {
                 </div>
 
                 <div className="mt-5 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={resetBookForm}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-extrabold text-[var(--ink)]"
-                  >
-                    Cancel
-                  </button>
 
                   <button
                     type="submit"
@@ -1641,12 +1663,12 @@ export default function ReadingPage() {
               </form>
             )}
 
-            <section className="mb-8">
-              <h2 className="mb-3 text-lg font-extrabold text-[var(--ink)]">
+            <section className="mb-6">
+              <h2 className="mb-2 text-base font-semibold text-[var(--ink)]">
                 Currently reading
               </h2>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {currentlyReading.map(
                   (book) => {
                     const progress = book.totalPages > 0
@@ -1699,31 +1721,19 @@ export default function ReadingPage() {
                       >
                         <div className="flex flex-col gap-3">
                           <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <p className="line-clamp-2 text-base font-extrabold text-[var(--ink)]">
+                            <div className="min-w-0 flex-1">
+                              <p className="line-clamp-2 text-sm font-bold text-[var(--ink)] sm:text-base">
                                 {book.title}
                               </p>
-
-                              <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                                {
-                                  book.author
-                                }{" "}
-                                ·{" "}
-                                {
-                                  book.category
-                                }
+                              <p className="mt-1 break-words text-xs text-[var(--ink-soft)] sm:text-sm">
+                                {book.author} · {book.category} · {book.currentPage}/{book.totalPages} pages
                               </p>
                             </div>
-
-                            <div className="flex shrink-0 items-center gap-2">
-                              <span className="rounded-lg bg-[var(--surface-soft)] px-2 py-1 text-xs font-bold text-[var(--ink)]">
-                                {book.currentPage}/{book.totalPages}
-                              </span>
+                            <div className="shrink-0">
                               <CardMenu
                                 title={`Actions for ${book.title}`}
                                 actions={getBookMenuActions(book)}
                               />
-
                             </div>
                           </div>
 
@@ -1816,7 +1826,7 @@ export default function ReadingPage() {
             </section>
 
             <section>
-              <h2 className="mb-5 text-xl font-extrabold text-[var(--ink)]">
+              <h2 className="mb-3 text-base font-semibold text-[var(--ink)]">
                 Want to read
               </h2>
 
@@ -1841,7 +1851,7 @@ export default function ReadingPage() {
                           toggleBookCard(book.id);
                         }
                       }}
-                      className={`cursor-pointer flex items-center justify-between gap-3 rounded-[18px] border-2 border-[var(--border)] bg-[var(--surface)] p-4 ${
+                      className={`cursor-pointer flex items-center justify-between gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-3 ${
                         searchHighlightBookId === book.id
                           ? "ring-2 ring-[var(--accent)]"
                           : ""
@@ -1942,10 +1952,10 @@ export default function ReadingPage() {
 
         {tab === "essays" && (
           <>
-            <div className="mb-4 rounded-[16px] border-2 border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-base font-extrabold">Essay practice</h2>
-                <div className="flex shrink-0 items-center gap-2">
+            <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-base font-semibold">Essay practice</h2>
+                <div className="flex shrink-0 items-center gap-1.5">
                   {essays.length > 0 && (
                     <CardMenu
                       title="Essay workspace actions"
@@ -1955,13 +1965,19 @@ export default function ReadingPage() {
                   <button
                     type="button"
                     onClick={() => setShowEssayForm(true)}
-                    className="inline-flex min-h-10 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-3 py-1.5 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                    className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[var(--primary-dark)] bg-[var(--primary)] px-2.5 py-1 text-xs font-semibold text-white shadow-[0_2px_0_var(--primary-dark)]"
                   >
                     Add essay
                   </button>
                 </div>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-[var(--ink-soft)] sm:text-sm">
+              <details className="mt-2 rounded-lg bg-[var(--surface-soft)] px-2.5 py-2">
+                <summary className="cursor-pointer list-none text-xs font-semibold text-[var(--primary-dark)]">How to read essays</summary>
+                <p className="mt-2 text-xs leading-relaxed text-[var(--ink-soft)]">
+                  Read once straight through without analyzing. On the second pass, notice structural turns, rhythm and essential sentences. Reflect from memory, then write criticism that tests your interpretation.
+                </p>
+              </details>
+              <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] font-medium text-[var(--ink-soft)] sm:text-xs">
                 <span>First pass</span><span aria-hidden="true">›</span>
                 <span>Second pass</span><span aria-hidden="true">›</span>
                 <span>Memory reflection</span><span aria-hidden="true">›</span>
@@ -1971,6 +1987,7 @@ export default function ReadingPage() {
 
             {showEssayForm && (
               <form
+                ref={essayFormRef}
                 onSubmit={
                   handleAddEssay
                 }
@@ -2043,13 +2060,6 @@ export default function ReadingPage() {
                 </div>
 
                 <div className="mt-5 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={resetEssayForm}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-extrabold text-[var(--ink)]"
-                  >
-                    Cancel
-                  </button>
 
                   <button
                     type="submit"
@@ -2061,7 +2071,7 @@ export default function ReadingPage() {
               </form>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-3">
               {essays.length ===
               0 ? (
                 <div className="rounded-[20px] border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-8 text-center">
@@ -2201,7 +2211,7 @@ export default function ReadingPage() {
                             toggleEssayCard(essay.id);
                           }
                         }}
-                        className={`cursor-pointer rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 ${
+                        className={`cursor-pointer rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4 ${
                           searchHighlightEssayId === essay.id
                             ? "ring-2 ring-[var(--accent)]"
                             : ""
@@ -2211,7 +2221,7 @@ export default function ReadingPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="text-xl font-extrabold text-[var(--ink)]">
+                                <h2 className="text-base font-semibold text-[var(--ink)]">
                                   {essay.title}
                                 </h2>
                                 <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)]">
