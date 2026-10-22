@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Fredoka, Nunito } from "next/font/google";
 
@@ -41,9 +42,13 @@ export default function RootLayout({
       <body
         className={`${fredoka.variable} ${nunito.variable}`}
       >
-        <Navigation />
+        <Suspense fallback={null}>
+          <Navigation />
+        </Suspense>
 
-        <CloudSync />
+        <Suspense fallback={null}>
+          <CloudSync />
+        </Suspense>
 
         <div className="app-frame">
           <header className="topbar">

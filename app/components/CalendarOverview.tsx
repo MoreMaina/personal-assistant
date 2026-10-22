@@ -607,8 +607,8 @@ export default function CalendarOverview({
     <section
       className={
         isMobile && isExpanded && !isCalendarCollapsed
-          ? "fixed inset-0 z-[70] m-0 flex h-[100dvh] min-h-0 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] p-2"
-          : "card mb-8 bg-[var(--surface)] p-4 sm:p-6"
+          ? "calendar-overview calendar-overview--expanded fixed inset-0 z-[70] m-0 flex h-[100dvh] min-h-0 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] p-2"
+          : "calendar-overview card mb-8 bg-[var(--surface)] p-3 sm:p-4"
       }
     >
       <div className={isMobile && isExpanded && !isCalendarCollapsed ? "hidden" : "mb-3 flex items-center justify-between gap-3"}>
@@ -625,9 +625,38 @@ export default function CalendarOverview({
           }}
           className="rounded-lg px-2 py-1.5 text-xs font-semibold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
         >
-          {isCalendarCollapsed ? "Expand calendar" : "Collapse"}
+          {isCalendarCollapsed ? "Expand" : "Collapse"}
         </button>
       </div>
+      {isMobile && isExpanded && !isAgendaOpen && !isCalendarCollapsed && (
+        <div className="flex shrink-0 justify-center py-1">
+          <div
+            role="group"
+            aria-label="Calendar view"
+            className="inline-flex items-center gap-0.5 rounded-full bg-[var(--surface-soft)] p-0.5"
+          >
+            {(["week", "month"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={view === option}
+                onClick={() => {
+                  setView(option);
+                  setIsExpanded(option === "month");
+                  setIsAgendaOpen(false);
+                }}
+                className={`min-h-6 rounded-full px-3 py-1 text-[10px] font-semibold capitalize ${
+                  view === option
+                    ? "bg-[var(--primary)] text-white"
+                    : "text-[var(--ink-soft)]"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div
         className={
           isCalendarCollapsed
@@ -641,7 +670,7 @@ export default function CalendarOverview({
           <div
             role="group"
             aria-label="Calendar view"
-            className="order-2 ml-auto flex shrink-0 rounded-lg border border-[var(--border)] p-0.5"
+            className="order-2 ml-auto flex shrink-0 items-center gap-0.5 rounded-full bg-[var(--surface-soft)] p-0.5"
           >
             {(["week", "month"] as const).map((option) => (
               <button
@@ -655,7 +684,7 @@ export default function CalendarOverview({
                     setIsAgendaOpen(false);
                   }
                 }}
-                className={`rounded-md px-2 py-1 text-[11px] font-semibold capitalize ${
+                className={`min-h-6 rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize transition ${
                   view === option
                     ? "bg-[var(--primary)] text-white shadow-[0_2px_0_var(--primary-dark)]"
                     : "text-[var(--ink-soft)]"
@@ -689,7 +718,7 @@ export default function CalendarOverview({
                   }))
                 }
                 className={[
-                  "inline-flex min-h-7 items-center gap-1 rounded-full px-1.5 py-1 text-[9px] font-medium transition",
+                  "inline-flex min-h-6 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium transition",
                   visibleKinds[kind]
                     ? kind === "class"
                       ? "bg-[var(--primary-soft)] text-[var(--primary-dark)] shadow-[0_2px_0_var(--primary-dark)]"
@@ -732,17 +761,19 @@ export default function CalendarOverview({
           <button
             type="button"
             onClick={() => setSelectedDate(today)}
-            className="flex h-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] px-2 text-[11px] font-semibold text-white shadow-[0_2px_0_var(--primary-dark)]"
+            className="calendar-today-button flex h-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] px-2 text-[10px] font-semibold text-white"
           >
             Today
           </button>
 
           {isMobile && isExpanded && !isAgendaOpen && (
             <details data-smart-menu className="relative z-40 shrink-0">
-              <summary aria-label="Calendar filters" title="Calendar filters" className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--border)] text-xl font-extrabold">
-                <span aria-hidden="true">⋮</span>
+              <summary aria-label="Calendar filters" title="Calendar filters" className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-[var(--border)] text-sm font-medium">
+                <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M3 5h14M3 10h14M3 15h14" />
+                </svg>
               </summary>
-              <div data-smart-menu-panel className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-2 shadow-lg">
+              <div data-smart-menu-panel className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-lg">
                 <button
                   type="button"
                   onClick={(event) => {
@@ -863,11 +894,13 @@ export default function CalendarOverview({
             <details data-smart-menu className="relative shrink-0">
               <summary
                 aria-label="Selected day actions"
-                className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
+                className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-[var(--border)] text-sm font-medium"
               >
-                <span aria-hidden="true">⋮</span>
+                <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M3 5h14M3 10h14M3 15h14" />
+                </svg>
               </summary>
-              <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+              <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-36 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
                 {isMobile && isExpanded && isAgendaOpen && (
                   <button
                     type="button"
@@ -883,14 +916,14 @@ export default function CalendarOverview({
                 <button
                   type="button"
                   onClick={() => onAddEvent(selectedDate)}
-                  className="w-full rounded-lg border-l-4 border-[#946200] bg-[#fff0b3] px-2.5 py-1.5 text-left text-xs font-semibold text-[#684000] shadow-[0_2px_0_#946200] transition hover:bg-[#ffe68a]"
+                  className="calendar-day-action calendar-day-action--event w-full rounded-lg bg-[#fff0b3] px-2 py-1.5 text-left text-[11px] font-semibold text-[#684000] transition hover:bg-[#ffe68a]"
                 >
                   Add event
                 </button>
                 <button
                   type="button"
                   onClick={() => onAddTask(selectedDate)}
-                  className="w-full rounded-lg border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] px-2.5 py-1.5 text-left text-xs font-semibold text-[var(--accent-dark)] shadow-[0_2px_0_var(--accent-dark)] transition hover:brightness-95"
+                  className="calendar-day-action calendar-day-action--task w-full rounded-lg bg-[var(--accent-soft)] px-2 py-1.5 text-left text-[11px] font-semibold text-[var(--accent-dark)] transition hover:brightness-95"
                 >
                   Add task
                 </button>

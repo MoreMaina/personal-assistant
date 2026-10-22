@@ -468,8 +468,6 @@ button.rounded-lg,
 button.rounded-xl,
 a.rounded-lg,
 a.rounded-xl {
-  font-size: 16px;
-  font-weight: 900;
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,
@@ -1620,4 +1618,339 @@ div[data-smart-menu-panel] button {
   padding: 7px 9px;
   font-size: 13px;
   font-weight: 600;
+}
+
+/* Calendar compact controls and scalable Reading details */
+
+
+/* Calendar compact controls and scalable Reading details */
+
+.app-content .calendar-overview:not(.calendar-overview--expanded) {
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 5px 16px rgba(26, 46, 36, 0.07) !important;
+}
+.app-content .calendar-overview--expanded {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.app-content .calendar-overview article {
+  border-width: 1px !important;
+  border-color: var(--border) !important;
+}
+.app-content .calendar-overview .grid > button {
+  border-width: 1px !important;
+}
+.app-content .calendar-overview .grid > button[aria-pressed="true"] {
+  border-color: var(--primary-soft) !important;
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+.app-content .calendar-overview [aria-label="Show classes"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+.app-content .calendar-overview [aria-label="Show events"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 #946200 !important;
+}
+.app-content .calendar-overview [aria-label="Show tasks"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 var(--accent-dark) !important;
+}
+.app-content .calendar-overview [role="group"][aria-label="Calendar view"] button[aria-pressed="true"] {
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+.app-content .calendar-overview details[data-smart-menu] > summary {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 9px !important;
+  background: var(--surface) !important;
+  color: var(--ink-soft) !important;
+  box-shadow: none !important;
+  font-size: 0 !important;
+}
+.app-content .calendar-overview details[data-smart-menu] > summary svg {
+  display: block;
+}
+.app-content .calendar-overview div[data-smart-menu-panel] {
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+  background: var(--surface) !important;
+  box-shadow: 0 8px 18px rgba(26, 46, 36, 0.12) !important;
+}
+.app-content .calendar-overview div[data-smart-menu-panel] button {
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 0 !important;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+.app-content .calendar-overview button.calendar-day-action {
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 0 !important;
+  border-radius: 8px;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.app-content .calendar-overview button.calendar-day-action--event {
+  box-shadow: 0 3px 0 #946200 !important;
+}
+.app-content .calendar-overview button.calendar-day-action--task {
+  box-shadow: 0 3px 0 var(--accent-dark) !important;
+}
+.app-content .calendar-overview button.calendar-day-action:hover {
+  transform: translateY(-2px);
+}
+.app-content .calendar-overview button.calendar-day-action--event:hover {
+  box-shadow: 0 5px 0 #946200 !important;
+}
+.app-content .calendar-overview button.calendar-day-action--task:hover {
+  box-shadow: 0 5px 0 var(--accent-dark) !important;
+}
+.app-content .calendar-overview button.calendar-day-action:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .calendar-overview button.calendar-today-button {
+  border: 0 !important;
+  box-shadow: 0 3px 0 #4e765a !important;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .calendar-overview button.calendar-today-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 #4e765a !important;
+}
+.app-content .calendar-overview button.calendar-today-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Follow the Start button's tactile effect; preserve Start itself. */
+.app-content .btn-primary:not(.right-now-start-button) {
+  border: 0;
+  box-shadow: 0 4px 0 var(--accent-dark);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .btn-primary:not(.right-now-start-button):hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark);
+}
+.app-content .btn-primary:not(.right-now-start-button):active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+.app-content button.plan-generate-button:not(.topbar__icon-button) {
+  border: 0 !important;
+  box-shadow: 0 4px 0 #C9A657 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .plan-generate-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #C9A657 !important;
+}
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .project-work-action {
+  border: 0 !important;
+  box-shadow: 0 4px 0 var(--accent-dark) !important;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .project-work-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark) !important;
+}
+.app-content .project-work-action:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .ai-copilot__suggestion {
+  border: 0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 0 #4e765a !important;
+}
+.app-content .ai-copilot__suggestion:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #4e765a !important;
+}
+.app-content .ai-copilot__suggestion:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Compact, neutral surfaces for book and essay entries. */
+.app-content :is(div, article)[id^="book-"],
+.app-content article[id^="essay-"] {
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 10px 12px !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+}
+.app-content :is(div, article)[id^="book-"] .border-2,
+.app-content article[id^="essay-"] .border-2 {
+  border-width: 1px !important;
+  border-color: var(--border) !important;
+}
+
+/* Dedicated reading detail pages and list navigation */
+
+
+/* Dedicated reading detail pages and list navigation */
+
+/* Titles navigate; the small chevron remains the explicit inline-workflow toggle. */
+.app-content .reading-row__title-link {
+  color: var(--ink);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.app-content .reading-row__title-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+.app-content .reading-row__title-link:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.app-content button.reading-row__expand {
+  display: grid;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none !important;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.app-content button.reading-row__expand:hover,
+.app-content button.reading-row__expand:active {
+  transform: none;
+  background: var(--surface-soft);
+  color: var(--primary-dark);
+  box-shadow: none !important;
+}
+
+.reading-detail-page {
+  width: min(100%, 780px);
+  margin: 0 auto;
+  padding: 8px 0 32px;
+  color: var(--ink);
+}
+.reading-detail-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 22px;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.reading-detail-page__back:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.reading-detail-page__eyebrow {
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.reading-detail-page h1 {
+  margin: 0;
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+.reading-detail-page__subtitle {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.reading-detail-page__panel {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgba(26, 46, 36, 0.06);
+}
+.reading-detail-page__label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.reading-detail-page__value {
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.reading-detail-page__action {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 0 !important;
+  border-radius: 10px;
+  background: var(--primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+  box-shadow: 0 4px 0 #4e765a;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.reading-detail-page__action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #4e765a;
+}
+.reading-detail-page__action:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+.reading-detail-page__note {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+}
+.reading-detail-page__note h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.reading-detail-page__note p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  .reading-detail-page__panel {
+    padding: 13px;
+  }
 }

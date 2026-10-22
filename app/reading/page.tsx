@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CardMenu from "@/app/components/CardMenu";
 
 import {
@@ -86,6 +88,7 @@ function formatDuration(
 }
 
 export default function ReadingPage() {
+  const router = useRouter();
   const [tab, setTab] =
     useState<Tab>("books");
 
@@ -1346,6 +1349,11 @@ export default function ReadingPage() {
 
       if (book) {
         setTab("books");
+        setCollapsedBookIds((current) => {
+          const next = new Set(current);
+          next.delete(book.id);
+          return next;
+        });
         setActiveBookId(
           book.id,
         );
@@ -1387,6 +1395,11 @@ export default function ReadingPage() {
 
       if (essay) {
         setTab("essays");
+        setCollapsedEssayIds((current) => {
+          const next = new Set(current);
+          next.delete(essay.id);
+          return next;
+        });
 
         if (
           essay.status ===
@@ -1701,7 +1714,7 @@ export default function ReadingPage() {
                         tabIndex={0}
                         onClick={(event) => {
                           if (shouldToggleReadingCard(event.target)) {
-                            toggleBookCard(book.id);
+                            router.push(`/reading/book/${book.id}`);
                           }
                         }}
                         onKeyDown={(event) => {
@@ -1710,7 +1723,7 @@ export default function ReadingPage() {
                             (event.key === "Enter" || event.key === " ")
                           ) {
                             event.preventDefault();
-                            toggleBookCard(book.id);
+                            router.push(`/reading/book/${book.id}`);
                           }
                         }}
                         className={`cursor-pointer rounded-[18px] border-2 border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4 ${
@@ -1722,14 +1735,43 @@ export default function ReadingPage() {
                         <div className="flex flex-col gap-3">
                           <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0 flex-1">
-                              <p className="line-clamp-2 text-sm font-bold text-[var(--ink)] sm:text-base">
+                              <Link
+                                href={`/reading/book/${book.id}`}
+                                className="reading-row__title-link line-clamp-2 text-sm font-bold text-[var(--ink)] sm:text-base"
+                              >
                                 {book.title}
-                              </p>
+                              </Link>
                               <p className="mt-1 break-words text-xs text-[var(--ink-soft)] sm:text-sm">
                                 {book.author} · {book.category} · {book.currentPage}/{book.totalPages} pages
                               </p>
                             </div>
                             <div className="shrink-0">
+                              <button
+                                type="button"
+                                className="reading-row__expand"
+                                aria-label={collapsedBookIds.has(book.id) ? `Expand workflow for ${book.title}` : `Collapse workflow for ${book.title}`}
+                                aria-expanded={!collapsedBookIds.has(book.id)}
+                                title={collapsedBookIds.has(book.id) ? "Expand workflow" : "Collapse workflow"}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleBookCard(book.id);
+                                }}
+                              >
+                                <svg
+                                  aria-hidden="true"
+                                  viewBox="0 0 20 20"
+                                  width="15"
+                                  height="15"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className={collapsedBookIds.has(book.id) ? "" : "rotate-180"}
+                                >
+                                  <path d="m5 7.5 5 5 5-5" />
+                                </svg>
+                              </button>
                               <CardMenu
                                 title={`Actions for ${book.title}`}
                                 actions={getBookMenuActions(book)}
@@ -1839,7 +1881,7 @@ export default function ReadingPage() {
                       tabIndex={0}
                       onClick={(event) => {
                         if (shouldToggleReadingCard(event.target)) {
-                          toggleBookCard(book.id);
+                          router.push(`/reading/book/${book.id}`);
                         }
                       }}
                       onKeyDown={(event) => {
@@ -1848,7 +1890,7 @@ export default function ReadingPage() {
                           (event.key === "Enter" || event.key === " ")
                         ) {
                           event.preventDefault();
-                          toggleBookCard(book.id);
+                          router.push(`/reading/book/${book.id}`);
                         }
                       }}
                       className={`cursor-pointer flex items-center justify-between gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-3 ${
@@ -1858,9 +1900,12 @@ export default function ReadingPage() {
                       }`}
                     >
                       <div>
-                        <p className="font-medium">
+                        <Link
+                          href={`/reading/book/${book.id}`}
+                          className="reading-row__title-link font-medium"
+                        >
                           {book.title}
-                        </p>
+                        </Link>
 
                         {!collapsedBookIds.has(book.id) && (
                           <p className="mt-1 text-sm text-[var(--ink-soft)]">
@@ -1886,6 +1931,32 @@ export default function ReadingPage() {
                           </button>
                         )}
 
+                        <button
+                          type="button"
+                          className="reading-row__expand"
+                          aria-label={collapsedBookIds.has(book.id) ? `Expand workflow for ${book.title}` : `Collapse workflow for ${book.title}`}
+                          aria-expanded={!collapsedBookIds.has(book.id)}
+                          title={collapsedBookIds.has(book.id) ? "Expand workflow" : "Collapse workflow"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleBookCard(book.id);
+                          }}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 20 20"
+                            width="15"
+                            height="15"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={collapsedBookIds.has(book.id) ? "" : "rotate-180"}
+                          >
+                            <path d="m5 7.5 5 5 5-5" />
+                          </svg>
+                        </button>
                         <CardMenu
                           title={`Actions for ${book.title}`}
                           actions={getBookMenuActions(book)}
@@ -1907,7 +1978,7 @@ export default function ReadingPage() {
                       tabIndex={0}
                       onClick={(event) => {
                         if (shouldToggleReadingCard(event.target)) {
-                          toggleBookCard(book.id);
+                          router.push(`/reading/book/${book.id}`);
                         }
                       }}
                       onKeyDown={(event) => {
@@ -1916,7 +1987,7 @@ export default function ReadingPage() {
                           (event.key === "Enter" || event.key === " ")
                         ) {
                           event.preventDefault();
-                          toggleBookCard(book.id);
+                          router.push(`/reading/book/${book.id}`);
                         }
                       }}
                       className={`cursor-pointer rounded-[18px] border-2 border-[var(--border)] bg-[var(--surface)] p-4 ${
@@ -1927,7 +1998,12 @@ export default function ReadingPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-extrabold text-[var(--ink)]">{book.title}</p>
+                          <Link
+                            href={`/reading/book/${book.id}`}
+                            className="reading-row__title-link font-semibold text-[var(--ink)]"
+                          >
+                            {book.title}
+                          </Link>
                           {!collapsedBookIds.has(book.id) && (
                             <p className="mt-1 text-sm text-[var(--ink-soft)]">
                               {book.author} · {book.totalPages} pages · Finished
@@ -1936,6 +2012,32 @@ export default function ReadingPage() {
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
 
+                          <button
+                            type="button"
+                            className="reading-row__expand"
+                            aria-label={collapsedBookIds.has(book.id) ? `Expand workflow for ${book.title}` : `Collapse workflow for ${book.title}`}
+                            aria-expanded={!collapsedBookIds.has(book.id)}
+                            title={collapsedBookIds.has(book.id) ? "Expand workflow" : "Collapse workflow"}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleBookCard(book.id);
+                            }}
+                          >
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 20 20"
+                              width="15"
+                              height="15"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className={collapsedBookIds.has(book.id) ? "" : "rotate-180"}
+                            >
+                              <path d="m5 7.5 5 5 5-5" />
+                            </svg>
+                          </button>
                           <CardMenu
                             title={`Actions for ${book.title}`}
                             actions={getBookMenuActions(book)}
@@ -2199,7 +2301,7 @@ export default function ReadingPage() {
                         tabIndex={0}
                         onClick={(event) => {
                           if (shouldToggleReadingCard(event.target)) {
-                            toggleEssayCard(essay.id);
+                            router.push(`/reading/essay/${essay.id}`);
                           }
                         }}
                         onKeyDown={(event) => {
@@ -2208,7 +2310,7 @@ export default function ReadingPage() {
                             (event.key === "Enter" || event.key === " ")
                           ) {
                             event.preventDefault();
-                            toggleEssayCard(essay.id);
+                            router.push(`/reading/essay/${essay.id}`);
                           }
                         }}
                         className={`cursor-pointer rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4 ${
@@ -2222,7 +2324,12 @@ export default function ReadingPage() {
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="text-base font-semibold text-[var(--ink)]">
-                                  {essay.title}
+                                  <Link
+                                    href={`/reading/essay/${essay.id}`}
+                                    className="reading-row__title-link"
+                                  >
+                                    {essay.title}
+                                  </Link>
                                 </h2>
                                 <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)]">
                                   {essay.status}
@@ -2234,6 +2341,32 @@ export default function ReadingPage() {
                               </p>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
+                              <button
+                                type="button"
+                                className="reading-row__expand"
+                                aria-label={collapsedEssayIds.has(essay.id) ? `Expand workflow for ${essay.title}` : `Collapse workflow for ${essay.title}`}
+                                aria-expanded={!collapsedEssayIds.has(essay.id)}
+                                title={collapsedEssayIds.has(essay.id) ? "Expand workflow" : "Collapse workflow"}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleEssayCard(essay.id);
+                                }}
+                              >
+                                <svg
+                                  aria-hidden="true"
+                                  viewBox="0 0 20 20"
+                                  width="15"
+                                  height="15"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className={collapsedEssayIds.has(essay.id) ? "" : "rotate-180"}
+                                >
+                                  <path d="m5 7.5 5 5 5-5" />
+                                </svg>
+                              </button>
                               <CardMenu
                                 title={`Actions for ${essay.title}`}
                                 actions={getEssayMenuActions(essay)}
