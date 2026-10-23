@@ -10,6 +10,7 @@ const navigation = [
   { href: "/", label: "Today", mobileLabel: "Today", icon: "home" },
   { href: "/classes", label: "Calendar", mobileLabel: "Calendar", icon: "calendar" },
   { href: "/study", label: "Study", mobileLabel: "Study", icon: "study" },
+  { href: "/study/mvp", label: "Study MVP", mobileLabel: "MVP", icon: "study" },
   { href: "/reading", label: "Workspace", mobileLabel: "Work", icon: "workspace" },
   { href: "/assistant", label: "AI Copilot", mobileLabel: "AI", icon: "sparkles" },
 ] as const;
@@ -19,6 +20,7 @@ export default function Navigation() {
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
+    if (href === "/study") return pathname === "/study";
     if (href === "/reading") {
       return (
         pathname === "/reading" ||
