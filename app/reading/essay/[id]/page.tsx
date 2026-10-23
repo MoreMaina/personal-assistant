@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import {
   getEssays,
+  saveEssays,
+  updateEssay,
   type Essay,
 } from "@/lib/readingStorage";
 
@@ -19,17 +21,186 @@ function formatDuration(totalSeconds: number) {
 
 function EssayDetailContent() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
+
   const [essay, setEssay] = useState<Essay | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [feedback, setFeedback] = useState("");
+
+  const [editTitle, setEditTitle] = useState("");
+  const [editAuthor, setEditAuthor] = useState("");
+  const [editSource, setEditSource] = useState("");
 
   useEffect(() => {
     const id = Number(params.id);
     const found = Number.isSafeInteger(id)
       ? getEssays().find((item) => item.id === id) ?? null
       : null;
+
     setEssay(found);
+    setEditTitle(found?.title ?? "");
+    setEditAuthor(found?.author ?? "");
+    setEditSource(found?.source ?? "");
     setLoaded(true);
   }, [params.id]);
+
+  function saveDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!essay) return;
+
+    const title = editTitle.trim();
+    if (!title) {
+      setFeedback("Enter an essay title.");
+      return;
+    }
+
+    try {
+      const updated: Essay = {
+        ...essay,
+        title,
+        author: editAuthor.trim(),
+        source: editSource.trim(),
+      };
+      updateEssay(updated);
+      setEssay(updated);
+      setEditing(false);
+      setFeedback("Essay details saved.");
+    } catch {
+      setFeedback("Essay details could not be saved. Please try again.");
+    }
+  }
+
+  function downloadNotes() {
+    if (!essay) return;
+
+    const observationLines = [
+      ["Where does the piece turn?", essay.marks.turns],
+      ["Where does it accelerate or pause?", essay.marks.rhythm],
+      ["Essential sentences", essay.marks.essentialSentences],
+      ["What does the ending make you reinterpret?", essay.marks.ending],
+    ]
+      .filter(([, value]) => value.trim())
+      .map(([label, value]) => `### ${label}\n\n${value}`);
+
+    const reflectionLines = [
+      ["What happened?", essay.reflection.whatHappened],
+      ["What changed?", essay.reflection.whatChanged],
+      ["Why this ending?", essay.reflection.whyEnding],
+    ]
+      .filter(([, value]) => value.trim())
+      .map(([label, value]) => `### ${label}\n\n${value}`);
+
+    const totalSeconds =
+      (essay.firstPassSeconds ?? 0) +
+      (essay.secondPassSeconds ?? 0) +
+      (essay.reflectionSeconds ?? 0);
+
+    const markdown = [
+      `# ${essay.title}`,
+      "",
+      `- Author: ${essay.author || "Not specified"}`,
+      `- Source: ${essay.source || "Not specified"}`,
+      `- Status: ${essay.status}`,
+      `- Recorded practice time: ${formatDuration(totalSeconds)}`,
+      "",
+      "## Saved observations",
+      "",
+      observationLines.length
+        ? observationLines.join("\n\n")
+        : "No observations saved.",
+      "",
+      "## Memory reflection",
+      "",
+      reflectionLines.length
+        ? reflectionLines.join("\n\n")
+        : "No reflections saved.",
+      "",
+    ].join("\n");
+
+    try {
+      const blob = new Blob([markdown], {
+        type: "text/markdown;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const filename =
+        essay.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "essay-notes";
+
+      anchor.href = url;
+      anchor.download = `${filename}.md`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setFeedback("Notes download started.");
+    } catch {
+      setFeedback("Notes could not be downloaded. Please try again.");
+    }
+  }
+
+  function restartEssay() {
+    if (!essay) return;
+
+    const confirmed = window.confirm(
+      `Restart "${essay.title}" from the beginning? This clears its recorded stage progress, observations and reflections.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const updated: Essay = {
+        ...essay,
+        status: "To read",
+        firstPassStartedAt: undefined,
+        firstPassCompletedAt: undefined,
+        firstPassSeconds: 0,
+        secondPassStartedAt: undefined,
+        secondPassCompletedAt: undefined,
+        secondPassSeconds: 0,
+        secondPassStep: 0,
+        reflectionStartedAt: undefined,
+        reflectionCompletedAt: undefined,
+        reflectionSeconds: 0,
+        criticismUnlockedAt: undefined,
+        marks: {
+          turns: "",
+          rhythm: "",
+          essentialSentences: "",
+          ending: "",
+        },
+        reflection: {
+          whatHappened: "",
+          whatChanged: "",
+          whyEnding: "",
+        },
+      };
+
+      updateEssay(updated);
+      setEssay(updated);
+      setFeedback("Essay workflow restarted. Its saved notes were cleared.");
+    } catch {
+      setFeedback("The essay could not be restarted. Please try again.");
+    }
+  }
+
+  function deleteEssay() {
+    if (!essay) return;
+
+    const confirmed = window.confirm(
+      `Delete "${essay.title}" and all its saved observations, reflections and progress? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    try {
+      saveEssays(getEssays().filter((item) => item.id !== essay.id));
+      router.push("/reading?tab=essays");
+    } catch {
+      setFeedback("The essay could not be deleted. Please try again.");
+    }
+  }
 
   if (!loaded) {
     return (
@@ -145,6 +316,94 @@ function EssayDetailContent() {
           </div>
         )}
       </section>
+
+      <section className="reading-detail-page__panel mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Manage essay</h2>
+          <button
+            type="button"
+            className="reading-detail-page__back"
+            onClick={() => {
+              setEditing((value) => !value);
+              setFeedback("");
+            }}
+          >
+            {editing ? "Cancel editing" : "Edit details"}
+          </button>
+        </div>
+
+        {editing && (
+          <form onSubmit={saveDetails} className="mt-4 space-y-3">
+            <label className="block">
+              <span className="reading-detail-page__label mb-1 block">Title</span>
+              <input
+                required
+                value={editTitle}
+                onChange={(event) => setEditTitle(event.target.value)}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+              />
+            </label>
+
+            <label className="block">
+              <span className="reading-detail-page__label mb-1 block">Author</span>
+              <input
+                value={editAuthor}
+                onChange={(event) => setEditAuthor(event.target.value)}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+              />
+            </label>
+
+            <label className="block">
+              <span className="reading-detail-page__label mb-1 block">Source / URL</span>
+              <input
+                value={editSource}
+                onChange={(event) => setEditSource(event.target.value)}
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+              />
+            </label>
+
+            <button className="reading-detail-page__action" type="submit">
+              Save essay details
+            </button>
+          </form>
+        )}
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            className="reading-detail-page__action"
+            type="button"
+            onClick={downloadNotes}
+          >
+            Download notes (.md)
+          </button>
+          <button
+            className="reading-detail-page__back"
+            type="button"
+            onClick={restartEssay}
+          >
+            Restart essay workflow
+          </button>
+          <button
+            className="min-h-10 rounded-xl border border-red-300 bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-red-700"
+            type="button"
+            onClick={deleteEssay}
+          >
+            Delete essay
+          </button>
+        </div>
+
+        {feedback && (
+          <p role="status" className="mt-3 text-xs text-[var(--ink-soft)]">
+            {feedback}
+          </p>
+        )}
+      </section>
+
+      <div className="mt-5">
+        <Link className="reading-detail-page__back" href="/reading?tab=essays">
+          Return to essay list
+        </Link>
+      </div>
     </main>
   );
 }

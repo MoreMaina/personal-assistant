@@ -628,7 +628,7 @@ export default function CalendarOverview({
           {isCalendarCollapsed ? "Expand" : "Collapse"}
         </button>
       </div>
-      {isMobile && isExpanded && !isAgendaOpen && !isCalendarCollapsed && (
+      {!isAgendaOpen && !isCalendarCollapsed && (
         <div className="flex shrink-0 justify-center py-1">
           <div
             role="group"
@@ -642,7 +642,7 @@ export default function CalendarOverview({
                 aria-pressed={view === option}
                 onClick={() => {
                   setView(option);
-                  setIsExpanded(option === "month");
+                  if (isMobile && option === "month") setIsExpanded(true);
                   setIsAgendaOpen(false);
                 }}
                 className={`min-h-6 rounded-full px-3 py-1 text-[10px] font-semibold capitalize ${
@@ -667,38 +667,11 @@ export default function CalendarOverview({
         }
       >
         <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap items-center justify-between gap-2"}>
-          <div
-            role="group"
-            aria-label="Calendar view"
-            className="order-2 ml-auto flex shrink-0 items-center gap-0.5 rounded-full bg-[var(--surface-soft)] p-0.5"
-          >
-            {(["week", "month"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={view === option}
-                onClick={() => {
-                  setView(option);
-                  if (isMobile) {
-                    setIsExpanded(option === "month");
-                    setIsAgendaOpen(false);
-                  }
-                }}
-                className={`min-h-6 rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize transition ${
-                  view === option
-                    ? "bg-[var(--primary)] text-white shadow-[0_2px_0_var(--primary-dark)]"
-                    : "text-[var(--ink-soft)]"
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
 
           <div
             role="group"
             aria-label="Filter calendar categories"
-            className="order-1 mr-auto flex min-w-0 items-center gap-1"
+            className="flex min-w-0 items-center gap-1"
           >
             {([
               { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
@@ -900,7 +873,7 @@ export default function CalendarOverview({
                   <path d="M3 5h14M3 10h14M3 15h14" />
                 </svg>
               </summary>
-              <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-36 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+              <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
                 {isMobile && isExpanded && isAgendaOpen && (
                   <button
                     type="button"

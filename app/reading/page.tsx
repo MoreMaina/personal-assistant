@@ -18,7 +18,6 @@ import {
   Book,
   Essay,
   getBooks,
-  deleteBookAndSessions,
   getEssays,
   getReadingSessions,
   saveReadingSession,
@@ -89,6 +88,8 @@ function formatDuration(
 
 export default function ReadingPage() {
   const router = useRouter();
+  const [workflowBookId, setWorkflowBookId] = useState<number | null>(null);
+  const [workflowEssayId, setWorkflowEssayId] = useState<number | null>(null);
   const [tab, setTab] =
     useState<Tab>("books");
 
@@ -272,6 +273,8 @@ export default function ReadingPage() {
   }, []);
 
   function changeTab(nextTab: Tab) {
+    setWorkflowBookId(null);
+    setWorkflowEssayId(null);
     setTab(nextTab);
     const url = new URL(window.location.href);
 
@@ -424,78 +427,6 @@ export default function ReadingPage() {
     setShowBookForm(false);
   }
 
-  function startEditingBook(book: Book) {
-    setEditingBookId(book.id);
-    setTitle(book.title);
-    setAuthor(book.author);
-    setCategory(book.category);
-    setTotalPages(String(book.totalPages));
-    setShowBookForm(true);
-  }
-
-  function handleDeleteBook(book: Book) {
-    const confirmed = window.confirm(
-      `Delete "${book.title}" and its saved reading-session history? This cannot be undone.`,
-    );
-    if (!confirmed) return;
-
-    try {
-      const remainingSessions = deleteBookAndSessions(book.id);
-      setBooks((current) => current.filter((item) => item.id !== book.id));
-      setSessions(remainingSessions);
-
-      if (activeBookId === book.id) {
-        setActiveBookId(null);
-        setStartedAt(null);
-      }
-
-      if (editingBookId === book.id) resetBookForm();
-    } catch {
-      window.alert("The book could not be deleted. Please check browser storage and try again.");
-    }
-  }
-
-  function handleRestartBook(book: Book) {
-    const confirmed = window.confirm(
-      `Restart "${book.title}" from page 0? Your previous reading sessions will be kept.`,
-    );
-    if (!confirmed) return;
-
-    const updated: Book = {
-      ...book,
-      currentPage: 0,
-      status: "Reading",
-    };
-
-    updateBook(updated);
-    setBooks((current) =>
-      current.map((item) => item.id === book.id ? updated : item),
-    );
-
-    if (activeBookId === book.id) {
-      setStartedAt(new Date().toISOString());
-
-    }
-  }
-
-  function getBookMenuActions(book: Book) {
-    return [
-      {
-        label: "Edit book",
-        onSelect: () => startEditingBook(book),
-      },
-      {
-        label: "Restart reading",
-        onSelect: () => handleRestartBook(book),
-      },
-      {
-        label: "Delete book",
-        destructive: true,
-        onSelect: () => handleDeleteBook(book),
-      },
-    ];
-  }
-
   const handleAddEssay = (
     event: FormEvent<HTMLFormElement>,
   ) => {
@@ -537,80 +468,6 @@ export default function ReadingPage() {
     setEssayAuthor("");
     setEssaySource("");
     setShowEssayForm(false);
-  }
-
-  function startEditingEssay(essay: Essay) {
-    setEditingEssayId(essay.id);
-    setEssayTitle(essay.title);
-    setEssayAuthor(essay.author);
-    setEssaySource(essay.source);
-    setShowEssayForm(true);
-  }
-
-  function handleRestartEssay(essay: Essay) {
-    const confirmed = window.confirm(
-      `Restart "${essay.title}"? Saved observations and memory reflections will be kept, but its reading timers and workflow stage will reset.`,
-    );
-    if (!confirmed) return;
-
-    const updated: Essay = {
-      ...essay,
-      status: "To read",
-      firstPassStartedAt: undefined,
-      firstPassCompletedAt: undefined,
-      firstPassSeconds: undefined,
-      secondPassStartedAt: undefined,
-      secondPassCompletedAt: undefined,
-      secondPassSeconds: undefined,
-      secondPassStep: 0,
-      reflectionStartedAt: undefined,
-      reflectionCompletedAt: undefined,
-      reflectionSeconds: undefined,
-      // Keep saved marks, reflections, and the existing criticism-unlock record.
-    };
-
-    updateEssay(updated);
-    setEssays((current) =>
-      current.map((item) => item.id === updated.id ? updated : item),
-    );
-  }
-
-  function handleDeleteEssay(essay: Essay) {
-    const confirmed = window.confirm(
-      `Permanently delete "${essay.title}" and its saved marks and reflections? This cannot be undone.`,
-    );
-    if (!confirmed) return;
-
-    const remaining = essays.filter((item) => item.id !== essay.id);
-    try {
-      saveEssays(remaining);
-      setEssays(remaining);
-      if (editingEssayId === essay.id) resetEssayForm();
-    } catch {
-      window.alert("The essay could not be deleted. Please check browser storage and try again.");
-    }
-  }
-
-  function getEssayMenuActions(essay: Essay) {
-    return [
-      {
-        label: "Edit essay",
-        onSelect: () => startEditingEssay(essay),
-      },
-      {
-        label: "Restart essay",
-        onSelect: () => handleRestartEssay(essay),
-      },
-      {
-        label: "Export notes",
-        onSelect: () => { void shareEssayNotes(essay); },
-      },
-      {
-        label: "Delete essay",
-        destructive: true,
-        onSelect: () => handleDeleteEssay(essay),
-      },
-    ];
   }
 
   function handleDeleteAllEssays() {
@@ -1348,6 +1205,7 @@ export default function ReadingPage() {
       );
 
       if (book) {
+        setWorkflowBookId(book.id);
         setTab("books");
         setCollapsedBookIds((current) => {
           const next = new Set(current);
@@ -1394,6 +1252,7 @@ export default function ReadingPage() {
       );
 
       if (essay) {
+        setWorkflowEssayId(essay.id);
         setTab("essays");
         setCollapsedEssayIds((current) => {
           const next = new Set(current);
@@ -1676,6 +1535,57 @@ export default function ReadingPage() {
               </form>
             )}
 
+
+            {workflowBookId === null && (
+              <section className="reading-numbered-shelf mb-6 rounded-xl bg-[var(--surface)] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-[var(--ink)]">
+                    Books
+                  </h2>
+                  <span className="text-xs text-[var(--muted)]">
+                    {books.length} {books.length === 1 ? "book" : "books"}
+                  </span>
+                </div>
+
+                {books.length === 0 ? (
+                  <p className="py-3 text-sm text-[var(--muted)]">
+                    No books yet. Add a book to get started.
+                  </p>
+                ) : (
+                  <ol className="reading-numbered-shelf__list">
+                    {books.map((book, index) => (
+                      <li key={book.id}>
+                        <Link
+                          href={`/reading/book/${book.id}`}
+                          className="reading-numbered-shelf__row"
+                        >
+                          <span className="reading-numbered-shelf__number">
+                            {index + 1}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-[var(--ink)]">
+                              {book.title}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                              {book.author || "Book"}
+                              {book.totalPages > 0
+                                ? ` · ${book.currentPage} of ${book.totalPages} pages`
+                                : ""}
+                            </span>
+                          </span>
+                          <span aria-hidden="true" className="text-sm text-[var(--muted)]">
+                            ›
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            )}
+
+            {workflowBookId !== null && (
+              <div className="reading-workflow-view reading-workflow-view--book">
             <section className="mb-6">
               <h2 className="mb-2 text-base font-semibold text-[var(--ink)]">
                 Currently reading
@@ -1772,10 +1682,7 @@ export default function ReadingPage() {
                                   <path d="m5 7.5 5 5 5-5" />
                                 </svg>
                               </button>
-                              <CardMenu
-                                title={`Actions for ${book.title}`}
-                                actions={getBookMenuActions(book)}
-                              />
+
                             </div>
                           </div>
 
@@ -1957,10 +1864,7 @@ export default function ReadingPage() {
                             <path d="m5 7.5 5 5 5-5" />
                           </svg>
                         </button>
-                        <CardMenu
-                          title={`Actions for ${book.title}`}
-                          actions={getBookMenuActions(book)}
-                        />
+
                       </div>
                     </div>
                   ),
@@ -2038,10 +1942,7 @@ export default function ReadingPage() {
                               <path d="m5 7.5 5 5 5-5" />
                             </svg>
                           </button>
-                          <CardMenu
-                            title={`Actions for ${book.title}`}
-                            actions={getBookMenuActions(book)}
-                          />
+
                         </div>
                       </div>
                     </article>
@@ -2049,6 +1950,9 @@ export default function ReadingPage() {
                 </div>
               </section>
             )}
+              </div>
+            )}
+
           </>
         )}
 
@@ -2173,6 +2077,54 @@ export default function ReadingPage() {
               </form>
             )}
 
+
+            {workflowEssayId === null && (
+              <section className="reading-numbered-shelf mb-6 rounded-xl bg-[var(--surface)] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-[var(--ink)]">
+                    Essays
+                  </h2>
+                  <span className="text-xs text-[var(--muted)]">
+                    {essays.length} {essays.length === 1 ? "essay" : "essays"}
+                  </span>
+                </div>
+
+                {essays.length === 0 ? (
+                  <p className="py-3 text-sm text-[var(--muted)]">
+                    No essays yet. Add an essay to get started.
+                  </p>
+                ) : (
+                  <ol className="reading-numbered-shelf__list">
+                    {essays.map((essay, index) => (
+                      <li key={essay.id}>
+                        <Link
+                          href={`/reading/essay/${essay.id}`}
+                          className="reading-numbered-shelf__row"
+                        >
+                          <span className="reading-numbered-shelf__number">
+                            {index + 1}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-[var(--ink)]">
+                              {essay.title}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                              {essay.status}
+                            </span>
+                          </span>
+                          <span aria-hidden="true" className="text-sm text-[var(--muted)]">
+                            ›
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            )}
+
+            {workflowEssayId !== null && (
+              <div className="reading-workflow-view reading-workflow-view--essay">
             <div className="space-y-3">
               {essays.length ===
               0 ? (
@@ -2367,10 +2319,7 @@ export default function ReadingPage() {
                                   <path d="m5 7.5 5 5 5-5" />
                                 </svg>
                               </button>
-                              <CardMenu
-                                title={`Actions for ${essay.title}`}
-                                actions={getEssayMenuActions(essay)}
-                              />
+
 
                             </div>
                           </div>
@@ -2951,7 +2900,9 @@ export default function ReadingPage() {
                   },
                 )
               )}
-            </div>
+              </div>
+              </div>
+            )}
           </>
         )}
         {tab === "projects" && <ProjectsPanel embedded />}
