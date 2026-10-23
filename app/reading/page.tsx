@@ -1572,6 +1572,27 @@ export default function ReadingPage() {
                                 ? ` · ${book.currentPage} of ${book.totalPages} pages`
                                 : ""}
                             </span>
+                            <span className="mt-1 block text-[11px] leading-relaxed text-[var(--muted)]">
+                              {book.status === "Want to read"
+                                ? "Next: establish your purpose"
+                                : book.status === "Reading"
+                                  ? "Current stage: first pass"
+                                  : !book.wholeBookReconstruction ||
+                                      ![
+                                        book.wholeBookReconstruction.about,
+                                        book.wholeBookReconstruction.doing,
+                                        book.wholeBookReconstruction.development,
+                                        book.wholeBookReconstruction.changed,
+                                      ].every((value) => value.trim())
+                                    ? "Next: reconstruct the whole from memory"
+                                    : (book.secondPassSections ?? []).some(
+                                          (section) => !section.completed,
+                                        )
+                                      ? "Next: examine selected sections"
+                                      : book.readingDecision
+                                        ? `Decision: ${book.readingDecision}`
+                                        : "Next: choose what to revisit or apply"}
+                            </span>
                           </span>
                           <span aria-hidden="true" className="text-sm text-[var(--muted)]">
                             ›
@@ -2110,6 +2131,15 @@ export default function ReadingPage() {
                             </span>
                             <span className="mt-0.5 block text-xs text-[var(--muted)]">
                               {essay.status}
+                            </span>
+                            <span className="mt-1 block text-[11px] leading-relaxed text-[var(--muted)]">
+                              {Object.values(essay.marks).filter(
+                                (value) => value.trim().length > 0,
+                              ).length}/4 structural observations
+                              {" · "}
+                              {Object.values(essay.reflection).filter(
+                                (value) => value.trim().length > 0,
+                              ).length}/3 reconstruction responses
                             </span>
                           </span>
                           <span aria-hidden="true" className="text-sm text-[var(--muted)]">

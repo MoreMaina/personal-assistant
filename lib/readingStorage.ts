@@ -1,5 +1,54 @@
 import { readStoredJson } from "./storageRecovery";
 
+export type ReadingMethod =
+  | "Novel / narrative nonfiction"
+  | "Practical nonfiction"
+  | "Philosophy / theory"
+  | "Technical / skill-building"
+  | "Poetry / literary work"
+  | "Other";
+
+export type ChapterReflection = {
+  id: string;
+  section: string;
+  centralPoint: string;
+  development: string;
+  questions: string;
+  updatedAt: string;
+};
+
+export type WholeBookReconstruction = {
+  about: string;
+  doing: string;
+  development: string;
+  changed: string;
+  updatedAt?: string;
+};
+
+export type SecondPassSection = {
+  id: string;
+  section: string;
+  reason: string;
+  notes: string;
+  completed: boolean;
+  updatedAt: string;
+};
+
+export type ReadingApplication = {
+  idea: string;
+  experiment: string;
+  result: string;
+  updatedAt?: string;
+};
+
+export type ReadingDecision =
+  | "Continue reading"
+  | "Revisit difficult sections"
+  | "Read selectively"
+  | "Apply an idea"
+  | "Stop — purpose fulfilled"
+  | "Stop — not enough value";
+
 export type Book = {
   id: number;
   title: string;
@@ -8,6 +57,15 @@ export type Book = {
   totalPages: number;
   currentPage: number;
   status: "Reading" | "Want to read" | "Finished";
+
+  // Optional reading-framework data preserves compatibility with existing books.
+  readingPurpose?: string;
+  readingMethod?: ReadingMethod;
+  chapterReflections?: ChapterReflection[];
+  wholeBookReconstruction?: WholeBookReconstruction;
+  secondPassSections?: SecondPassSection[];
+  readingApplication?: ReadingApplication;
+  readingDecision?: ReadingDecision;
 };
 
 export type ReadingSession = {
