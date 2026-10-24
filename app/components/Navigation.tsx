@@ -10,7 +10,6 @@ const navigation = [
   { href: "/", label: "Today", mobileLabel: "Today", icon: "home" },
   { href: "/classes", label: "Calendar", mobileLabel: "Calendar", icon: "calendar" },
   { href: "/study", label: "Study", mobileLabel: "Study", icon: "study" },
-  { href: "/study/mvp", label: "Study MVP", mobileLabel: "MVP", icon: "study" },
   { href: "/reading", label: "Workspace", mobileLabel: "Work", icon: "workspace" },
   { href: "/assistant", label: "AI Copilot", mobileLabel: "AI", icon: "sparkles" },
 ] as const;
