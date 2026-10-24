@@ -34,9 +34,9 @@ import {
 import {
   createDefaultCourseScaffold,
   exportStudyMvpJSON,
-  loadStudyMvpState,
-  saveStudyMvpState,
 } from "@/lib/studyMvp/storage";
+
+import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
 import {
   exportTopicCatalogCsv,
@@ -163,10 +163,22 @@ function SectionHeading({
 }
 
 export default function StudyMvpPage() {
-  const [state, setState] = useState<StudyMvpState | null>(null);
-  const [loadingError, setLoadingError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [problem, setProblem] = useState("");
+  const {
+    state,
+    loadingError,
+    notice,
+    setNotice,
+    problem,
+    setProblem,
+    cloudSyncStatus,
+    syncConflict,
+    persist,
+    migrateLocalToCloud,
+    chooseCloudVersion,
+    chooseBrowserVersion,
+    downloadConflictCopy,
+  } = useCloudStudyState();
+
   const [planDate, setPlanDate] = useState("");
   const [importText, setImportText] = useState("");
   const [importDiagnostics, setImportDiagnostics] = useState<
@@ -216,44 +228,15 @@ export default function StudyMvpPage() {
   const [nextReviewEstimate, setNextReviewEstimate] = useState(10);
 
   useEffect(() => {
-    try {
-      const loaded = loadStudyMvpState();
-      setState(loaded);
-      setPlanDate(
-        localDateOfTimestamp(
-          new Date().toISOString(),
-          loaded.settings.timezone,
-        ),
-      );
-    } catch (error) {
-      setLoadingError(
-        error instanceof Error
-          ? error.message
-          : "Could not open Study MVP storage.",
-      );
-    }
-  }, []);
+    if (!state || planDate) return;
 
-  function persist(
-    next: StudyMvpState,
-    successMessage = "Saved locally.",
-  ): boolean {
-    try {
-      saveStudyMvpState(next);
-      setState(next);
-      setNotice(successMessage);
-      setProblem("");
-      setLoadingError("");
-      return true;
-    } catch (error) {
-      setProblem(
-        error instanceof Error
-          ? error.message
-          : "Could not save the Study MVP state.",
-      );
-      return false;
-    }
-  }
+    setPlanDate(
+      localDateOfTimestamp(
+        new Date().toISOString(),
+        state.settings.timezone,
+      ),
+    );
+  }, [state, planDate]);
 
   const today = state
     ? localDateOfTimestamp(
@@ -889,6 +872,163 @@ export default function StudyMvpPage() {
     }
   }
 
+  if (cloudSyncStatus === "migration" && state) {
+    return (
+      <main className="mx-auto max-w-3xl space-y-6 pb-12">
+        <section className="rounded-3xl border border-amber-300 bg-amber-50 p-6 sm:p-9">
+          <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-amber-900">
+            Study data migration
+          </p>
+
+          <h1 className="mt-3 text-3xl font-bold text-stone-900">
+            Your existing Study data is ready to migrate
+          </h1>
+
+          <p className="mt-4 leading-7 text-stone-700">
+            Existing browser data was found, but no cloud Study record exists
+            yet. Nothing has been uploaded. Download a recovery copy and
+            review the data before approving migration.
+          </p>
+
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-white p-4">
+            <h2 className="font-bold">Browser Study state</h2>
+            <p className="mt-2 text-sm text-stone-600">
+              {state.courses.length} courses, {state.units.length} units,{" "}
+              {state.topics.length} topics,{" "}
+              {state.retrieval_tasks.length} retrieval tasks,{" "}
+              {state.review_events.length} reviews, and{" "}
+              {state.task_events.length} task events.
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                downloadFile(
+                  `study-mvp-pre-migration-${today || "backup"}.json`,
+                  exportStudyMvpJSON(state),
+                  "application/json",
+                )
+              }
+              className="mt-4 w-full rounded-xl border border-stone-300 px-4 py-3 text-sm font-bold text-stone-800 hover:bg-stone-50"
+            >
+              Download browser recovery copy
+            </button>
+          </div>
+
+          {problem && (
+            <p role="alert" className="mt-5 rounded-xl bg-rose-100 p-4 text-sm font-bold text-rose-900">
+              {problem}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void migrateLocalToCloud()}
+            className="mt-6 w-full rounded-xl bg-emerald-900 px-5 py-3 font-bold text-white hover:bg-emerald-800"
+          >
+            Approve migration to cloud
+          </button>
+
+          <p className="mt-4 text-xs leading-5 text-stone-600">
+            Migration creates the cloud record only if another session has
+            not created one first. If cloud data appears before migration
+            completes, the app will stop and ask you to resolve the difference.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (syncConflict) {
+    const conflict = syncConflict;
+
+    return (
+      <main className="mx-auto max-w-4xl space-y-6 pb-12">
+        <section className="rounded-3xl border border-amber-300 bg-amber-50 p-6 sm:p-9">
+          <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-amber-900">
+            Study storage conflict
+          </p>
+          <h1 className="mt-3 text-3xl font-bold text-stone-900">
+            Two different Study copies were found
+          </h1>
+          <p className="mt-4 leading-7 text-stone-700">
+            Your browser and cloud account contain different Study states.
+            Neither has been silently overwritten. Download both copies
+            before choosing how to proceed.
+          </p>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-stone-200 bg-white p-4">
+              <h2 className="font-bold">This browser</h2>
+              <p className="mt-2 text-sm text-stone-600">
+                {conflict.localState.courses.length} courses,{" "}
+                {conflict.localState.topics.length} topics,{" "}
+                {conflict.localState.task_events.length} task events.
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadConflictCopy("browser", conflict.localState)
+                }
+                className="mt-4 w-full rounded-xl border border-stone-300 px-4 py-3 text-sm font-bold text-stone-800 hover:bg-stone-50"
+              >
+                Download browser copy
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-stone-200 bg-white p-4">
+              <h2 className="font-bold">Cloud account</h2>
+              <p className="mt-2 text-sm text-stone-600">
+                {conflict.cloudState.courses.length} courses,{" "}
+                {conflict.cloudState.topics.length} topics,{" "}
+                {conflict.cloudState.task_events.length} task events.
+                Cloud revision {conflict.cloudRevision}.
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadConflictCopy("cloud", conflict.cloudState)
+                }
+                className="mt-4 w-full rounded-xl border border-stone-300 px-4 py-3 text-sm font-bold text-stone-800 hover:bg-stone-50"
+              >
+                Download cloud copy
+              </button>
+            </div>
+          </div>
+
+          {problem && (
+            <p role="alert" className="mt-5 rounded-xl bg-rose-100 p-4 text-sm font-bold text-rose-900">
+              {problem}
+            </p>
+          )}
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void chooseCloudVersion()}
+              className="rounded-xl bg-emerald-900 px-5 py-3 font-bold text-white hover:bg-emerald-800"
+            >
+              Use cloud version
+            </button>
+            <button
+              type="button"
+              onClick={() => void chooseBrowserVersion()}
+              className="rounded-xl border border-stone-400 bg-white px-5 py-3 font-bold text-stone-900 hover:bg-stone-50"
+            >
+              Try saving browser version to cloud
+            </button>
+          </div>
+
+          <p className="mt-4 text-xs leading-5 text-stone-600">
+            Saving the browser version may be rejected if it would rewrite
+            protected history. If that happens, both copies remain available
+            for export; no unsafe overwrite will be forced.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   if (loadingError) {
     return (
       <section className="rounded-3xl border border-rose-200 bg-white p-7">
@@ -910,7 +1050,7 @@ export default function StudyMvpPage() {
   if (!state) {
     return (
       <div className="py-20 text-center text-stone-500">
-        Opening local Study MVP…
+        Connecting to your cloud-backed Study workspace…
       </div>
     );
   }
@@ -928,7 +1068,15 @@ export default function StudyMvpPage() {
             Study System · MVP 1.2
           </span>
           <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
-            Local-first · Single user
+            {cloudSyncStatus === "synced"
+              ? "Cloud-backed · synced"
+              : cloudSyncStatus === "syncing"
+                ? "Cloud-backed · saving"
+                : cloudSyncStatus === "ready"
+                  ? "Cloud-backed · ready"
+                  : cloudSyncStatus === "loading"
+                    ? "Connecting to cloud"
+                    : "Cloud storage needs attention"}
           </span>
         </div>
 

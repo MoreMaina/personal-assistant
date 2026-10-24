@@ -1083,6 +1083,48 @@ export function saveStudyMvpState(
   );
 }
 
+/**
+ * Explicitly replace the local Study state after preserving its exact
+ * previous value under a separate recovery key.
+ *
+ * If preserving the recovery copy fails, the original state is untouched.
+ */
+export function replaceStudyMvpStateWithRecovery(
+  next: StudyMvpState,
+  storage: StorageLike = browserStorage(),
+): void {
+  assertStudyStateIntegrity(next);
+
+  const raw = storage.getItem(STUDY_MVP_STORAGE_KEY);
+
+  if (raw !== null) {
+    const baseKey =
+      `${STUDY_MVP_STORAGE_KEY}.recovery.${Date.now()}`;
+    let recoveryKey = baseKey;
+    let suffix = 1;
+
+    while (storage.getItem(recoveryKey) !== null) {
+      recoveryKey = `${baseKey}.${suffix}`;
+      suffix += 1;
+    }
+
+    storage.setItem(
+      recoveryKey,
+      JSON.stringify({
+        format: "personal-assistant-study-mvp-local-recovery",
+        saved_at: new Date().toISOString(),
+        original_storage_key: STUDY_MVP_STORAGE_KEY,
+        raw_value: raw,
+      }),
+    );
+  }
+
+  storage.setItem(
+    STUDY_MVP_STORAGE_KEY,
+    JSON.stringify(next),
+  );
+}
+
 export function updateStudyMvpState(
   updater: (current: StudyMvpState) => StudyMvpState,
   storage: StorageLike = browserStorage(),
