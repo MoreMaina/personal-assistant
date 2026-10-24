@@ -24,6 +24,7 @@ import type {
 } from "@/lib/studyMvp/dailyPlanner";
 
 import { applyDailyPlanDecisions } from "@/lib/studyMvp/planningWorkflow";
+import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 
 import {
   applyGateAttempt,
@@ -1308,6 +1309,7 @@ export default function StudyMvpPage() {
             ) : (
               <div className="space-y-3">
                 {plan.items.map((item) => {
+                  const presentation = getDailyPlanItemPresentation(item, state);
                   const choice = planningChoices[item.id] ?? "";
                   const forcedControl =
                     item.decision_required ||
@@ -1321,13 +1323,10 @@ export default function StudyMvpPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <h3 className="break-words font-extrabold text-[#23412f]">
-                          {item.subject_id}
+                          {presentation.title}
                         </h3>
-                        <p className="mt-1 text-xs font-semibold capitalize text-stone-500">
-                          {item.kind.replaceAll("_", " ")}
-                          {item.review_event_id
-                            ? ` · Review ${item.review_event_id}`
-                            : ""}
+                        <p className="mt-1 text-xs font-semibold text-stone-500">
+                          {presentation.subtitle}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
