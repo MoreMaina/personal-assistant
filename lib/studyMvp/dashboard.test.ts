@@ -191,6 +191,7 @@ describe("Study MVP dashboard planner adapter", () => {
     state.topics[0] = {
       ...state.topics[0],
       status: "in_learning",
+      gate_passed: false,
       gate_result: "pending",
       planned_consolidation_date: "2026-10-22",
     };
@@ -216,6 +217,7 @@ describe("Study MVP dashboard planner adapter", () => {
     state.topics[0] = {
       ...state.topics[0],
       status: "in_learning",
+      gate_passed: false,
       gate_result: "pending",
       planned_consolidation_date: "2026-10-25",
     };
@@ -226,11 +228,38 @@ describe("Study MVP dashboard planner adapter", () => {
     expect(built.omittedGateTopicIds).toEqual([]);
   });
 
+  it("does not schedule a topic whose gate has passed despite inconsistent status flags", () => {
+    const passStates: Array<{
+      gate_passed: boolean;
+      gate_result: Topic["gate_result"];
+    }> = [
+      { gate_passed: true, gate_result: "pending" },
+      { gate_passed: false, gate_result: "passed" },
+      { gate_passed: false, gate_result: "skill_based_passed" },
+    ];
+
+    for (const passState of passStates) {
+      const state = fixtureState();
+      state.topics[0] = {
+        ...state.topics[0],
+        status: "in_learning",
+        planned_consolidation_date: "2026-10-22",
+        ...passState,
+      };
+
+      const built = buildDailyPlannerTasks(state, "2026-10-23");
+
+      expect(built.tasks.some((task) => task.kind === "gate")).toBe(false);
+      expect(built.omittedGateTopicIds).toEqual([]);
+    }
+  });
+
   it("resumes an unfinished gate with the original selected questions", () => {
     const state = fixtureState();
     state.topics[0] = {
       ...state.topics[0],
       status: "in_learning",
+      gate_passed: false,
       gate_result: "pending",
       planned_consolidation_date: "2026-10-22",
     };
@@ -289,6 +318,60 @@ describe("Study MVP dashboard planner adapter", () => {
     expect(built.omittedGateTopicIds).toEqual([]);
   });
 
+  it("does not schedule an unfinished gate when an original question is inactive", () => {
+    const state = fixtureState();
+    state.topics[0] = {
+      ...state.topics[0],
+      status: "in_learning",
+      gate_result: "pending",
+      gate_passed: false,
+      planned_consolidation_date: "2026-10-22",
+    };
+    state.retrieval_tasks[1] = {
+      ...state.retrieval_tasks[1],
+      active: false,
+    };
+
+    state.task_events.push({
+      id: "gate-attempt-inactive-question",
+      logged_at: "2026-10-22T08:00:00.000Z",
+      event_type: "gate_attempt",
+      subject_type: "gate_attempt",
+      subject_id: "task-a",
+      review_event_id: null,
+      retrieval_task_id: "task-a",
+      gate_session_id: "gate-session-inactive",
+      gate_selected_task_ids_snapshot: [
+        "task-a",
+        "task-b",
+        "task-c",
+      ],
+      skill_demonstrated_without_hints: false,
+      work_session_id: null,
+      related_event_id: null,
+      estimated_duration_min_at_event: 5,
+      task_type_at_event: "definition",
+      priority_at_event: null,
+      intended_due_date_at_event: null,
+      current_due_date_at_event: null,
+      actual_duration_min: 4,
+      result: "green",
+      yellow_gap_severity: null,
+      disposition: null,
+      reason: null,
+      critical_error_flag: false,
+      defer_count_at_event: null,
+      re_entry_condition: null,
+      old_priority: null,
+      new_priority: null,
+    });
+
+    const built = buildDailyPlannerTasks(state, "2026-10-23");
+
+    expect(built.tasks.some((task) => task.kind === "gate")).toBe(false);
+    expect(built.omittedGateTopicIds).toEqual(["topic-1"]);
+  });
+
   it("does not silently schedule relearn topics as new-topic gates", () => {
     const state = fixtureState();
     state.topics[0] = {
@@ -309,6 +392,7 @@ describe("Study MVP dashboard planner adapter", () => {
     state.topics[0] = {
       ...state.topics[0],
       status: "in_learning",
+      gate_passed: false,
       gate_result: "pending",
       planned_consolidation_date: "2026-10-22",
     };
