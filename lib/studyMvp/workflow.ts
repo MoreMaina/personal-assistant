@@ -537,6 +537,39 @@ function gateFailureDecisionEvent(
  * TaskEvents. A passed gate stamps the actual local pass date as Day 0 and
  * creates Review 1; a failed gate puts the topic into relearn.
  */
+export function startTopicLearning(
+  state: StudyMvpState,
+  topicId: EntityId,
+): StudyMvpState {
+  const topic = state.topics.find((item) => item.id === topicId);
+  if (!topic) {
+    throw new Error(`Topic "${topicId}" was not found.`);
+  }
+
+  if (topic.status !== "not_started") {
+    throw new Error(
+      `Topic "${topicId}" can only be started from not_started status.`,
+    );
+  }
+
+  if (
+    topic.gate_passed ||
+    topic.gate_result === "passed" ||
+    topic.gate_result === "skill_based_passed"
+  ) {
+    throw new Error(`Topic "${topicId}" has already passed its initial gate.`);
+  }
+
+  return {
+    ...state,
+    topics: state.topics.map((item) =>
+      item.id === topicId
+        ? { ...item, status: "in_learning" }
+        : item,
+    ),
+  };
+}
+
 export function applyGateAttempt(
   state: StudyMvpState,
   input: GateAttemptInput,
@@ -547,6 +580,41 @@ export function applyGateAttempt(
 
   const topic = state.topics.find((item) => item.id === input.topicId);
   if (!topic) throw new Error(`Topic "${input.topicId}" was not found.`);
+
+  if (
+    topic.gate_passed ||
+    topic.gate_result === "passed" ||
+    topic.gate_result === "skill_based_passed"
+  ) {
+    throw new Error(`Topic "${topic.id}" has already passed its initial gate.`);
+  }
+
+  if (topic.status !== "in_learning" && topic.status !== "relearn") {
+    throw new Error(
+      "Start learning must be recorded before a topic can attempt its initial gate.",
+    );
+  }
+
+  if (topic.status === "relearn" && topic.gate_result !== "failed") {
+    throw new Error(
+      "Only a topic with a failed gate can retry from relearn status.",
+    );
+  }
+
+  const attemptDate = localDateOfTimestamp(
+    input.loggedAt,
+    state.settings.timezone,
+  );
+  const dueDate =
+    topic.planned_consolidation_date ??
+    topic.initial_study_date ??
+    attemptDate;
+
+  if (dueDate > attemptDate) {
+    throw new Error(
+      `This topic's gate is not available before its planned date (${dueDate}).`,
+    );
+  }
 
   if (
     input.selectedTaskIds.length < 3 ||

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildDailyPlannerTasks, buildStudyDailyPlan } from "./dashboard";
+import {
+  getDefaultGateTaskIds,
+  buildDailyPlannerTasks,
+  buildStudyDailyPlan,
+} from "./dashboard";
 import { createEmptyStudyState } from "./storage";
 import type {
   RetrievalTask,
@@ -324,5 +328,48 @@ describe("Study MVP dashboard planner adapter", () => {
 
     expect(built.omittedReviewIds).toEqual(["review-1"]);
     expect(built.tasks.some((item) => item.kind === "review")).toBe(false);
+  });
+});
+
+
+describe("default gate task selection", () => {
+  it("prefers three or more active gate-purpose questions", () => {
+    const candidate = (
+      id: string,
+      purpose: RetrievalTask["purpose"],
+    ): RetrievalTask => ({
+      id,
+      topic_id: "topic-1",
+      prompt: `Prompt ${id}`,
+      expected_answer_criteria: `Criteria ${id}`,
+      task_type: "definition",
+      purpose,
+      estimated_duration_min: 5,
+      last_used_on: null,
+      active: true,
+    });
+
+    const candidates = [
+      candidate("review-a", "review"),
+      candidate("review-b", "review"),
+      candidate("review-c", "review"),
+      candidate("gate-a", "gate"),
+      candidate("gate-b", "gate"),
+      candidate("gate-c", "gate"),
+    ];
+
+    expect(getDefaultGateTaskIds(candidates)).toEqual([
+      "gate-a",
+      "gate-b",
+      "gate-c",
+    ]);
+
+    // With fewer than three gate-purpose questions, preserve the existing
+    // fallback to the first three active questions in topic order.
+    expect(getDefaultGateTaskIds(candidates.slice(0, 5))).toEqual([
+      "review-a",
+      "review-b",
+      "review-c",
+    ]);
   });
 });

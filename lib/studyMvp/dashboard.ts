@@ -11,6 +11,7 @@ import { deriveLatestGateResult } from "./reviewEngine";
 import type {
   EntityId,
   ISODate,
+  RetrievalTask,
   StudyMvpState,
   TaskPriority,
   Topic,
@@ -67,6 +68,26 @@ function plannerSettings(state: StudyMvpState): PlannerSettings {
 
 function weekday(date: ISODate): number {
   return new Date(`${date}T12:00:00.000Z`).getUTCDay();
+}
+
+/**
+ * Choose the same initial gate questions for the UI and daily planner.
+ * Explicit gate-purpose questions take precedence when at least three are
+ * active; otherwise use the first three active questions for the topic.
+ */
+export function getDefaultGateTaskIds(
+  activeTopicTasks: readonly RetrievalTask[],
+): EntityId[] {
+  const explicitlyPreparedGateTasks = activeTopicTasks.filter(
+    (task) => task.purpose === "gate",
+  );
+
+  const selectedTasks =
+    explicitlyPreparedGateTasks.length >= 3
+      ? explicitlyPreparedGateTasks
+      : activeTopicTasks.slice(0, 3);
+
+  return selectedTasks.map((task) => task.id);
 }
 
 /**
@@ -174,17 +195,9 @@ export function buildDailyPlannerTasks(
     const activeTopicTasks = state.retrieval_tasks.filter(
       (task) => task.topic_id === topic.id && task.active,
     );
-    const explicitlyPreparedGateTasks = activeTopicTasks.filter(
-      (task) => task.purpose === "gate",
-    );
-
     const selectedIds = unfinishedSession
       ? unfinishedSession.selectedTaskIds
-      : (
-          explicitlyPreparedGateTasks.length >= 3
-            ? explicitlyPreparedGateTasks.map((task) => task.id)
-            : activeTopicTasks.slice(0, 3).map((task) => task.id)
-        );
+      : getDefaultGateTaskIds(activeTopicTasks);
 
     const selectedTasks = selectedIds.map((id) => tasksById.get(id));
 

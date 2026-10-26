@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyGateAttempt, applyReviewAttempt, pauseIncompleteReview } from "./workflow";
+import { applyGateAttempt, applyReviewAttempt, pauseIncompleteReview, startTopicLearning } from "./workflow";
 import { createEmptyStudyState } from "./storage";
 import type { RetrievalTask, ReviewEvent, StudyMvpState, Topic } from "./types";
 
@@ -216,6 +216,30 @@ describe("Study workflow: topic gate", () => {
       ...overrides,
     });
   }
+
+  it("requires an explicit Start learning transition before a gate attempt", () => {
+    let state = gateState();
+    state.topics[0] = {
+      ...state.topics[0],
+      status: "not_started",
+    };
+
+    expect(() => gateAttempt(state, "task-a")).toThrow(/start learning/i);
+
+    state = startTopicLearning(state, "topic-1");
+    expect(state.topics[0].status).toBe("in_learning");
+    expect(gateAttempt(state, "task-a").completed).toBe(false);
+  });
+
+  it("blocks a gate before its planned date", () => {
+    const state = gateState();
+    state.topics[0] = {
+      ...state.topics[0],
+      planned_consolidation_date: "2026-10-21",
+    };
+
+    expect(() => gateAttempt(state, "task-a")).toThrow(/planned date/i);
+  });
 
   it("keeps the gate pending until all selected tasks have attempts", () => {
     const result = gateAttempt(gateState(), "task-a");

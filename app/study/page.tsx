@@ -15,6 +15,7 @@ import {
 
 import {
   buildStudyDailyPlan,
+  getDefaultGateTaskIds,
   getLatestGateSession,
 } from "@/lib/studyMvp/dashboard";
 
@@ -25,11 +26,13 @@ import type {
 
 import { applyDailyPlanDecisions } from "@/lib/studyMvp/planningWorkflow";
 import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
+import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
 
 import {
   applyGateAttempt,
   applyReviewAttempt,
   pauseIncompleteReview,
+  startTopicLearning,
 } from "@/lib/studyMvp/workflow";
 
 import {
@@ -389,9 +392,14 @@ export default function StudyMvpPage() {
   const gateTopics = state
     ? state.topics.filter(
         (topic) =>
+          !topic.gate_passed &&
           topic.gate_result !== "passed" &&
-          topic.status !== "archived" &&
-          topic.status !== "optional_maintenance",
+          topic.gate_result !== "skill_based_passed" &&
+          (
+            topic.status === "not_started" ||
+            topic.status === "in_learning" ||
+            (topic.status === "relearn" && topic.gate_result === "failed")
+          ),
       )
     : [];
 
@@ -418,11 +426,22 @@ export default function StudyMvpPage() {
       ? latestGateSession
       : null;
 
+  const gateReadiness = state && selectedGateTopic
+    ? getGateReadiness(
+        selectedGateTopic,
+        gateTasks,
+        today,
+        openGateSession?.selectedTaskIds ?? [],
+      )
+    : null;
+
+  const defaultGateTaskIds = getDefaultGateTaskIds(gateTasks);
+
   const selectedGateIds = openGateSession
     ? openGateSession.selectedTaskIds
     : gateSelectedTaskIds.length > 0
       ? gateSelectedTaskIds
-      : gateTasks.slice(0, 3).map((task) => task.id);
+      : defaultGateTaskIds;
 
   const gateAttemptedIds = new Set(
     openGateSession?.attemptedTaskIds ?? [],
@@ -518,13 +537,14 @@ export default function StudyMvpPage() {
     const openSession =
       latest && !latest.complete ? latest : null;
 
+    const topicTasks = state.retrieval_tasks.filter(
+      (task) => task.topic_id === id && task.active,
+    );
+
     setGateSelectedTaskIds(
       openSession
         ? openSession.selectedTaskIds
-        : state.retrieval_tasks
-            .filter((task) => task.topic_id === id && task.active)
-            .slice(0, 3)
-            .map((task) => task.id),
+        : getDefaultGateTaskIds(topicTasks),
     );
   }
 
@@ -657,12 +677,56 @@ export default function StudyMvpPage() {
     }
   }
 
+  function beginSelectedTopicLearning() {
+    if (!state || !selectedGateTopic) return;
+
+    try {
+      const next = startTopicLearning(state, selectedGateTopic.id);
+      const saved = persist(
+        next,
+        `Started learning "${selectedGateTopic.title}". A gate attempt unlocks when at least three active questions exist and its planned date has arrived.`,
+      );
+
+      if (saved) {
+        setGateSelectedTaskIds([]);
+        setGateTaskId("");
+        setGateCorrectiveReady(false);
+        setGateNextReviewTaskIds(null);
+      }
+    } catch (error) {
+      setProblem(
+        error instanceof Error
+          ? error.message
+          : "Could not start learning for this topic.",
+      );
+    }
+  }
+
   function submitGateAttempt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!state || !selectedGateTopic) return;
 
     try {
-      if (selectedGateIds.length < 3) {
+      if (!gateReadiness?.canAttempt) {
+        throw new Error(
+          gateReadiness?.message ?? "This topic is not ready for a gate attempt.",
+        );
+      }
+
+      if (
+        !openGateSession &&
+        selectedGateTopic.gate_result === "failed" &&
+        !gateCorrectiveReady
+      ) {
+        throw new Error(
+          "Complete corrective work and explicitly mark it ready before starting another gate session.",
+        );
+      }
+
+      if (
+        selectedGateIds.length < 3 ||
+        new Set(selectedGateIds).size !== selectedGateIds.length
+      ) {
         throw new Error(
           "Select at least three distinct gate tasks before attempting the gate.",
         );
@@ -1659,8 +1723,9 @@ export default function StudyMvpPage() {
 
         {gateTopics.length === 0 ? (
           <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-stone-600">
-            There are no topics waiting for a gate. Import or add topics with
-            active retrieval tasks to start a gate.
+            There are no topics awaiting an initial gate right now. Topics
+            must be explicitly started for learning, and already-passed,
+            archived, or maintenance topics do not need another initial gate.
           </p>
         ) : (
           <form onSubmit={submitGateAttempt} className="space-y-5">
@@ -1675,7 +1740,7 @@ export default function StudyMvpPage() {
               >
                 {gateTopics.map((topic) => (
                   <option key={topic.id} value={topic.id}>
-                    {topic.title} · {topic.gate_result}
+                    {topic.title} · {topic.status.replace(/_/g, " ")} · {topic.gate_result}
                   </option>
                 ))}
               </select>
@@ -1700,6 +1765,49 @@ export default function StudyMvpPage() {
                     {selectedGateTopic.learning_objective}
                   </p>
                 </div>
+
+                {gateReadiness && !gateReadiness.canAttempt ? (
+                  <div
+                    aria-live="polite"
+                    className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+                  >
+                    <p className="text-sm font-extrabold text-amber-950">
+                      {gateReadiness.message}
+                    </p>
+
+                    {gateReadiness.status === "not_started" && (
+                      <>
+                        <p className="text-sm font-semibold text-amber-900">
+                          Active questions found: {gateReadiness.activeQuestionCount}.
+                          {gateReadiness.activeQuestionCount < 3
+                            ? ` You can start learning now, but add or activate ${gateReadiness.missingQuestionCount} more question(s) before attempting the gate.`
+                            : " The topic has enough active questions to prepare for its initial gate."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={beginSelectedTopicLearning}
+                          className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#1a2e24]"
+                        >
+                          Start learning
+                        </button>
+                      </>
+                    )}
+
+                    {gateReadiness.status === "missing_questions" && (
+                      <p className="text-sm font-semibold text-amber-900">
+                        Add or activate {gateReadiness.missingQuestionCount} more
+                        active question(s). The gate will remain unavailable
+                        until at least three are available.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {gateReadiness && (
+                      <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">
+                        {gateReadiness.message}
+                      </p>
+                    )}
 
                 <fieldset className="rounded-2xl border border-[#e4dac9] p-4">
                   <legend className="px-2 text-sm font-extrabold text-stone-700">
@@ -1914,11 +2022,23 @@ export default function StudyMvpPage() {
 
                 <button
                   type="submit"
-                  disabled={remainingGateTasks.length === 0}
+                  disabled={
+                    !gateReadiness?.canAttempt ||
+                    remainingGateTasks.length === 0 ||
+                    selectedGateIds.length < 3 ||
+                    new Set(selectedGateIds).size !== selectedGateIds.length ||
+                    (
+                      !openGateSession &&
+                      selectedGateTopic.gate_result === "failed" &&
+                      !gateCorrectiveReady
+                    )
+                  }
                   className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#1a2e24] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Record gate attempt
                 </button>
+                  </>
+                )}
               </>
             )}
           </form>
@@ -2239,7 +2359,7 @@ export default function StudyMvpPage() {
         </div>
 
         <p className="mt-5 text-xs font-semibold leading-5 text-stone-500">
-          Keep regular JSON backups as an additional recovery option. The browser's local recovery copy may be unavailable after clearing browser storage or changing profiles; the cloud copy remains available after a successful sync.
+          Keep regular JSON backups as an additional recovery option. The browser&apos;s local recovery copy may be unavailable after clearing browser storage or changing profiles; the cloud copy remains available after a successful sync.
         </p>
       </section>
     </div>
