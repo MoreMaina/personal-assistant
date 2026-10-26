@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
   useState,
   type FormEvent,
@@ -25,6 +24,7 @@ import type {
 } from "@/lib/studyMvp/dailyPlanner";
 
 import { applyDailyPlanDecisions } from "@/lib/studyMvp/planningWorkflow";
+import { appendDailyPlanSnapshot } from "@/lib/studyMvp/dailyPlanHistory";
 import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
 
@@ -183,7 +183,6 @@ export default function StudyMvpPage() {
     downloadConflictCopy,
   } = useCloudStudyState();
 
-  const [planDate, setPlanDate] = useState("");
   const [importText, setImportText] = useState("");
   const [importDiagnostics, setImportDiagnostics] = useState<
     TopicImportDiagnostic[]
@@ -201,6 +200,7 @@ export default function StudyMvpPage() {
   const [planningReentries, setPlanningReentries] = useState<
     Record<string, SkipReentryCondition | "">
   >({});
+  const [isReplanning, setIsReplanning] = useState(false);
 
   const [gateTopicId, setGateTopicId] = useState("");
   const [gateSelectedTaskIds, setGateSelectedTaskIds] = useState<
@@ -231,17 +231,6 @@ export default function StudyMvpPage() {
   >(null);
   const [nextReviewEstimate, setNextReviewEstimate] = useState(10);
 
-  useEffect(() => {
-    if (!state || planDate) return;
-
-    setPlanDate(
-      localDateOfTimestamp(
-        new Date().toISOString(),
-        state.settings.timezone,
-      ),
-    );
-  }, [state, planDate]);
-
   const today = state
     ? localDateOfTimestamp(
         new Date().toISOString(),
@@ -249,8 +238,23 @@ export default function StudyMvpPage() {
       )
     : "";
 
+  const todaysPlanSnapshots = state && today
+    ? (state.daily_plan_history ?? [])
+        .filter((snapshot) => snapshot.date === today)
+        .sort((left, right) => left.version - right.version)
+    : [];
+
+  const latestTodaysPlan =
+    todaysPlanSnapshots[todaysPlanSnapshots.length - 1] ?? null;
+
+  const planningMode = !latestTodaysPlan || isReplanning;
+
   const planResult = useMemo(() => {
-    if (!state || !planDate) {
+    if (
+      !state ||
+      !today ||
+      (!isReplanning && latestTodaysPlan)
+    ) {
       return {
         build: null,
         error: "",
@@ -306,7 +310,7 @@ export default function StudyMvpPage() {
 
     try {
       return {
-        build: buildStudyDailyPlan(state, planDate, {
+        build: buildStudyDailyPlan(state, today, {
           explicitDecisions,
           forcedDecisions,
         }),
@@ -323,14 +327,18 @@ export default function StudyMvpPage() {
     }
   }, [
     state,
-    planDate,
+    today,
+    isReplanning,
+    latestTodaysPlan,
     planningChoices,
     planningReasons,
     planningReentries,
   ]);
 
   const planBuild = planResult.build;
-  const plan = planBuild?.plan;
+  const plan = planningMode
+    ? planBuild?.plan
+    : latestTodaysPlan?.plan;
 
   const hasIncompletePlanningChoice = Boolean(
     plan?.items.some((item) => {
@@ -349,7 +357,7 @@ export default function StudyMvpPage() {
   );
 
   function saveDailyPlan() {
-    if (!state || !plan) return;
+    if (!state || !plan || !planningMode) return;
 
     if (!plan.can_finalize) {
       setProblem(
@@ -366,19 +374,27 @@ export default function StudyMvpPage() {
     }
 
     try {
-      const result = applyDailyPlanDecisions(state, plan, {
-        loggedAt: new Date().toISOString(),
-      });
+      const loggedAt = new Date().toISOString();
+      const result = applyDailyPlanDecisions(state, plan, { loggedAt });
+      const appended = appendDailyPlanSnapshot(
+        result.state,
+        plan,
+        loggedAt,
+      );
 
       const message =
-        result.emittedEvents.length === 0
-          ? "Daily plan saved. No new decision events were needed."
-          : `Daily plan saved. Recorded ${result.emittedEvents.length} immutable decision event(s).`;
+        `Saved daily plan version ${appended.snapshot.version} for ${appended.snapshot.date}. ` +
+        (
+          result.emittedEvents.length === 0
+            ? "No new planning-decision events were needed."
+            : `Recorded ${result.emittedEvents.length} immutable planning-decision event(s).`
+        );
 
-      if (persist(result.state, message)) {
+      if (persist(appended.state, message)) {
         setPlanningChoices({});
         setPlanningReasons({});
         setPlanningReentries({});
+        setIsReplanning(false);
       }
     } catch (error) {
       setProblem(
@@ -465,7 +481,7 @@ export default function StudyMvpPage() {
           ["pending", "in_progress", "deferred", "missed"].includes(
             review.status,
           ) &&
-          review.current_due_date <= (planDate || today),
+          review.current_due_date <= today,
       )
     : [];
 
@@ -569,7 +585,7 @@ export default function StudyMvpPage() {
   function startTrialWithScaffold() {
     if (!state || state.courses.length > 0) return;
 
-    const currentDate = today || planDate;
+    const currentDate = today;
     const scaffold = createDefaultCourseScaffold({
       now: new Date().toISOString(),
       idFactory: defaultIdFactory,
@@ -597,7 +613,7 @@ export default function StudyMvpPage() {
   function startTrial() {
     if (!state || state.settings.trial_start_date) return;
 
-    const currentDate = today || planDate;
+    const currentDate = today;
     persist(
       {
         ...state,
@@ -1203,7 +1219,7 @@ export default function StudyMvpPage() {
           {
             label: "Reviews due",
             value: currentOpenReviewCount,
-            detail: "For the selected plan date",
+            detail: "Due today in your Study timezone",
           },
           {
             label: "TaskEvents",
@@ -1274,27 +1290,23 @@ export default function StudyMvpPage() {
       >
         <SectionHeading
           eyebrow="01 · Plan"
-          title="Daily time budget"
-          detail="Preview one shared daily budget across due reviews, unfinished consolidation, assignments, and mixed practice. Sunday is handled as the rest day by the planning engine."
+          title={planningMode ? "Daily time budget" : "Today's saved worklist"}
+          detail={
+            planningMode
+              ? "Build today's plan from due reviews, unfinished consolidation, assignments, and mixed practice. Saving creates a durable snapshot for this Study day."
+              : `Your saved plan for ${today}. The latest version stays in place during the day; replan explicitly if priorities change.`
+          }
         />
 
         <div className="mb-5 flex flex-wrap items-end gap-4">
-          <label className="block">
-            <span className="mb-1 block text-sm font-extrabold text-stone-700">
-              Plan date
-            </span>
-            <input
-              type="date"
-              value={planDate}
-              onChange={(event) => {
-                setPlanDate(event.target.value);
-                setPlanningChoices({});
-                setPlanningReasons({});
-                setPlanningReentries({});
-              }}
-              className="rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm font-bold"
-            />
-          </label>
+          <div className="rounded-xl bg-[#efe4d1] px-4 py-2.5">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-stone-500">
+              Study day
+            </p>
+            <p className="text-xl font-extrabold text-[#23412f]">
+              {today || "Loading…"}
+            </p>
+          </div>
 
           <div className="rounded-xl bg-[#efe4d1] px-4 py-2.5">
             <p className="text-xs font-extrabold uppercase tracking-wider text-stone-500">
@@ -1419,6 +1431,7 @@ export default function StudyMvpPage() {
                         </span>
                       )}
                     </div>
+                    {planningMode && (
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       <label className="block">
                         <span className="mb-1 block text-xs font-extrabold uppercase tracking-wide text-stone-500">
@@ -1539,6 +1552,15 @@ export default function StudyMvpPage() {
                         </label>
                       )}
                     </div>
+                    )}
+
+                    {!planningMode && (
+                      <p className="mt-4 text-sm font-semibold text-stone-600">
+                        {item.disposition
+                          ? `Saved planning decision: ${item.disposition}.`
+                          : "Saved allocation: planned work, not completion evidence."}
+                      </p>
+                    )}
 
                     {item.reason && (
                       <p className="mt-2 text-xs font-semibold text-stone-500">
@@ -1564,37 +1586,80 @@ export default function StudyMvpPage() {
               </div>
             )}
 
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={saveDailyPlan}
-                disabled={
-                  !plan.can_finalize ||
-                  hasIncompletePlanningChoice ||
-                  plan.items.length === 0
-                }
-                className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
-              >
-                Save daily decisions
-              </button>
-              {hasIncompletePlanningChoice && (
-                <p className="text-sm font-bold text-rose-700">
-                  Add a reason for each selected action; SKIP also requires a re-entry condition.
-                </p>
-              )}
-              {!plan.can_finalize && (
-                <p className="text-sm font-bold text-rose-700">
-                  Resolve the required decisions before saving.
-                </p>
-              )}
-            </div>
+            {planningMode ? (
+              <>
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={saveDailyPlan}
+                    disabled={
+                      !plan.can_finalize ||
+                      hasIncompletePlanningChoice
+                    }
+                    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
+                  >
+                    Save today&apos;s plan
+                  </button>
+                  {latestTodaysPlan && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPlanningChoices({});
+                        setPlanningReasons({});
+                        setPlanningReentries({});
+                        setIsReplanning(false);
+                      }}
+                      className="rounded-xl border border-[#d8ccb8] bg-white px-5 py-3 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
+                    >
+                      Cancel replan
+                    </button>
+                  )}
+                  {hasIncompletePlanningChoice && (
+                    <p className="text-sm font-bold text-rose-700">
+                      Add a reason for each selected action; SKIP also requires a re-entry condition.
+                    </p>
+                  )}
+                  {!plan.can_finalize && (
+                    <p className="text-sm font-bold text-rose-700">
+                      Resolve the required decisions before saving.
+                    </p>
+                  )}
+                </div>
 
-            <p className="mt-4 text-xs font-semibold leading-5 text-stone-500">
-              Saving records planning decisions as immutable events. An
-              allocation or saved decision is not evidence that a review,
-              gate, or work session was completed. Re-saving an identical
-              plan does not duplicate its decision events.
-            </p>
+                <p className="mt-4 text-xs font-semibold leading-5 text-stone-500">
+                  Saving creates an immutable plan snapshot and records required
+                  planning decisions. Allocations are intent, not evidence of
+                  completed work. Actual attempts and work sessions are recorded
+                  separately. Rest-day plans can also be saved.
+                </p>
+              </>
+            ) : (
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#d8ccb8] bg-white p-4">
+                <div>
+                  <p className="font-extrabold text-[#23412f]">
+                    Saved plan version {latestTodaysPlan?.version}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-stone-500">
+                    Saved at {latestTodaysPlan?.saved_at}.{" "}
+                    {Math.max(0, todaysPlanSnapshots.length - 1)} previous
+                    version(s) are preserved today. Planned allocations do not
+                    count as completed work.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlanningChoices({});
+                    setPlanningReasons({});
+                    setPlanningReentries({});
+                    setIsReplanning(true);
+                  }}
+                  className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021]"
+                >
+                  Replan today
+                </button>
+              </div>
+            )}
           </>
         )}
       </section>
@@ -2057,7 +2122,7 @@ export default function StudyMvpPage() {
 
         {dueReviews.length === 0 ? (
           <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-stone-600">
-            No review is due on or before {planDate || today}. A passed gate
+            No review is due today ({today}). A passed gate
             creates Review 1 automatically.
           </p>
         ) : (
