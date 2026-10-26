@@ -172,7 +172,9 @@ export function buildDailyPlannerTasks(
   for (const topic of state.topics) {
     if (
       topic.status !== "in_learning" ||
-      topic.gate_result === "passed"
+      topic.gate_passed ||
+      topic.gate_result === "passed" ||
+      topic.gate_result === "skill_based_passed"
     ) {
       continue;
     }
@@ -207,7 +209,10 @@ export function buildDailyPlannerTasks(
       selectedIds.length < 3 ||
       new Set(selectedIds).size !== selectedIds.length ||
       selectedTasks.some(
-        (task) => !task || task.topic_id !== topic.id,
+        (task) =>
+          !task ||
+          task.topic_id !== topic.id ||
+          !task.active,
       )
     ) {
       omittedGateTopicIds.push(topic.id);
