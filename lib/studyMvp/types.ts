@@ -6,6 +6,8 @@
  * before the existing interface or storage is changed.
  */
 
+import type { DailyPlan } from "./dailyPlanner";
+
 export type ISODate = string;
 export type ISODateTime = string;
 export type EntityId = string;
@@ -404,6 +406,14 @@ export interface SettingsChangeRecord {
   new_values: Partial<StudySettings>;
 }
 
+export interface SavedDailyPlanSnapshot {
+  id: EntityId;
+  date: ISODate;
+  version: number;
+  saved_at: ISODateTime;
+  plan: DailyPlan;
+}
+
 export interface StudyMvpState {
   schema_version: 1;
 
@@ -427,4 +437,10 @@ export interface StudyMvpState {
    * Append-only audit history for settings changes.
    */
   settings_change_history: SettingsChangeRecord[];
+
+  /**
+   * Optional for compatibility with older schema-v1 records.
+   * Saved snapshots are append-only; earlier versions are retained.
+   */
+  daily_plan_history?: SavedDailyPlanSnapshot[];
 }

@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { appendDailyPlanSnapshot } from "./dailyPlanHistory";
+import { buildStudyDailyPlan } from "./dashboard";
 
 import {
   appendTaskEvents,
@@ -591,6 +593,47 @@ describe("immutable weekly metrics", () => {
     expect(
       loadStudyMvpState(storage).weekly_metrics,
     ).toHaveLength(1);
+  });
+});
+
+describe("Study storage: saved daily plan history", () => {
+  it("rejects rewriting an existing saved plan", () => {
+    const storage = new MemoryStorage();
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "Africa/Nairobi",
+    });
+    const plan = buildStudyDailyPlan(state, "2026-10-26").plan;
+    const first = appendDailyPlanSnapshot(state, plan, NOW);
+    saveStudyMvpState(first.state, storage);
+
+    const changed = structuredClone(first.state);
+    changed.daily_plan_history![0].plan.budget_minutes += 1;
+
+    expect(() => saveStudyMvpState(changed, storage)).toThrow(
+      /Daily plan history is immutable/,
+    );
+    expect(
+      loadStudyMvpState(storage).daily_plan_history![0].plan.budget_minutes,
+    ).toBe(plan.budget_minutes);
+  });
+
+  it("rejects removing saved plan history", () => {
+    const storage = new MemoryStorage();
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "Africa/Nairobi",
+    });
+    const plan = buildStudyDailyPlan(state, "2026-10-26").plan;
+    const first = appendDailyPlanSnapshot(state, plan, NOW);
+    saveStudyMvpState(first.state, storage);
+
+    const removed = structuredClone(first.state);
+    removed.daily_plan_history = [];
+
+    expect(() => saveStudyMvpState(removed, storage)).toThrow(
+      /Daily plan history is append-only/,
+    );
   });
 });
 

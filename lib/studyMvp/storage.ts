@@ -494,6 +494,99 @@ function assertUniqueIds(
   }
 }
 
+function assertDailyPlanHistory(value: unknown): void {
+  // Older schema-v1 records predate saved daily plans.
+  if (value === undefined) return;
+
+  if (!Array.isArray(value)) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Daily plan history must be an array when present.",
+    );
+  }
+
+  const seenIds = new Set<string>();
+  const nextVersionByDate = new Map<string, number>();
+
+  for (const raw of value as unknown[]) {
+    if (!isRecord(raw)) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "A saved daily plan snapshot must be an object.",
+      );
+    }
+
+    const id = raw.id;
+    const date = raw.date;
+    const version = raw.version;
+    const savedAt = raw.saved_at;
+    const plan = raw.plan;
+
+    if (
+      !isNonEmptyString(id) ||
+      seenIds.has(id) ||
+      !isDateOnly(date) ||
+      !Number.isSafeInteger(version) ||
+      (version as number) < 1 ||
+      !hasTimezone(savedAt) ||
+      !isRecord(plan) ||
+      plan.date !== date ||
+      !Array.isArray(plan.items) ||
+      !Array.isArray(plan.warnings) ||
+      !Array.isArray(plan.unresolved_decisions) ||
+      typeof plan.can_finalize !== "boolean" ||
+      !isFiniteNumber(plan.budget_minutes) ||
+      !isFiniteNumber(plan.allocated_minutes) ||
+      !isFiniteNumber(plan.remaining_budget_minutes) ||
+      plan.budget_minutes < 0 ||
+      plan.allocated_minutes < 0 ||
+      plan.remaining_budget_minutes < 0 ||
+      plan.allocated_minutes > plan.budget_minutes
+    ) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "A saved daily plan snapshot has invalid identity, date, version, timestamp, or plan data.",
+      );
+    }
+
+    const expectedVersion = (nextVersionByDate.get(date) ?? 0) + 1;
+    if (version !== expectedVersion) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        `Saved plan versions for ${date} must be sequential, starting at version 1.`,
+      );
+    }
+
+    const itemIds = new Set<string>();
+    for (const rawItem of plan.items as unknown[]) {
+      if (
+        !isRecord(rawItem) ||
+        !isNonEmptyString(rawItem.id) ||
+        itemIds.has(rawItem.id) ||
+        !isNonEmptyString(rawItem.kind) ||
+        !isNonEmptyString(rawItem.subject_id) ||
+        !isFiniteNumber(rawItem.allocated_minutes) ||
+        rawItem.allocated_minutes < 0 ||
+        !isFiniteNumber(rawItem.remaining_minutes) ||
+        rawItem.remaining_minutes < 0 ||
+        !Array.isArray(rawItem.selected_question_ids) ||
+        !Array.isArray(rawItem.allocated_question_ids) ||
+        !Array.isArray(rawItem.remaining_question_ids)
+      ) {
+        throw new StudyStorageError(
+          "invalid-shape",
+          `Saved plan "${id}" contains an invalid work item.`,
+        );
+      }
+
+      itemIds.add(rawItem.id);
+    }
+
+    seenIds.add(id);
+    nextVersionByDate.set(date, version as number);
+  }
+}
+
 export function assertStudyStateIntegrity(
   state: StudyMvpState,
 ): void {
@@ -503,6 +596,9 @@ export function assertStudyStateIntegrity(
       `Unsupported Study schema version: ${String(state.schema_version)}`,
     );
   }
+
+  assertDailyPlanHistory(state.daily_plan_history);
+  const dailyPlanHistory = state.daily_plan_history ?? [];
 
   const collections: Array<[
     string,
@@ -519,6 +615,7 @@ export function assertStudyStateIntegrity(
     ["assignments", state.assignments],
     ["exams", state.exams],
     ["settings_change_history", state.settings_change_history],
+    ["daily_plan_history", dailyPlanHistory],
   ];
 
   for (const [name, values] of collections) {
@@ -650,6 +747,13 @@ function hasRequiredStateShape(
     !requiredArrays.every(
       (key) => Array.isArray(value[key]),
     )
+  ) {
+    return false;
+  }
+
+  if (
+    value.daily_plan_history !== undefined &&
+    !Array.isArray(value.daily_plan_history)
   ) {
     return false;
   }
@@ -787,6 +891,7 @@ export function createEmptyStudyState(
 
     weekly_metrics: [],
     settings_change_history: [],
+    daily_plan_history: [],
   };
 }
 
@@ -1012,6 +1117,12 @@ function assertSafeStateReplacement(
     previous.weekly_metrics,
     next.weekly_metrics,
     "Weekly metrics snapshots",
+  );
+
+  assertAppendOnlyHistory(
+    previous.daily_plan_history ?? [],
+    next.daily_plan_history ?? [],
+    "Daily plan history",
   );
 
   assertAppendOnlyHistory(
