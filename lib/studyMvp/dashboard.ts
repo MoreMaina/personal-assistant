@@ -314,22 +314,27 @@ export function buildDailyPlannerTasks(
   }
 
   const day = weekday(date);
-  const mixedTarget =
-    day >= 1 && day <= 3
-      ? state.settings.mixed_practice_target_mon_wed
-      : state.settings.mixed_practice_target_thu_fri;
 
-  tasks.push({
-    id: `mixed-practice:${date}`,
-    priority: 4,
-    considered: true,
-    kind: "mixed_practice",
-    due: true,
-    targetDurationMin: Math.max(
-      state.settings.min_mixed_practice_min,
-      mixedTarget,
-    ),
-  });
+  // Mixed practice is scheduled Monday-Friday. Sunday is a rest day,
+  // while Saturday is reserved for the sampler.
+  if (day >= 1 && day <= 5) {
+    const mixedTarget =
+      day <= 3
+        ? state.settings.mixed_practice_target_mon_wed
+        : state.settings.mixed_practice_target_thu_fri;
+
+    tasks.push({
+      id: `mixed-practice:${date}`,
+      priority: 4,
+      considered: true,
+      kind: "mixed_practice",
+      due: true,
+      targetDurationMin: Math.max(
+        state.settings.min_mixed_practice_min,
+        mixedTarget,
+      ),
+    });
+  }
 
   if (day === 6) {
     tasks.push({

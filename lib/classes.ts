@@ -5,6 +5,8 @@ export type ClassItem = {
   day: string;
   start: string;
   end: string;
+  /** Stable link to a Study Unit; optional for legacy classes. */
+  studyUnitId?: string;
 };
 
 export const classes: ClassItem[] = [

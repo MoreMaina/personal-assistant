@@ -26,6 +26,14 @@ type BackupRow = {
   data: unknown;
 };
 
+type ImportedBackupPreview = {
+  fileName: string;
+  savedAt: string | null;
+  exportedAt: string | null;
+  snapshot: AppSnapshot;
+  sections: string[];
+};
+
 const BACKUP_FORMAT = "personal-assistant-backup";
 const BACKUP_VERSION = 1;
 
@@ -128,6 +136,8 @@ export default function BackupRecoveryPage() {
     useState<BackupRow[]>([]);
   const [recoveryCopies, setRecoveryCopies] =
     useState<LocalStorageRecoveryCopy[]>([]);
+  const [filePreview, setFilePreview] =
+    useState<ImportedBackupPreview | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [working, setWorking] =
@@ -448,6 +458,7 @@ export default function BackupRecoveryPage() {
 
     setError("");
     setMessage("");
+    setFilePreview(null);
 
     try {
       const parsed: unknown =
@@ -476,13 +487,34 @@ export default function BackupRecoveryPage() {
         );
       }
 
-      await restoreSnapshot(
-        payload.snapshot,
-        "the backup file " + file.name,
+      const snapshot = normalizeSnapshot(payload.snapshot);
+      const sections = Object.keys(snapshot).sort();
+
+      if (sections.length === 0) {
+        throw new Error(
+          "This file contains no recognized app data and cannot be restored.",
+        );
+      }
+
+      setFilePreview({
+        fileName: file.name,
+        savedAt: typeof payload.savedAt === "string"
+          ? payload.savedAt
+          : null,
+        exportedAt: typeof payload.exportedAt === "string"
+          ? payload.exportedAt
+          : null,
+        snapshot,
+        sections,
+      });
+
+      setMessage(
+        "Backup file validated. Nothing has been restored yet.",
       );
     } catch (caughtError) {
+      setFilePreview(null);
       setError(
-        "Could not read that backup file. " +
+        "Could not preview that backup file. " +
           describeError(caughtError),
       );
     }
@@ -573,6 +605,86 @@ export default function BackupRecoveryPage() {
               className="sr-only"
             />
           </label>
+
+          {filePreview && (
+            <div
+              className="mt-4 space-y-3 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--background)] p-4"
+              role="region"
+              aria-label="Backup file preview"
+            >
+              <div>
+                <h4 className="font-extrabold text-[var(--primary-dark)]">
+                  Backup preview
+                </h4>
+                <p className="mt-1 break-words text-sm font-bold">
+                  File: {filePreview.fileName}
+                </p>
+              </div>
+
+              {filePreview.savedAt && (
+                <p className="text-sm text-[var(--ink-soft)]">
+                  Snapshot saved: {formatDate(filePreview.savedAt)}
+                </p>
+              )}
+
+              {filePreview.exportedAt && (
+                <p className="text-sm text-[var(--ink-soft)]">
+                  File exported: {formatDate(filePreview.exportedAt)}
+                </p>
+              )}
+
+              <div>
+                <p className="text-sm font-extrabold">
+                  Recognized data sections ({filePreview.sections.length})
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {filePreview.sections.map((section) => (
+                    <li
+                      key={section}
+                      className="max-w-full break-all rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-semibold"
+                    >
+                      {section}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="text-sm font-bold text-[var(--accent-dark)]">
+                Preview only. Restoring replaces your current cloud data.
+                The existing restore confirmation and backup safeguards still apply.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={working !== null}
+                  onClick={() => {
+                    if (!filePreview) return;
+                    void restoreSnapshot(
+                      filePreview.snapshot,
+                      "the backup file " + filePreview.fileName,
+                    );
+                  }}
+                  className="rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-3 font-extrabold text-white disabled:opacity-50"
+                >
+                  Continue to restore
+                </button>
+
+                <button
+                  type="button"
+                  disabled={working !== null}
+                  onClick={() => {
+                    setFilePreview(null);
+                    setError("");
+                    setMessage("Backup preview cancelled. No data was restored.");
+                  }}
+                  className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-3 font-extrabold disabled:opacity-50"
+                >
+                  Cancel preview
+                </button>
+              </div>
+            </div>
+          )}
 
           <p className="mt-3 text-sm font-bold text-[var(--muted)]">
             Restoring replaces cloud data on your signed-in

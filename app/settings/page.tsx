@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import GoogleCalendarSettings from "@/app/components/GoogleCalendarSettings";
 
 import {
   ensureFixedSemesters,
@@ -222,6 +223,8 @@ export default function GeneralSettingsPage() {
           )}
         </div>
       </form>
+
+      <GoogleCalendarSettings />
 
       <section className="flex flex-col gap-3 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="space-y-1">

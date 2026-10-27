@@ -786,3 +786,49 @@ describe("rest day and stable budgeting", () => {
     ).toThrow(/unique/);
   });
 });
+
+
+describe("Saturday sampler allocation limits", () => {
+  const samplerTask = {
+    id: "sampler-budget-test",
+    kind: "sampler" as const,
+    due: true,
+    priority: 4 as const,
+    targetDurationMin: 80,
+    analysisMaxMin: 10,
+  };
+
+  it("allocates the core sampler and analysis within the available daily budget", () => {
+    const plan = generateDailyPlan({
+      date: "2026-10-24",
+      settings: {
+        ...DEFAULT_PLANNER_SETTINGS,
+        daily_budget_min: 45,
+        review_reserve_min: 0,
+        min_mixed_practice_min: 0,
+      },
+      tasks: [samplerTask],
+    });
+
+    expect(plan.allocated_minutes).toBeLessThanOrEqual(45);
+    expect(plan.allocated_minutes).toBe(45);
+    expect(totalForKind(plan, "sampler")).toBe(45);
+    expect(item(plan, "sampler-budget-test").analysis_minutes).toBe(0);
+    expect(plan.remaining_budget_minutes).toBe(0);
+  });
+
+  it("allocates the full 80-minute sampler plus 10-minute analysis when capacity permits", () => {
+    const plan = generateDailyPlan({
+      date: "2026-10-24",
+      settings: DEFAULT_PLANNER_SETTINGS,
+      tasks: [samplerTask],
+    });
+
+    expect(plan.allocated_minutes).toBe(90);
+    expect(totalForKind(plan, "sampler")).toBe(90);
+    expect(item(plan, "sampler-budget-test").analysis_minutes).toBe(10);
+    expect(plan.allocated_minutes).toBeLessThanOrEqual(
+      DEFAULT_PLANNER_SETTINGS.daily_budget_min,
+    );
+  });
+});

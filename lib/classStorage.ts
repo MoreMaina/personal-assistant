@@ -49,7 +49,9 @@ export function getClasses(): ClassItem[] {
           typeof record.name === "string" &&
           typeof record.day === "string" &&
           typeof record.start === "string" &&
-          typeof record.end === "string"
+          typeof record.end === "string" &&
+          (record.studyUnitId === undefined ||
+            typeof record.studyUnitId === "string")
         );
       }),
   );
@@ -80,6 +82,34 @@ export function addClass(
   ]);
 
   return createdClass;
+}
+
+
+/** Link or unlink a class using a stable Study Unit ID. */
+export function updateClassStudyUnit(
+  classId: number,
+  studyUnitId?: string,
+): ClassItem[] {
+  const current = getClasses();
+  let found = false;
+
+  const next = current.map((item) => {
+    if (item.id !== classId) return item;
+    found = true;
+
+    const updated = { ...item };
+    const normalizedId = studyUnitId?.trim();
+
+    if (normalizedId) updated.studyUnitId = normalizedId;
+    else delete updated.studyUnitId;
+
+    return updated;
+  });
+
+  if (!found) throw new Error(`Class "${classId}" was not found.`);
+
+  saveClasses(next);
+  return next;
 }
 
 function getCancelledSessions(): Record<string, number[]> {

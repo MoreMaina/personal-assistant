@@ -570,6 +570,78 @@ export function startTopicLearning(
   };
 }
 
+
+/**
+ * Reactivate original question records for a saved gate session.
+ * No substitute questions or learning evidence are created.
+ */
+export function reactivateGateSessionTasks(
+  state: StudyMvpState,
+  topicId: EntityId,
+  gateSessionId: EntityId,
+  selectedTaskIds: readonly EntityId[],
+): StudyMvpState {
+  const topic = state.topics.find((item) => item.id === topicId);
+  if (!topic) {
+    throw new Error(`Topic "${topicId}" was not found.`);
+  }
+
+  if (
+    !gateSessionId.trim() ||
+    selectedTaskIds.length < 3 ||
+    new Set(selectedTaskIds).size !== selectedTaskIds.length
+  ) {
+    throw new Error(
+      "The saved gate session must have an ID and at least three distinct original questions.",
+    );
+  }
+
+  const expectedSnapshot = JSON.stringify([...selectedTaskIds]);
+  const hasMatchingEvidence = state.task_events.some(
+    (event) =>
+      event.event_type === "gate_attempt" &&
+      event.gate_session_id === gateSessionId &&
+      JSON.stringify(event.gate_selected_task_ids_snapshot) === expectedSnapshot,
+  );
+
+  if (!hasMatchingEvidence) {
+    throw new Error(
+      "The saved gate session could not be verified. No questions were reactivated.",
+    );
+  }
+
+  const selectedTasks = selectedTaskIds.map((id) =>
+    state.retrieval_tasks.find((task) => task.id === id),
+  );
+
+  if (selectedTasks.some((task) => task === undefined)) {
+    throw new Error(
+      "The saved gate session references a missing original question. Recover that question before resuming; no substitute was made.",
+    );
+  }
+
+  if (selectedTasks.some((task) => task!.topic_id !== topic.id)) {
+    throw new Error(
+      "Every original gate question must belong to this topic. No questions were reactivated.",
+    );
+  }
+
+  const inactiveIds = new Set(
+    selectedTasks
+      .filter((task): task is RetrievalTask => task !== undefined && !task.active)
+      .map((task) => task.id),
+  );
+
+  if (inactiveIds.size === 0) return state;
+
+  return {
+    ...state,
+    retrieval_tasks: state.retrieval_tasks.map((task) =>
+      inactiveIds.has(task.id) ? { ...task, active: true } : task,
+    ),
+  };
+}
+
 export function applyGateAttempt(
   state: StudyMvpState,
   input: GateAttemptInput,

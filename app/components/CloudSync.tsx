@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 import {
-  applySnapshot,
+  applySnapshotWithRollback,
   normalizeSnapshot,
   readLocalSnapshot,
   saveLocalBackup,
@@ -169,7 +169,22 @@ export default function CloudSync() {
         );
       }
 
-      applySnapshot(cloudSnapshot);
+      const applyResult = applySnapshotWithRollback(
+        cloudSnapshot,
+        localSnapshot,
+      );
+
+      if (!applyResult.success) {
+        console.error("Cloud snapshot apply failed:", applyResult.applyError);
+        if (!applyResult.rollbackSucceeded) {
+          console.error("Cloud snapshot rollback failed:", applyResult.rollbackError);
+        }
+        throw new Error(
+          applyResult.rollbackSucceeded
+            ? "The cloud copy could not be applied; the previous browser data was restored."
+            : "Cloud application and rollback both failed. Local storage may be partially updated. Review recovery options before continuing.",
+        );
+      }
 
       control.initialized = true;
       control.localSignature = cloudSignature;
@@ -474,9 +489,10 @@ export default function CloudSync() {
 
         if (!stopped) {
           setStatus("error");
-          setErrorMessage(
-            "Cloud sync failed. Your local data has not been intentionally cleared.",
-          );
+          const detail = error instanceof Error
+            ? error.message
+            : "Check your connection and browser storage.";
+          setErrorMessage("Cloud sync failed. " + detail);
         }
       } finally {
         busy = false;
@@ -511,9 +527,23 @@ export default function CloudSync() {
         conflict.localSnapshot,
       );
 
-      applySnapshot(
+      const applyResult = applySnapshotWithRollback(
         conflict.cloudSnapshot,
+        conflict.localSnapshot,
       );
+
+      if (!applyResult.success) {
+        console.error("Cloud conflict resolution apply failed:", applyResult.applyError);
+        if (!applyResult.rollbackSucceeded) {
+          console.error("Cloud conflict resolution rollback failed:", applyResult.rollbackError);
+        }
+        setErrorMessage(
+          applyResult.rollbackSucceeded
+            ? "Could not apply the cloud data. The previous browser data was restored."
+            : "Cloud application and rollback both failed. Local storage may be partially updated. Review recovery options before continuing.",
+        );
+        return;
+      }
 
       const signature =
         snapshotSignature(

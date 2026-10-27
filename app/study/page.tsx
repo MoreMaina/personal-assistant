@@ -32,6 +32,7 @@ import {
   applyGateAttempt,
   applyReviewAttempt,
   pauseIncompleteReview,
+  reactivateGateSessionTasks,
   startTopicLearning,
 } from "@/lib/studyMvp/workflow";
 
@@ -188,6 +189,7 @@ export default function StudyMvpPage() {
     TopicImportDiagnostic[]
   >([]);
   const [importCounts, setImportCounts] = useState<string[]>([]);
+  const [importPreviewReady, setImportPreviewReady] = useState(false);
 
   // These are editable drafts. Only complete, validated decisions are
   // passed to the planning engine.
@@ -442,6 +444,26 @@ export default function StudyMvpPage() {
       ? latestGateSession
       : null;
 
+
+  const gateSessionOriginalTasks = state && openGateSession
+    ? openGateSession.selectedTaskIds.map((id) =>
+        state.retrieval_tasks.find((task) => task.id === id),
+      )
+    : [];
+
+  const canReactivateOriginalGateTasks = Boolean(
+    selectedGateTopic &&
+    openGateSession &&
+    openGateSession.selectedTaskIds.length >= 3 &&
+    new Set(openGateSession.selectedTaskIds).size ===
+      openGateSession.selectedTaskIds.length &&
+    gateSessionOriginalTasks.every(
+      (task) => task !== undefined && task.topic_id === selectedGateTopic.id,
+    ) &&
+    gateSessionOriginalTasks.some(
+      (task) => task !== undefined && !task.active,
+    ),
+  );
   const gateReadiness = state && selectedGateTopic
     ? getGateReadiness(
         selectedGateTopic,
@@ -629,12 +651,28 @@ export default function StudyMvpPage() {
     );
   }
 
+  function importCountLabels(
+    counts: ReturnType<typeof importTopicCatalogText>["counts"],
+  ): string[] {
+    return [
+      `Courses created: ${counts.courses_created}`,
+      `Units created: ${counts.units_created}`,
+      `Topics created: ${counts.topics_created}`,
+      `Existing topics reused: ${counts.existing_topics_reused}`,
+      `Tasks created: ${counts.tasks_created}`,
+      `Duplicate tasks skipped: ${counts.duplicate_tasks_skipped}`,
+    ];
+  }
+
   function importCatalog(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!state) return;
 
     setImportDiagnostics([]);
     setImportCounts([]);
+    setImportPreviewReady(false);
+    setProblem("");
+    setNotice("");
 
     try {
       const result = importTopicCatalogText(state, importText, {
@@ -646,7 +684,43 @@ export default function StudyMvpPage() {
 
       if (!result.ok) {
         setProblem("Import rejected. No catalog changes were saved.");
-        setNotice("");
+        return;
+      }
+
+      setImportCounts(importCountLabels(result.counts));
+      setImportPreviewReady(true);
+      setNotice("Preview ready. No catalog changes have been saved yet.");
+    } catch (error) {
+      setProblem(
+        error instanceof Error
+          ? error.message
+          : "The catalog preview failed.",
+      );
+    }
+  }
+
+  function applyCatalogImport() {
+    if (!state || !importText.trim() || !importPreviewReady) return;
+
+    setProblem("");
+    setNotice("");
+
+    try {
+      // Revalidate against the latest state; the preview itself never saves.
+      const result = importTopicCatalogText(state, importText, {
+        now: new Date().toISOString(),
+        idFactory: defaultIdFactory,
+      });
+
+      setImportDiagnostics(result.diagnostics);
+
+      if (!result.ok) {
+        setImportCounts([]);
+        setImportPreviewReady(false);
+        setProblem(
+          "The catalog import is no longer valid against the current study state. " +
+          "No changes were saved. Review the diagnostics and create a new preview.",
+        );
         return;
       }
 
@@ -656,20 +730,15 @@ export default function StudyMvpPage() {
       );
 
       if (saved) {
-        setImportCounts([
-          `Courses created: ${result.counts.courses_created}`,
-          `Units created: ${result.counts.units_created}`,
-          `Topics created: ${result.counts.topics_created}`,
-          `Existing topics reused: ${result.counts.existing_topics_reused}`,
-          `Tasks created: ${result.counts.tasks_created}`,
-          `Duplicate tasks skipped: ${result.counts.duplicate_tasks_skipped}`,
-        ]);
+        setImportCounts(importCountLabels(result.counts));
+        setImportPreviewReady(false);
       }
     } catch (error) {
+      setImportPreviewReady(false);
       setProblem(
         error instanceof Error
           ? error.message
-          : "The catalog import failed.",
+          : "The catalog import failed. No changes were applied by this handler.",
       );
     }
   }
@@ -684,7 +753,9 @@ export default function StudyMvpPage() {
       setImportText(await file.text());
       setImportDiagnostics([]);
       setImportCounts([]);
-      setNotice(`Loaded ${file.name}. Review the text and select Import.`);
+      setImportPreviewReady(false);
+      setNotice(`Loaded ${file.name}. Review the text and select Validate and preview import.`);
+      setProblem("");
       setProblem("");
     } catch {
       setProblem("Could not read that file.");
@@ -714,6 +785,44 @@ export default function StudyMvpPage() {
         error instanceof Error
           ? error.message
           : "Could not start learning for this topic.",
+      );
+    }
+  }
+
+
+  function reactivateOriginalGateQuestions() {
+    if (!state || !selectedGateTopic || !openGateSession) return;
+
+    try {
+      const inactiveCount = state.retrieval_tasks.filter(
+        (task) =>
+          openGateSession.selectedTaskIds.includes(task.id) && !task.active,
+      ).length;
+
+      const next = reactivateGateSessionTasks(
+        state,
+        selectedGateTopic.id,
+        openGateSession.id,
+        openGateSession.selectedTaskIds,
+      );
+
+      if (next === state) {
+        setProblem("");
+        setNotice("The original gate questions are already active. Recheck gate readiness.");
+        return;
+      }
+
+      const saved = persist(
+        next,
+        `Reactivated ${inactiveCount} original gate question(s). The saved selection and attempt history are unchanged; resume the same gate session.`,
+      );
+
+      if (saved) setProblem("");
+    } catch (error) {
+      setProblem(
+        error instanceof Error
+          ? error.message
+          : "Could not reactivate the original gate questions.",
       );
     }
   }
@@ -1711,7 +1820,14 @@ export default function StudyMvpPage() {
             <textarea
               rows={9}
               value={importText}
-              onChange={(event) => setImportText(event.target.value)}
+              onChange={(event) => {
+                setImportText(event.target.value);
+                setImportDiagnostics([]);
+                setImportCounts([]);
+                setImportPreviewReady(false);
+                setProblem("");
+                setNotice("");
+              }}
               placeholder={[
                 "course_code,course_name,unit_code,unit_name,topic_number,topic_title,learning_objective,objective_type",
                 'CS101,Computer Science,a,Unit a,1,Variables,Explain variable scope,explain',
@@ -1725,20 +1841,59 @@ export default function StudyMvpPage() {
             disabled={!importText.trim()}
             className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#1a2e24] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Validate and import catalog
+            Validate and preview import
           </button>
         </form>
 
         {importCounts.length > 0 && (
-          <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <h3 className="font-extrabold text-emerald-900">
-              Import summary
+          <div className={`mt-5 rounded-2xl border p-4 ${
+            importPreviewReady
+              ? "border-blue-200 bg-blue-50"
+              : "border-emerald-200 bg-emerald-50"
+          }`}>
+            <h3 className={`font-extrabold ${
+              importPreviewReady ? "text-blue-900" : "text-emerald-900"
+            }`}>
+              {importPreviewReady ? "Import preview" : "Import summary"}
             </h3>
-            <ul className="mt-2 grid gap-1 text-sm font-semibold text-emerald-900 sm:grid-cols-2">
+            {importPreviewReady && (
+              <p className="mt-2 text-sm font-semibold text-blue-900">
+                Preview only — your catalog has not been changed. Applying will
+                revalidate this file against your current study state.
+              </p>
+            )}
+            <ul className={`mt-2 grid gap-1 text-sm font-semibold sm:grid-cols-2 ${
+              importPreviewReady ? "text-blue-900" : "text-emerald-900"
+            }`}>
               {importCounts.map((count) => (
                 <li key={count}>{count}</li>
               ))}
             </ul>
+            {importPreviewReady && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={applyCatalogImport}
+                  disabled={!state || importHasErrors}
+                  className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#1a2e24] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Apply import
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportPreviewReady(false);
+                    setImportCounts([]);
+                    setImportDiagnostics([]);
+                    setNotice("Import preview cancelled. No catalog changes were saved.");
+                    setProblem("");
+                  }}
+                  className="rounded-xl border border-[#d8ccb8] bg-white px-5 py-3 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
+                >
+                  Cancel preview
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1859,11 +2014,54 @@ export default function StudyMvpPage() {
                     )}
 
                     {gateReadiness.status === "missing_questions" && (
-                      <p className="text-sm font-semibold text-amber-900">
-                        Add or activate {gateReadiness.missingQuestionCount} more
-                        active question(s). The gate will remain unavailable
-                        until at least three are available.
-                      </p>
+                      <div className="space-y-2 text-sm font-semibold text-amber-900">
+                        <p>
+                          Add or activate {gateReadiness.missingQuestionCount} more
+                          active question(s). The gate remains unavailable until
+                          at least three are available.
+                        </p>
+                        <a
+                          href="#catalog"
+                          className="inline-flex rounded-xl border border-amber-800 px-4 py-2 font-extrabold text-amber-950 hover:bg-amber-100"
+                        >
+                          Open catalog import
+                        </a>
+                      </div>
+                    )}
+
+                    {gateReadiness.status === "session_questions_unavailable" && (
+                      <div className="space-y-3">
+                        {canReactivateOriginalGateTasks ? (
+                          <>
+                            <p className="text-sm font-semibold text-amber-900">
+                              The original questions still exist but some are inactive.
+                              Reactivating them keeps the saved question set unchanged.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={reactivateOriginalGateQuestions}
+                              className="rounded-xl bg-[#23412f] px-4 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a2e24]"
+                            >
+                              Reactivate original gate questions
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm font-semibold text-amber-900">
+                              At least one original question record is missing or belongs
+                              to another topic. This session will not substitute a new
+                              question set. Export a full JSON backup before recovering
+                              the original catalog record.
+                            </p>
+                            <a
+                              href="#catalog"
+                              className="inline-flex rounded-xl border border-amber-800 px-4 py-2 font-extrabold text-amber-950 hover:bg-amber-100"
+                            >
+                              Open catalog and backup tools
+                            </a>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 ) : (

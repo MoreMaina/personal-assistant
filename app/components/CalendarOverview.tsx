@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ClassItem } from "@/lib/classes";
+import type { GoogleCalendarEvent } from "@/lib/googleCalendarTypes";
 import {
   cancelClass,
   getCancelledClassIds,
@@ -20,7 +21,7 @@ import {
 } from "@/lib/calendarRecurrence";
 
 type CalendarView = "week" | "month";
-type EntryKind = "class" | "event" | "task";
+type EntryKind = "class" | "event" | "google" | "task";
 
 type CalendarAgendaEntry = {
   id: string;
@@ -34,6 +35,7 @@ type CalendarAgendaEntry = {
   cancelled?: boolean;
   classItem?: ClassItem;
   eventItem?: CalendarEvent;
+  googleEvent?: GoogleCalendarEvent;
   occurrence?: CalendarEventOccurrence;
   task?: CalendarTask;
   taskOccurrence?: CalendarTaskOccurrence;
@@ -41,6 +43,7 @@ type CalendarAgendaEntry = {
 
 type CalendarOverviewProps = {
   classes: ClassItem[];
+  getStudyUnitLabel?: (studyUnitId: string) => string;
   events: CalendarEvent[];
   tasks: CalendarTask[];
   onAddEvent: (date: string) => void;
@@ -153,17 +156,20 @@ function formatTime(entry: CalendarAgendaEntry): string {
     }`;
   }
 
+  if (entry.googleEvent?.allDay) return "All day";
   return entry.kind === "task" ? "Flexible · due date" : "Time not set";
 }
 
 function entryKindLabel(entry: CalendarAgendaEntry): string {
   if (entry.kind === "class") return "Class";
   if (entry.kind === "task") return "Flexible task";
+  if (entry.kind === "google") return "Google Calendar";
   return entry.eventItem?.recurrence ? "Recurring event" : "Event";
 }
 
 export default function CalendarOverview({
   classes,
+  getStudyUnitLabel,
   events,
   tasks,
   onAddEvent,
@@ -184,12 +190,19 @@ export default function CalendarOverview({
   const [visibleKinds, setVisibleKinds] = useState<Record<EntryKind, boolean>>({
     class: true,
     event: true,
+    google: true,
     task: true,
   });
   const [isMobile, setIsMobile] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
   const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
+  const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [googleCalendarLoadState, setGoogleCalendarLoadState] = useState<
+    "loading" | "connected" | "disconnected" | "error"
+  >("loading");
+  const [googleCalendarLoadMessage, setGoogleCalendarLoadMessage] = useState("");
+  const [googleCalendarWarnings, setGoogleCalendarWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     const currentDate = localTodayKey();
@@ -238,6 +251,87 @@ export default function CalendarOverview({
     setCancelledByDate(next);
   }, [visibleDatesKey, dateReady]);
 
+  useEffect(() => {
+    const rangeDates = visibleDatesKey.split("|").filter(Boolean);
+    if (!dateReady || rangeDates.length === 0) return;
+
+    const controller = new AbortController();
+    const start = dateFromKey(rangeDates[0]);
+    start.setHours(0, 0, 0, 0);
+
+    const end = dateFromKey(rangeDates[rangeDates.length - 1]);
+    end.setDate(end.getDate() + 1);
+    end.setHours(0, 0, 0, 0);
+
+    const params = new URLSearchParams({
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+    });
+
+    async function loadGoogleEvents() {
+      setGoogleCalendarLoadState("loading");
+      setGoogleCalendarLoadMessage("");
+      setGoogleCalendarWarnings([]);
+
+      try {
+        const response = await fetch(
+          `/api/google-calendar/events?${params.toString()}`,
+          { cache: "no-store", signal: controller.signal },
+        );
+        const payload: unknown = await response.json().catch(() => ({}));
+        const body = payload && typeof payload === "object"
+          ? payload as Record<string, unknown>
+          : {};
+
+        if (!response.ok) {
+          throw new Error(
+            typeof body.error === "string"
+              ? body.error
+              : "Google Calendar events could not be loaded.",
+          );
+        }
+
+        if (body.connected !== true) {
+          setGoogleEvents([]);
+          setGoogleCalendarLoadState("disconnected");
+          setGoogleCalendarLoadMessage("");
+          return;
+        }
+
+        if (typeof body.error === "string") {
+          throw new Error(body.error);
+        }
+
+        if (!Array.isArray(body.events)) {
+          throw new Error("Google Calendar returned an invalid event list.");
+        }
+
+        setGoogleEvents(body.events as GoogleCalendarEvent[]);
+        setGoogleCalendarWarnings(
+          Array.isArray(body.warnings)
+            ? body.warnings.filter(
+                (warning): warning is string => typeof warning === "string",
+              )
+            : [],
+        );
+        setGoogleCalendarLoadState("connected");
+      } catch (error) {
+        if (controller.signal.aborted) return;
+
+        setGoogleEvents([]);
+        setGoogleCalendarLoadState("error");
+        setGoogleCalendarLoadMessage(
+          error instanceof Error
+            ? error.message
+            : "Google Calendar events could not be loaded.",
+        );
+      }
+    }
+
+    void loadGoogleEvents();
+    return () => controller.abort();
+  }, [dateReady, visibleDatesKey]);
+
   const entries = useMemo(() => {
     const firstDate = visibleDates[0];
     const lastDate = visibleDates[visibleDates.length - 1];
@@ -261,7 +355,9 @@ export default function CalendarOverview({
           title: classItem.name,
           startTime: classItem.start,
           endTime: classItem.end,
-          detail: classItem.type,
+          detail: classItem.studyUnitId && getStudyUnitLabel
+            ? `${classItem.type} · ${getStudyUnitLabel(classItem.studyUnitId)}`
+            : classItem.type,
           cancelled,
           classItem,
         });
@@ -295,6 +391,76 @@ export default function CalendarOverview({
       });
     }
 
+    // Imported Google entries stay separate from locally editable events.
+    // Google all-day event end dates are exclusive.
+    for (const googleEvent of googleEvents) {
+      if (googleEvent.allDay && googleEvent.startDate) {
+        const endDateExclusive =
+          googleEvent.endDate ?? addDays(googleEvent.startDate, 1);
+
+        for (const date of visibleDates) {
+          if (
+            date < googleEvent.startDate ||
+            date >= endDateExclusive
+          ) {
+            continue;
+          }
+
+          result.push({
+            id: `google:${googleEvent.id}:${date}`,
+            kind: "google",
+            date,
+            title: googleEvent.title,
+            detail: [
+              googleEvent.calendarName,
+              googleEvent.location,
+            ].filter(Boolean).join(" · "),
+            notes: googleEvent.description,
+            googleEvent,
+          });
+        }
+        continue;
+      }
+
+      if (!googleEvent.startDateTime) continue;
+      const googleStart = new Date(googleEvent.startDateTime);
+      if (!Number.isFinite(googleStart.getTime())) continue;
+
+      const eventDate = dateKey(googleStart);
+      if (!visibleDates.includes(eventDate)) continue;
+
+      const googleEnd = googleEvent.endDateTime
+        ? new Date(googleEvent.endDateTime)
+        : null;
+
+      const formatGoogleTime = (date: Date) =>
+        date.toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+
+      result.push({
+        id: `google:${googleEvent.id}:${eventDate}`,
+        kind: "google",
+        date: eventDate,
+        title: googleEvent.title,
+        startTime: formatGoogleTime(googleStart),
+        endTime:
+          googleEnd &&
+          Number.isFinite(googleEnd.getTime()) &&
+          dateKey(googleEnd) === eventDate
+            ? formatGoogleTime(googleEnd)
+            : undefined,
+        detail: [
+          googleEvent.calendarName,
+          googleEvent.location,
+        ].filter(Boolean).join(" · "),
+        notes: googleEvent.description,
+        googleEvent,
+      });
+    }
+
     // Expand due dates, keeping each recurring task occurrence independent.
     const taskOccurrences = expandCalendarTasks(
       tasks,
@@ -318,7 +484,8 @@ export default function CalendarOverview({
     const kindOrder: Record<EntryKind, number> = {
       class: 0,
       event: 1,
-      task: 2,
+      google: 2,
+      task: 3,
     };
 
     return result.sort(
@@ -330,7 +497,7 @@ export default function CalendarOverview({
         kindOrder[a.kind] - kindOrder[b.kind] ||
         a.title.localeCompare(b.title),
     );
-  }, [classes, events, tasks, visibleDates, cancelledByDate]);
+  }, [classes, events, googleEvents, tasks, visibleDates, cancelledByDate, getStudyUnitLabel]);
 
   const visibleEntries = entries.filter(
     (entry) => visibleKinds[entry.kind],
@@ -480,7 +647,9 @@ export default function CalendarOverview({
                           ? "bg-[var(--primary-soft)] text-[var(--primary-dark)]"
                           : entry.kind === "event"
                             ? "bg-[#fff0b3] text-[#684000]"
-                            : "bg-[var(--accent-soft)] text-[var(--accent-dark)]",
+                            : entry.kind === "google"
+                              ? "bg-[#eee5ff] text-[#46267d]"
+                              : "bg-[var(--accent-soft)] text-[var(--accent-dark)]",
                     ].join(" ")}
                   >
                     {entry.title}
@@ -494,7 +663,7 @@ export default function CalendarOverview({
               </div>
             ) : (
             <div className="mt-1 flex min-w-0 items-center justify-center gap-1 sm:mt-1.5 sm:flex-col sm:items-start sm:justify-start sm:gap-1">
-              {(["class", "event", "task"] as const).map((kind) => {
+              {(["class", "event", "google", "task"] as const).map((kind) => {
                 const count = dayEntries.filter(
                   (entry) => entry.kind === kind,
                 ).length;
@@ -505,21 +674,27 @@ export default function CalendarOverview({
                     ? "classes"
                     : kind === "event"
                       ? "events"
-                      : "tasks";
+                      : kind === "google"
+                        ? "Google events"
+                        : "tasks";
 
                 const markerColor =
                   kind === "class"
                     ? "bg-[var(--primary-dark)]"
                     : kind === "event"
                       ? "bg-[#946200]"
-                      : "bg-[var(--accent-dark)]";
+                      : kind === "google"
+                        ? "bg-[#6842a6]"
+                        : "bg-[var(--accent-dark)]";
 
                 const countColor =
                   kind === "class"
                     ? "text-[var(--primary-dark)]"
                     : kind === "event"
                       ? "text-[#946200]"
-                      : "text-[var(--accent-dark)]";
+                      : kind === "google"
+                        ? "text-[#6842a6]"
+                        : "text-[var(--accent-dark)]";
 
                 return (
                   <span
@@ -551,7 +726,9 @@ export default function CalendarOverview({
                     ? "border-l-4 border-[var(--primary-dark)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
                     : entry.kind === "event"
                       ? "border-l-4 border-[#946200] bg-[#fff0b3] text-[#684000]"
-                      : "border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] text-[var(--accent-dark)]"
+                      : entry.kind === "google"
+                        ? "border-l-4 border-[#6842a6] bg-[#eee5ff] text-[#46267d]"
+                        : "border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] text-[var(--accent-dark)]"
               }`}
             >
               {entry.startTime ? `${entry.startTime} ` : ""}
@@ -676,6 +853,7 @@ export default function CalendarOverview({
             {([
               { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
               { kind: "event", label: "Events", marker: "bg-[#946200]" },
+              { kind: "google", label: "Google", marker: "bg-[#6842a6]" },
               { kind: "task", label: "Tasks", marker: "bg-[var(--accent-dark)]" },
             ] as const).map(({ kind, label, marker }) => (
               <button
@@ -697,7 +875,9 @@ export default function CalendarOverview({
                       ? "bg-[var(--primary-soft)] text-[var(--primary-dark)] shadow-[0_2px_0_var(--primary-dark)]"
                       : kind === "event"
                         ? "bg-[#fff0b3] text-[#684000] shadow-[0_2px_0_#946200]"
-                        : "bg-[var(--accent-soft)] text-[var(--accent-dark)] shadow-[0_2px_0_var(--accent-dark)]"
+                        : kind === "google"
+                          ? "bg-[#eee5ff] text-[#46267d] shadow-[0_2px_0_#6842a6]"
+                          : "bg-[var(--accent-soft)] text-[var(--accent-dark)] shadow-[0_2px_0_var(--accent-dark)]"
                     : "text-[var(--muted)]",
                 ].join(" ")}
               >
@@ -710,6 +890,25 @@ export default function CalendarOverview({
             ))}
           </div>
         </div>
+
+        {googleCalendarLoadState === "disconnected" && (
+          <p className="text-xs text-[var(--ink-soft)]" aria-live="polite">
+            Want to see events from Google?{" "}
+            <a href="/settings" className="font-bold text-[var(--primary-dark)] underline">
+              Connect Google Calendar in Settings
+            </a>.
+          </p>
+        )}
+        {googleCalendarLoadState === "error" && googleCalendarLoadMessage && (
+          <p className="text-xs text-[var(--accent-dark)]" role="status">
+            Google Calendar: {googleCalendarLoadMessage}
+          </p>
+        )}
+        {googleCalendarWarnings.map((warning) => (
+          <p key={warning} className="text-xs text-[var(--muted)]" role="status">
+            Google Calendar: {warning}
+          </p>
+        ))}
 
         <div className={isMobile && isExpanded ? "flex shrink-0 items-center gap-1 border-b border-[var(--border)] py-1" : "flex items-center gap-2 border-y border-[var(--border)] py-2"}>
           <button
@@ -920,7 +1119,9 @@ export default function CalendarOverview({
                         ? "border-[var(--primary-dark)] bg-[var(--primary-soft)]"
                         : entry.kind === "event"
                           ? "border-[#946200] bg-[#fff8d9]"
-                          : "border-[var(--accent-dark)] bg-[var(--accent-soft)]"
+                          : entry.kind === "google"
+                            ? "border-[#6842a6] bg-[#f5f0ff]"
+                            : "border-[var(--accent-dark)] bg-[var(--accent-soft)]"
                   }`}
                 >
                   <div className="flex flex-row items-start justify-between gap-3">
@@ -948,7 +1149,7 @@ export default function CalendarOverview({
                         )}
                         <h4
                           className={`min-w-0 break-words ${
-                            entry.kind === "event"
+                            entry.kind === "event" || entry.kind === "google"
                               ? "text-sm font-semibold sm:text-base"
                               : "text-base font-bold sm:text-lg"
                           } ${
@@ -969,6 +1170,16 @@ export default function CalendarOverview({
                         <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--ink-soft)]">
                           {entry.notes}
                         </p>
+                      )}
+                      {entry.googleEvent?.htmlLink && (
+                        <a
+                          href={entry.googleEvent.htmlLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-block text-sm font-bold text-[#6842a6] underline"
+                        >
+                          Open in Google Calendar
+                        </a>
                       )}
                       {entry.cancelled && (
                         <p className="mt-2 text-xs font-extrabold text-[var(--muted)]">

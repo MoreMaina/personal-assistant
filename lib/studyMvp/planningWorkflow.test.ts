@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildStudyDailyPlan } from "./dashboard";
+import { appendDailyPlanSnapshot } from "./dailyPlanHistory";
 import { applyDailyPlanDecisions } from "./planningWorkflow";
 import { createEmptyStudyState } from "./storage";
 import { applyReviewAttempt } from "./workflow";
@@ -78,6 +79,42 @@ function fixtureState(deferCount = 0): StudyMvpState {
 }
 
 describe("Study MVP daily planning decision workflow", () => {
+
+  it("saves allocated review work without recording actual completion", () => {
+    const state = fixtureState();
+    const plan = buildStudyDailyPlan(state, "2026-10-23").plan;
+    const reviewPlan = plan.items.find((item) => item.kind === "review");
+
+    expect(plan.can_finalize).toBe(true);
+    expect(reviewPlan).toBeDefined();
+    expect(reviewPlan!.allocated_question_ids.length).toBeGreaterThan(0);
+
+    const applied = applyDailyPlanDecisions(state, plan, {
+      loggedAt: "2026-10-23T10:00:00.000Z",
+    });
+    const saved = appendDailyPlanSnapshot(
+      applied.state,
+      plan,
+      "2026-10-23T10:00:00.000Z",
+    );
+
+    const actualEvidenceTypes = ["attempt", "gate_attempt", "work_session"];
+    const actualEvidence = (studyState: StudyMvpState) =>
+      studyState.task_events.filter((event) =>
+        actualEvidenceTypes.includes(event.event_type),
+      );
+
+    expect(actualEvidence(saved.state)).toEqual(actualEvidence(state));
+    expect(saved.state.work_sessions).toEqual(state.work_sessions);
+    expect(saved.state.review_events).toEqual(state.review_events);
+    expect(saved.state.daily_plan_history).toHaveLength(1);
+    expect(
+      saved.snapshot.plan.items.find((item) => item.kind === "review")
+        ?.allocated_question_ids,
+    ).toEqual(reviewPlan!.allocated_question_ids);
+  });
+
+
   it("records a deferral once and updates the operational due date", () => {
     const state = fixtureState();
     const plan = buildStudyDailyPlan(state, "2026-10-23", {

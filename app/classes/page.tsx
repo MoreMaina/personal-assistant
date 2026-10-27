@@ -12,7 +12,8 @@ import {
 
 import Button from "@/app/components/Button";
 import CalendarOverview from "@/app/components/CalendarOverview";
-import { addClass, getClasses } from "@/lib/classStorage";
+import { addClass, getClasses, updateClassStudyUnit } from "@/lib/classStorage";
+import type { ClassItem } from "@/lib/classes";
 import {
   addCalendarEvent,
   addCalendarTask,
@@ -28,6 +29,7 @@ import {
   type TaskRecurrence,
   type WeekdayName,
 } from "@/lib/calendarItemStorage";
+import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
 const days = [
   "Monday",
@@ -143,6 +145,47 @@ function formatDuration(minutes: number) {
 }
 
 export default function ClassesPage() {
+  const {
+    state: studyState,
+    cloudSyncStatus: studyCloudSyncStatus,
+    syncConflict: studySyncConflict,
+  } = useCloudStudyState();
+
+  const studyLinksReady = Boolean(
+    studyState &&
+    !studySyncConflict &&
+    (studyCloudSyncStatus === "ready" ||
+      studyCloudSyncStatus === "synced"),
+  );
+  const studyUnits = studyState?.units ?? [];
+
+  const studyLinkBlockReason = studySyncConflict
+    ? "Study has a browser/cloud conflict. Resolve it on the Study page before editing class links."
+    : studyCloudSyncStatus === "migration"
+      ? "Study cloud migration needs approval. Open Study and approve migration before creating links."
+      : !studyState || !studyLinksReady
+        ? `Study catalog is ${studyCloudSyncStatus}. Linking is disabled until the catalog is ready.`
+        : studyUnits.length === 0
+          ? "No Study Units are available yet. Create or import Units on the Study page, or leave classes unlinked."
+          : "";
+
+  function getStudyUnitLabel(studyUnitId?: string): string {
+    if (!studyUnitId) return "No Study Unit linked";
+
+    if (!studyState || !studyLinksReady) {
+      return `Saved Study Unit link (${studyUnitId}); catalog not ready`;
+    }
+
+    const unit = studyState.units.find((item) => item.id === studyUnitId);
+    if (!unit) return `Unavailable Study Unit (${studyUnitId})`;
+
+    const course = studyState.courses.find(
+      (item) => item.id === unit.course_id,
+    );
+
+    return `${course?.code ?? course?.name ?? "Course"} · ${unit.code} — ${unit.name}`;
+  }
+
   const [classList, setClassList] = useState(getClasses);
   const [selectedClassOverviewDay, setSelectedClassOverviewDay] = useState("Monday");
   const [showClassForm, setShowClassForm] = useState(false);
@@ -152,7 +195,9 @@ export default function ClassesPage() {
   const [day, setDay] = useState("Monday");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [studyUnitId, setStudyUnitId] = useState("");
   const [classError, setClassError] = useState("");
+  const [studyLinkError, setStudyLinkError] = useState("");
   const [notice, setNotice] = useState("");
 
   // Calendar events and tasks
@@ -424,9 +469,108 @@ export default function ClassesPage() {
     setDay("Monday");
     setStart("");
     setEnd("");
+    setStudyUnitId("");
     setClassError("");
+    setStudyLinkError("");
     setShowClassForm(false);
   }, []);
+
+  function handleClassStudyUnitChange(
+    classId: number,
+    selectedUnitId: string,
+  ) {
+    setStudyLinkError("");
+    setClassError("");
+    setNotice("");
+
+    if (!studyLinksReady || !studyState) {
+      setStudyLinkError(
+        studyLinkBlockReason ||
+          "Study is not ready. No class link was changed.",
+      );
+      return;
+    }
+
+    if (
+      selectedUnitId &&
+      !studyState.units.some((unit) => unit.id === selectedUnitId)
+    ) {
+      setStudyLinkError(
+        "That Study Unit is no longer available. Refresh Study and choose an available Unit.",
+      );
+      return;
+    }
+
+    try {
+      const updatedClasses = updateClassStudyUnit(
+        classId,
+        selectedUnitId || undefined,
+      );
+      setClassList(updatedClasses);
+
+      const updatedClass = updatedClasses.find(
+        (item) => item.id === classId,
+      );
+
+      const selectedUnit = studyState.units.find(
+        (unit) => unit.id === selectedUnitId,
+      );
+
+      setNotice(
+        selectedUnit
+          ? `Linked ${updatedClass?.name ?? "class"} to ${selectedUnit.name}.`
+          : `Removed the Study Unit link from ${updatedClass?.name ?? "class"}.`,
+      );
+    } catch (error) {
+      setStudyLinkError(
+        error instanceof Error
+          ? error.message
+          : "Could not update the class link.",
+      );
+    }
+  }
+
+  function renderStudyUnitLinkSelect(item: ClassItem) {
+    return (
+      <div className="mt-2 min-w-0 space-y-1">
+        {item.studyUnitId && (
+          <p className="break-words text-[10px] font-semibold text-[var(--primary-dark)]">
+            {getStudyUnitLabel(item.studyUnitId)}
+          </p>
+        )}
+        <label className="block">
+          <span className="sr-only">Study Unit link for {item.name}</span>
+          <select
+            aria-label={`Study Unit link for ${item.name}`}
+            value={item.studyUnitId ?? ""}
+            disabled={!studyLinksReady}
+            onChange={(event) =>
+              handleClassStudyUnitChange(item.id, event.target.value)
+            }
+            className="w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-1 py-1 text-[10px] font-semibold"
+          >
+            <option value="">No Study Unit linked</option>
+            {item.studyUnitId &&
+              !studyUnits.some((unit) => unit.id === item.studyUnitId) && (
+                <option value={item.studyUnitId}>
+                  Saved Unit ID — {item.studyUnitId} (unavailable)
+                </option>
+              )}
+            {studyUnits.map((unit) => {
+              const course = studyState?.courses.find(
+                (candidate) => candidate.id === unit.course_id,
+              );
+              return (
+                <option key={unit.id} value={unit.id}>
+                  {course?.code ?? course?.name ?? "Course"} · {unit.code} — {unit.name}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+      </div>
+    );
+  }
 
   function handleClassSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -448,6 +592,21 @@ export default function ClassesPage() {
       return;
     }
 
+    if (
+      studyUnitId &&
+      (
+        !studyLinksReady ||
+        !studyState ||
+        !studyState.units.some((unit) => unit.id === studyUnitId)
+      )
+    ) {
+      setClassError(
+        studyLinkBlockReason ||
+          "The selected Study Unit is no longer available. Choose another Unit or leave the class unlinked.",
+      );
+      return;
+    }
+
     try {
       const createdClass = addClass({
         name: name.trim(),
@@ -455,6 +614,7 @@ export default function ClassesPage() {
         day,
         start,
         end,
+        studyUnitId: studyUnitId || undefined,
       });
 
       setClassList((current) => [...current, createdClass]);
@@ -887,8 +1047,18 @@ export default function ClassesPage() {
         </div>
       </section>
 
+      {studyLinkError && (
+        <p
+          role="alert"
+          className="mb-3 rounded-xl bg-[var(--accent-soft)] p-3 text-sm font-extrabold text-[var(--accent-dark)]"
+        >
+          {studyLinkError}
+        </p>
+      )}
+
       <CalendarOverview
         classes={classList}
+        getStudyUnitLabel={getStudyUnitLabel}
         events={calendarEvents}
         tasks={calendarTasks}
         onAddEvent={(date) => {
@@ -983,6 +1153,52 @@ export default function ClassesPage() {
                 placeholder="e.g. Economics"
                 required
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label htmlFor="calendar-class-study-unit" className="mb-1 block text-sm font-extrabold">
+                Linked Study Unit (optional)
+              </label>
+              <select
+                id="calendar-class-study-unit"
+                value={studyUnitId}
+                disabled={!studyLinksReady}
+                onChange={(event) => {
+                  setStudyUnitId(event.target.value);
+                  setStudyLinkError("");
+                }}
+              >
+                <option value="">No Study Unit linked</option>
+                {studyUnitId &&
+                  !studyUnits.some((unit) => unit.id === studyUnitId) && (
+                    <option value={studyUnitId}>
+                      Saved Unit ID — ${studyUnitId} (unavailable)
+                    </option>
+                  )}
+                {studyUnits.map((unit) => {
+                  const course = studyState?.courses.find(
+                    (item) => item.id === unit.course_id,
+                  );
+                  return (
+                    <option key={unit.id} value={unit.id}>
+                      {course?.code ?? course?.name ?? "Course"} · {unit.code} — {unit.name}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                The link uses the Study Unit ID, so renaming a Unit will not break the relationship.
+              </p>
+              {studyLinkBlockReason && (
+                <p className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">
+                  {studyLinkBlockReason}
+                </p>
+              )}
+              {studyLinkError && (
+                <p role="alert" className="mt-2 rounded-xl bg-[var(--accent-soft)] p-3 text-sm font-extrabold text-[var(--accent-dark)]">
+                  {studyLinkError}
+                </p>
+              )}
             </div>
 
             <div>
@@ -1104,6 +1320,7 @@ export default function ClassesPage() {
                             <p className="mt-1 text-xs font-bold text-[var(--muted)]">
                               {item.type}
                             </p>
+                            {renderStudyUnitLinkSelect(item)}
                           </article>
                         ))}
                         {dayClasses.length === 0 && (
@@ -1179,6 +1396,7 @@ export default function ClassesPage() {
                               <p className="mt-0.5 text-xs text-[var(--muted)]">
                                 {item.type}
                               </p>
+                              {renderStudyUnitLinkSelect(item)}
                             </div>
                           </div>
                         ))}

@@ -457,3 +457,62 @@ describe("default gate task selection", () => {
     ]);
   });
 });
+
+
+describe("weekday mixed practice and Saturday sampler scheduling", () => {
+  it("uses the configured mixed-practice target on Monday-Wednesday and Thursday-Friday", () => {
+    const cases = [
+      { date: "2026-10-26", target: 37 }, // Monday
+      { date: "2026-10-28", target: 37 }, // Wednesday
+      { date: "2026-10-29", target: 22 }, // Thursday
+      { date: "2026-10-30", target: 22 }, // Friday
+    ];
+
+    for (const testCase of cases) {
+      const state = fixtureState();
+      state.settings.mixed_practice_target_mon_wed = 37;
+      state.settings.mixed_practice_target_thu_fri = 22;
+
+      const mixed = buildDailyPlannerTasks(state, testCase.date).tasks.find(
+        (task) => task.kind === "mixed_practice",
+      );
+
+      expect(mixed).toBeDefined();
+      if (mixed?.kind !== "mixed_practice") {
+        throw new Error(`Mixed practice was not built for ${testCase.date}.`);
+      }
+      expect(mixed.targetDurationMin).toBe(testCase.target);
+    }
+  });
+
+  it("schedules Saturday sampler without mixed practice and schedules neither on Sunday", () => {
+    const saturdayTasks = buildDailyPlannerTasks(
+      fixtureState(),
+      "2026-10-24",
+    ).tasks;
+
+    expect(
+      saturdayTasks.some((task) => task.kind === "mixed_practice"),
+    ).toBe(false);
+
+    expect(
+      saturdayTasks.find((task) => task.kind === "sampler"),
+    ).toMatchObject({
+      kind: "sampler",
+      due: true,
+      targetDurationMin: 80,
+      analysisMaxMin: 10,
+    });
+
+    const sundayTasks = buildDailyPlannerTasks(
+      fixtureState(),
+      "2026-10-25",
+    ).tasks;
+
+    expect(
+      sundayTasks.some(
+        (task) => task.kind === "mixed_practice" || task.kind === "sampler",
+      ),
+    ).toBe(false);
+  });
+});

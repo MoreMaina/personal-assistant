@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyGateAttempt, applyReviewAttempt, pauseIncompleteReview, startTopicLearning } from "./workflow";
+import { applyGateAttempt, applyReviewAttempt, pauseIncompleteReview, reactivateGateSessionTasks, startTopicLearning } from "./workflow";
 import { createEmptyStudyState } from "./storage";
 import type { RetrievalTask, ReviewEvent, StudyMvpState, Topic } from "./types";
 
@@ -216,6 +216,56 @@ describe("Study workflow: topic gate", () => {
       ...overrides,
     });
   }
+
+  it("reactivates only the original questions in a saved gate session", () => {
+    const attempted = gateAttempt(gateState(), "task-a").state;
+    const deactivated = {
+      ...attempted,
+      retrieval_tasks: attempted.retrieval_tasks.map((task) =>
+        task.id === "task-b" ? { ...task, active: false } : task,
+      ),
+    };
+
+    const next = reactivateGateSessionTasks(
+      deactivated,
+      "topic-1",
+      "gate-session-1",
+      ["task-a", "task-b", "task-c"],
+    );
+
+    expect(next.retrieval_tasks.find((task) => task.id === "task-b")?.active).toBe(true);
+    expect(deactivated.retrieval_tasks.find((task) => task.id === "task-b")?.active).toBe(false);
+    expect(next.task_events).toEqual(deactivated.task_events);
+    expect(next.review_events).toEqual(deactivated.review_events);
+    expect(next.topics).toEqual(deactivated.topics);
+  });
+
+  it("refuses to reactivate missing, wrong-topic, or unverified gate questions", () => {
+    const attempted = gateAttempt(gateState(), "task-a").state;
+    const selectedIds = ["task-a", "task-b", "task-c"];
+
+    const missingTask = {
+      ...attempted,
+      retrieval_tasks: attempted.retrieval_tasks.filter((task) => task.id !== "task-b"),
+    };
+    expect(() =>
+      reactivateGateSessionTasks(missingTask, "topic-1", "gate-session-1", selectedIds),
+    ).toThrow(/missing original question/i);
+
+    const wrongTopic = {
+      ...attempted,
+      retrieval_tasks: attempted.retrieval_tasks.map((task) =>
+        task.id === "task-b" ? { ...task, topic_id: "another-topic" } : task,
+      ),
+    };
+    expect(() =>
+      reactivateGateSessionTasks(wrongTopic, "topic-1", "gate-session-1", selectedIds),
+    ).toThrow(/belong to this topic/i);
+
+    expect(() =>
+      reactivateGateSessionTasks(attempted, "topic-1", "different-session", selectedIds),
+    ).toThrow(/could not be verified/i);
+  });
 
   it("requires an explicit Start learning transition before a gate attempt", () => {
     let state = gateState();

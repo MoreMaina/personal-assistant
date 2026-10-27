@@ -58,14 +58,6 @@ export function getGateReadiness(
     missingQuestionCount,
   });
 
-  if (topic.status === "not_started") {
-    return result(
-      "not_started",
-      false,
-      "This topic has not been started. Use Start learning before attempting its initial gate.",
-    );
-  }
-
   if (
     topic.gate_passed ||
     topic.gate_result === "passed" ||
@@ -75,6 +67,14 @@ export function getGateReadiness(
       "not_eligible",
       false,
       "This topic has already passed its initial gate and does not need another initial-gate attempt.",
+    );
+  }
+
+  if (topic.status === "not_started") {
+    return result(
+      "not_started",
+      false,
+      "This topic has not been started. Use Start learning before attempting its initial gate.",
     );
   }
 

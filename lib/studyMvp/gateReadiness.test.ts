@@ -60,6 +60,29 @@ describe("Study gate readiness", () => {
     expect(readiness.activeQuestionCount).toBe(3);
   });
 
+  it("prioritizes passed-gate flags when topic status is inconsistent", () => {
+    const passStates: Array<{
+      gate_passed: boolean;
+      gate_result: Topic["gate_result"];
+    }> = [
+      { gate_passed: true, gate_result: "pending" },
+      { gate_passed: false, gate_result: "passed" },
+      { gate_passed: false, gate_result: "skill_based_passed" },
+    ];
+
+    for (const passState of passStates) {
+      const readiness = getGateReadiness(
+        makeTopic({ status: "not_started", ...passState }),
+        threeTasks,
+        TODAY,
+      );
+
+      expect(readiness.status).toBe("not_eligible");
+      expect(readiness.canAttempt).toBe(false);
+      expect(readiness.message).toMatch(/already passed/i);
+    }
+  });
+
   it("reports exactly how many active questions are missing", () => {
     const readiness = getGateReadiness(
       makeTopic(),
