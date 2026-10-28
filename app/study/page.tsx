@@ -24,7 +24,10 @@ import type {
 } from "@/lib/studyMvp/dailyPlanner";
 
 import { applyDailyPlanDecisions } from "@/lib/studyMvp/planningWorkflow";
-import { appendDailyPlanSnapshot } from "@/lib/studyMvp/dailyPlanHistory";
+import {
+  appendDailyPlanSnapshot,
+  completeDailyPlanItem,
+} from "@/lib/studyMvp/dailyPlanHistory"; from "@/lib/studyMvp/dailyPlanHistory";
 import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
 
@@ -254,6 +257,22 @@ export default function StudyMvpPage() {
 
   const latestTodaysPlan =
     todaysPlanSnapshots[todaysPlanSnapshots.length - 1] ?? null;
+
+  const todaysExecution = latestTodaysPlan
+  ? (state?.daily_plan_executions ?? []).find(
+      (execution) =>
+        execution.plan_snapshot_id === latestTodaysPlan.id,
+    ) ?? null
+  : null;
+
+  const completedPlanItemIds = new Set(
+    todaysExecution?.completed_item_ids ?? [],
+  );
+
+  const activePlanItem =
+    latestTodaysPlan?.plan.items.find(
+      (item) => !completedPlanItemIds.has(item.id),
+    ) ?? null;
 
   const planningMode = !latestTodaysPlan || isReplanning;
 
@@ -876,6 +895,41 @@ function movePlanningItemTo(
       );
     }
   }
+
+  function completeActivePlanItem() {
+    if (!state || !latestTodaysPlan || !activePlanItem) {
+      return;
+    }
+
+    try {
+      const next = completeDailyPlanItem(
+        state,
+        latestTodaysPlan.id,
+        activePlanItem.id,
+      );
+
+      const title = getDailyPlanItemPresentation(
+        activePlanItem,
+        state,
+      ).title;
+
+      const saved = persist(
+        next,
+        `"${title}" marked complete in today's study sequence.`,
+      );
+
+      if (saved) {
+        setProblem("");
+      }
+    } catch (error) {
+      setProblem(
+        error instanceof Error
+          ? error.message
+          : "Could not record completion of this activity.",
+      );
+    }
+  }
+
   function beginSelectedTopicLearning() {
     if (!state || !selectedGateTopic) return;
 
@@ -1611,6 +1665,49 @@ function movePlanningItemTo(
                   const forcedControl =
                     item.decision_required ||
                     isForcedPlanningDisposition(choice);
+                  const itemIsComplete = completedPlanItemIds.has(item.id);
+
+                  const itemIsActive =
+                    !itemIsComplete &&
+                    activePlanItem?.id === item.id;
+
+                  const itemIsLocked =
+                    !itemIsComplete && !itemIsActive;
+
+                  if (!planningMode && (itemIsComplete || itemIsLocked)) {
+                    return (
+                      <div
+                        key={item.id}
+                        className={`rounded-2xl border p-4 ${
+                          itemIsComplete
+                            ? "border-emerald-200 bg-emerald-50"
+                            : "border-stone-200 bg-stone-50"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg" aria-hidden="true">
+                            {itemIsComplete ? "✓" : "🔒"}
+                          </span>
+
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-extrabold text-[#23412f]">
+                              {presentation.title}
+                            </h3>
+
+                            <p className="mt-1 text-xs font-semibold text-stone-500">
+                              {presentation.subtitle}
+                            </p>
+
+                            <p className="mt-2 text-xs font-semibold text-stone-600">
+                              {itemIsComplete
+                                ? "Completed in today's sequence."
+                                : "Locked — complete the activity above to unlock this one."}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
 
                   return (
                     <div
@@ -1723,6 +1820,22 @@ function movePlanningItemTo(
                             >
                               Start learning
                             </button>
+                          )}
+                          {!planningMode && itemIsActive && (
+                            <div className="mt-4 border-t border-stone-200 pt-4">
+                              <p className="mb-3 text-sm text-stone-600">
+                                When you have finished this activity, mark it
+                                complete to unlock the next step.
+                              </p>
+
+                              <button
+                                type="button"
+                                onClick={completeActivePlanItem}
+                                className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800"
+                              >
+                                Complete activity &amp; continue
+                              </button>
+                            </div>
                           )}
                       </div>
                       <div className="flex flex-wrap gap-2">
