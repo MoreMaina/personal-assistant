@@ -844,7 +844,38 @@ function movePlanningItemTo(
       event.target.value = "";
     }
   }
+  function beginPlannedTopicLearning(topicId: EntityId) {
+    if (!state) return;
 
+    const topic = state.topics.find(
+      (candidate) => candidate.id === topicId,
+    );
+
+    if (!topic) {
+      setProblem("The planned topic could not be found.");
+      return;
+    }
+
+    try {
+      const next = startTopicLearning(state, topic.id);
+
+      const saved = persist(
+        next,
+        `Started learning "${topic.title}". Continue preparation in the topic workflow; gate eligibility is still checked separately.`,
+      );
+
+      if (saved) {
+        changeGateTopic(topic.id);
+        setProblem("");
+      }
+    } catch (error) {
+      setProblem(
+        error instanceof Error
+          ? error.message
+          : "Could not start the planned topic.",
+      );
+    }
+  }
   function beginSelectedTopicLearning() {
     if (!state || !selectedGateTopic) return;
 
@@ -1628,51 +1659,71 @@ function movePlanningItemTo(
                         </h3>
                         <p className="mt-1 text-xs font-semibold text-stone-500">
                           {presentation.subtitle}
-                          {planningMode && (
-  <div className="mt-3 flex gap-2">
-    <button
-      type="button"
-      draggable={planningMode}
-      onDragStart={(event) => {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData(
-          "text/plain",
-          String(item.id),
-        );
-        setDraggedPlanningItemId(item.id);
-      }}
-      onDragEnd={() => {
-        setDraggedPlanningItemId(null);
-        setDragOverPlanningItemId(null);
-      }}
-      disabled={!planningMode}
-      className="cursor-grab rounded-lg border border-stone-300 px-3 py-2 text-sm font-bold active:cursor-grabbing disabled:opacity-40"
-      aria-label={`Drag ${presentation.title} to reorder`}
-      title="Drag this activity onto another activity to reorder"
-    >
-      ⠿ Grab
-    </button>
-    <button
-      type="button"
-      disabled={index === 0}
-      onClick={() => movePlanningItem(item.id, -1)}
-      className="rounded-lg border border-[#d8ccb8] px-3 py-1.5 text-xs font-bold disabled:opacity-40"
-      aria-label={`Move ${presentation.title} earlier`}
-    >
-      ↑ Move earlier
-    </button>
-    <button
-      type="button"
-      disabled={index === orderedPlanItems.length - 1}
-      onClick={() => movePlanningItem(item.id, 1)}
-      className="rounded-lg border border-[#d8ccb8] px-3 py-1.5 text-xs font-bold disabled:opacity-40"
-      aria-label={`Move ${presentation.title} later`}
-    >
-      ↓ Move later
-    </button>
-  </div>
-)}
                         </p>
+
+                        {planningMode && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              draggable={true}
+                              onDragStart={(event) => {
+                                event.dataTransfer.effectAllowed = "move";
+                                event.dataTransfer.setData(
+                                  "text/plain",
+                                  String(item.id),
+                                );
+                                setDraggedPlanningItemId(item.id);
+                              }}
+                              onDragEnd={() => {
+                                setDraggedPlanningItemId(null);
+                                setDragOverPlanningItemId(null);
+                              }}
+                              className="cursor-grab rounded-lg border border-stone-300 px-3 py-2 text-sm font-bold active:cursor-grabbing"
+                              aria-label={`Drag ${presentation.title} to reorder`}
+                              title="Drag this activity onto another activity to reorder"
+                            >
+                              ⠿ Grab
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => movePlanningItem(item.id, -1)}
+                              className="rounded-lg border border-[#d8ccb8] px-3 py-1.5 text-xs font-bold disabled:opacity-40"
+                              aria-label={`Move ${presentation.title} earlier`}
+                            >
+                              ↑ Move earlier
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={index === orderedPlanItems.length - 1}
+                              onClick={() => movePlanningItem(item.id, 1)}
+                              className="rounded-lg border border-[#d8ccb8] px-3 py-1.5 text-xs font-bold disabled:opacity-40"
+                              aria-label={`Move ${presentation.title} later`}
+                            >
+                              ↓ Move later
+                            </button>
+                          </div>
+                        )}
+
+                        {!planningMode &&
+                          item.kind === "initial_learning" &&
+                          state?.topics.some(
+                            (topic) =>
+                              topic.id === item.subject_id &&
+                              topic.status === "not_started",
+                          ) && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                beginPlannedTopicLearning(item.subject_id)
+                              }
+                              className="mt-3 rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+                            >
+                              Start learning
+                            </button>
+                          )}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <span
