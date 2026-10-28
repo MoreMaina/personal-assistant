@@ -17,7 +17,7 @@ export interface DailyPlanItemPresentation {
 }
 
 const TASK_LABELS: Record<PlanTaskKind, string> = {
-  initial_learning: "Initial learning"
+  initial_learning: "Initial learning",
   topic_consolidation: "Topic consolidation",
   gate: "Initial learning gate",
   review: "Review",
