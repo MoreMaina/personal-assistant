@@ -203,6 +203,11 @@ export default function StudyMvpPage() {
     Record<string, SkipReentryCondition | "">
   >({});
   const [planningOrder, setPlanningOrder] = useState<EntityId[]>([]);
+  const [draggedPlanningItemId, setDraggedPlanningItemId] =
+  useState<EntityId | null>(null);
+
+  const [dragOverPlanningItemId, setDragOverPlanningItemId] =
+  useState<EntityId | null>(null);
   const [isReplanning, setIsReplanning] = useState(false);
 
   const [gateTopicId, setGateTopicId] = useState("");
@@ -384,6 +389,27 @@ function movePlanningItem(
     ids[nextIndex],
     ids[currentIndex],
   ];
+
+  setPlanningOrder(ids);
+}
+function movePlanningItemTo(
+  itemId: EntityId,
+  targetItemId: EntityId,
+) {
+  const ids = orderedPlanItems.map((item) => item.id);
+  const fromIndex = ids.indexOf(itemId);
+  const toIndex = ids.indexOf(targetItemId);
+
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex === toIndex
+  ) {
+    return;
+  }
+
+  const [movedId] = ids.splice(fromIndex, 1);
+  ids.splice(toIndex, 0, movedId);
 
   setPlanningOrder(ids);
 }
@@ -1556,12 +1582,47 @@ function movePlanningItem(
                     isForcedPlanningDisposition(choice);
 
                   return (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl border border-[#e4dac9] bg-white p-4"
-                  >
+                    <div
+                      key={item.id}
+                      className="rounded-2xl border border-[#e4dac9] bg-white p-4"
+                      onDragOver={(event) => {
+                        if (
+                          !planningMode ||
+                          draggedPlanningItemId === null
+                        ) {
+                          return;
+                        }
+
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                        setDragOverPlanningItemId(item.id);
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+
+                        const draggedId =
+                          event.dataTransfer.getData("text/plain");
+
+                        if (planningMode && draggedId) {
+                          movePlanningItemTo(
+                            draggedId as EntityId,
+                            item.id,
+                          );
+                        }
+
+                        setDraggedPlanningItemId(null);
+                        setDragOverPlanningItemId(null);
+                      }}
+                    >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
+                        {planningMode &&
+                          dragOverPlanningItemId === item.id && (
+                            <div
+                              className="mb-3 h-1 rounded-full bg-emerald-500"
+                              aria-hidden="true"
+                            />
+                          )}
                         <h3 className="break-words font-extrabold text-[#23412f]">
                           {presentation.title}
                         </h3>
@@ -1569,6 +1630,28 @@ function movePlanningItem(
                           {presentation.subtitle}
                           {planningMode && (
   <div className="mt-3 flex gap-2">
+    <button
+      type="button"
+      draggable={planningMode}
+      onDragStart={(event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData(
+          "text/plain",
+          String(item.id),
+        );
+        setDraggedPlanningItemId(item.id);
+      }}
+      onDragEnd={() => {
+        setDraggedPlanningItemId(null);
+        setDragOverPlanningItemId(null);
+      }}
+      disabled={!planningMode}
+      className="cursor-grab rounded-lg border border-stone-300 px-3 py-2 text-sm font-bold active:cursor-grabbing disabled:opacity-40"
+      aria-label={`Drag ${presentation.title} to reorder`}
+      title="Drag this activity onto another activity to reorder"
+    >
+      ⠿ Grab
+    </button>
     <button
       type="button"
       disabled={index === 0}
