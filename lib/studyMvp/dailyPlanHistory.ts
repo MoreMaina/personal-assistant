@@ -50,3 +50,63 @@ export function appendDailyPlanSnapshot(
 
   return { state: nextState, snapshot };
 }
+
+export function completeDailyPlanItem(
+  state: StudyMvpState,
+  planSnapshotId: string,
+  itemId: string,
+  updatedAt: string = new Date().toISOString(),
+): StudyMvpState {
+  const snapshot = (state.daily_plan_history ?? []).find(
+    (entry) => entry.id === planSnapshotId,
+  );
+
+  if (!snapshot) {
+    throw new Error("The saved daily plan could not be found.");
+  }
+
+  if (!snapshot.plan.items.some((item) => item.id === itemId)) {
+    throw new Error("This activity does not belong to the saved plan.");
+  }
+
+  const executions = state.daily_plan_executions ?? [];
+  const existing = executions.find(
+    (entry) => entry.plan_snapshot_id === planSnapshotId,
+  );
+
+  if (existing?.completed_item_ids.includes(itemId)) {
+    return state;
+  }
+
+  const updatedExecution = existing
+    ? {
+        ...existing,
+        completed_item_ids: [
+          ...existing.completed_item_ids,
+          itemId,
+        ],
+        updated_at: updatedAt,
+      }
+    : {
+        id: `daily-plan-execution-${planSnapshotId}`,
+        date: snapshot.date,
+        plan_snapshot_id: planSnapshotId,
+        completed_item_ids: [itemId],
+        updated_at: updatedAt,
+      };
+
+  const nextState: StudyMvpState = {
+    ...state,
+    daily_plan_executions: existing
+      ? executions.map((entry) =>
+          entry.plan_snapshot_id === planSnapshotId
+            ? updatedExecution
+            : entry,
+        )
+      : [...executions, updatedExecution],
+  };
+
+  assertStudyStateIntegrity(nextState);
+
+  return nextState;
+}
