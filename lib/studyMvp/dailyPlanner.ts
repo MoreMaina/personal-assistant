@@ -186,6 +186,7 @@ export interface SamplerPlanTask
 }
 
 export type PlanningTask =
+  | InitialLearningPlanTask
   | ConsolidationPlanTask
   | GatePlanTask
   | ReviewPlanTask
