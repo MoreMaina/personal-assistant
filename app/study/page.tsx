@@ -27,7 +27,7 @@ import { applyDailyPlanDecisions } from "@/lib/studyMvp/planningWorkflow";
 import {
   appendDailyPlanSnapshot,
   completeDailyPlanItem,
-} from "@/lib/studyMvp/dailyPlanHistory"; from "@/lib/studyMvp/dailyPlanHistory";
+} from "@/lib/studyMvp/dailyPlanHistory";
 import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
 
