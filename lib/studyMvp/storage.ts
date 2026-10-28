@@ -587,6 +587,86 @@ function assertDailyPlanHistory(value: unknown): void {
   }
 }
 
+function assertDailyPlanExecutions(
+  value: unknown,
+  history: StudyMvpState["daily_plan_history"],
+): void {
+  if (value === undefined) return;
+
+  if (!Array.isArray(value)) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Daily plan executions must be an array when present.",
+    );
+  }
+
+  const snapshotsById = new Map(
+    (history ?? []).map((snapshot) => [
+      snapshot.id,
+      snapshot,
+    ]),
+  );
+  const seenIds = new Set<string>();
+
+  for (const raw of value as unknown[]) {
+    if (!isRecord(raw)) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "A daily plan execution must be an object.",
+      );
+    }
+
+    const {
+      id,
+      date,
+      plan_snapshot_id: planSnapshotId,
+      completed_item_ids: completedItemIds,
+      updated_at: updatedAt,
+    } = raw;
+
+    if (
+      !isNonEmptyString(id) ||
+      seenIds.has(id) ||
+      !isDateOnly(date) ||
+      !isNonEmptyString(planSnapshotId) ||
+      !isStringArray(completedItemIds) ||
+      !hasTimezone(updatedAt)
+    ) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "A daily plan execution has invalid identity, date, completion IDs, or timestamp.",
+      );
+    }
+
+    const snapshot = snapshotsById.get(planSnapshotId);
+
+    if (!snapshot || snapshot.date !== date) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "A daily plan execution must reference a saved plan for the same date.",
+      );
+    }
+
+    const snapshotItemIds = new Set(
+      snapshot.plan.items.map((item) => item.id),
+    );
+
+    if (
+      new Set(completedItemIds).size !== completedItemIds.length ||
+      completedItemIds.some(
+        (itemId) => !snapshotItemIds.has(itemId),
+      )
+    ) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "Completed activity IDs must be unique and belong to the saved plan.",
+      );
+    }
+
+    seenIds.add(id);
+  }
+}
+
 export function assertStudyStateIntegrity(
   state: StudyMvpState,
 ): void {
@@ -599,6 +679,14 @@ export function assertStudyStateIntegrity(
 
   assertDailyPlanHistory(state.daily_plan_history);
   const dailyPlanHistory = state.daily_plan_history ?? [];
+
+  assertDailyPlanExecutions(
+    state.daily_plan_executions,
+    dailyPlanHistory,
+  );
+
+  const dailyPlanExecutions =
+    state.daily_plan_executions ?? [];
 
   const collections: Array<[
     string,
@@ -616,6 +704,7 @@ export function assertStudyStateIntegrity(
     ["exams", state.exams],
     ["settings_change_history", state.settings_change_history],
     ["daily_plan_history", dailyPlanHistory],
+    ["daily_plan_executions", dailyPlanExecutions],
   ];
 
   for (const [name, values] of collections) {
@@ -758,6 +847,13 @@ function hasRequiredStateShape(
     return false;
   }
 
+  if (
+    value.daily_plan_executions !== undefined &&
+    !Array.isArray(value.daily_plan_executions)
+  ) {
+    return false;
+  }
+
   if (!isRecord(value.settings)) {
     return false;
   }
@@ -892,6 +988,7 @@ export function createEmptyStudyState(
     weekly_metrics: [],
     settings_change_history: [],
     daily_plan_history: [],
+    daily_plan_executions: [],
   };
 }
 

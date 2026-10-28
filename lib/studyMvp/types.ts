@@ -415,6 +415,14 @@ export interface SavedDailyPlanSnapshot {
   plan: DailyPlan;
 }
 
+export interface DailyPlanExecution {
+  id: EntityId;
+  date: ISODate;
+  plan_snapshot_id: EntityId;
+  completed_item_ids: EntityId[];
+  updated_at: ISODateTime;
+}
+
 export interface StudyMvpState {
   schema_version: 1;
 
@@ -444,4 +452,5 @@ export interface StudyMvpState {
    * Saved snapshots are append-only; earlier versions are retained.
    */
   daily_plan_history?: SavedDailyPlanSnapshot[];
+  daily_plan_executions?: DailyPlanExecution[];
 }
