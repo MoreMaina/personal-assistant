@@ -120,6 +120,7 @@ export type TaskEventSubjectType =
   | "assignment"
   | "corrective_task"
   | "topic_consolidation"
+  | "initial_learning"
   | "mixed_practice"
   | "sampler";
 

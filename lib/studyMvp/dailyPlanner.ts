@@ -30,6 +30,7 @@ import { addCalendarDays } from "./reviewEngine";
  */
 
 export type PlanTaskKind =
+  | "initial_learning"
   | "topic_consolidation"
   | "gate"
   | "review"
@@ -92,6 +93,14 @@ export interface ConsolidationPlanTask
    * Gate attempts and corrective work must never be included.
    */
   loggedConsolidationMinutes: number;
+}
+
+export interface InitialLearningPlanTask
+  extends PlanningTaskBase {
+  kind: "initial_learning";
+  topicId: EntityId;
+  plannedDate: ISODate;
+  estimatedDurationMin: number;
 }
 
 export interface GatePlanTask extends PlanningTaskBase {
@@ -453,6 +462,15 @@ function estimateTaskMinutes(
   let estimate: number;
 
   switch (task.kind) {
+    case "initial_learning": {
+      assertNonNegativeInteger(
+        task.estimatedDurationMin,
+        "Initial learning estimate",
+      );
+      estimate = task.estimatedDurationMin;
+      break;
+    }
+
     case "topic_consolidation": {
       assertNonNegativeInteger(
         task.consolidationEstimatedDurationMin,
@@ -571,6 +589,12 @@ function isTaskConsidered(
   }
 
   switch (task.kind) {
+    case "initial_learning":
+    return (
+      task.plannedDate <= date &&
+      estimateTaskMinutes(task, date, settings) > 0
+    );
+
     case "topic_consolidation":
       return (
         task.inLearning &&
@@ -624,6 +648,8 @@ function subjectTypeForTask(
   task: PlanningTask,
 ): TaskEventSubjectType {
   switch (task.kind) {
+    case "initial_learning":
+      return "initial_learning";
     case "topic_consolidation":
       return "topic_consolidation";
     case "gate":
@@ -645,6 +671,8 @@ function subjectTypeForTask(
 
 function taskDueDate(task: PlanningTask): ISODate | null {
   switch (task.kind) {
+    case "initial_learning":
+      return task.plannedDate;
     case "topic_consolidation":
       return task.plannedDate;
     case "gate":
@@ -776,7 +804,8 @@ function createMutableItem(
       task.kind === "review"
         ? task.reviewEventId
         : task.kind === "topic_consolidation" ||
-            task.kind === "gate"
+            task.kind === "gate" ||
+            task.kind === "initial_learning"
           ? task.topicId
           : task.id
     ),
@@ -1513,6 +1542,26 @@ export function generateDailyPlan(
   }
 
   const initialMixedReserve = mixedReserve.value;
+    /*
+   * Allocate initial learning after protecting review
+   * and mixed-practice reserves, before assignments.
+   */
+  const initialLearningTasks = sorted(
+    activeItems.filter(
+      (item) => item.kind === "initial_learning",
+    ),
+  );
+
+  for (const item of initialLearningTasks) {
+    consumeSimpleAllocation(
+      item,
+      item.estimated_minutes,
+      allocatedTotal,
+      settings.daily_budget_min,
+      reviewReserve.value,
+      mixedReserve.value,
+    );
+  }
 
   /*
    * 4. Allocate initial assignment sessions.
