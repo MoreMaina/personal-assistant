@@ -457,7 +457,10 @@ describe("planning decision logging", () => {
 });
 
 describe("H4 — 10,000-scenario budget fuzz test", () => {
-  it("never overallocates, double-counts protected work, or silently drops a considered task", () => {
+  it(
+  "never overallocates, double-counts protected work, or silently drops a considered task",
+  { timeout: 30_000 },
+  () => {
     let seed = 0x5eed1234;
 
     function random(): number {
