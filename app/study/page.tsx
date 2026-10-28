@@ -202,6 +202,7 @@ export default function StudyMvpPage() {
   const [planningReentries, setPlanningReentries] = useState<
     Record<string, SkipReentryCondition | "">
   >({});
+  const [planningOrder, setPlanningOrder] = useState<EntityId[]>([]);
   const [isReplanning, setIsReplanning] = useState(false);
 
   const [gateTopicId, setGateTopicId] = useState("");
@@ -341,7 +342,51 @@ export default function StudyMvpPage() {
   const plan = planningMode
     ? planBuild?.plan
     : latestTodaysPlan?.plan;
+  const orderedPlanItems = useMemo(() => {
+  if (!plan) return [];
 
+  const itemsById = new Map(
+    plan.items.map((item) => [item.id, item]),
+  );
+  const orderedIds = planningOrder.filter(
+    (id) => itemsById.has(id),
+  );
+  const orderedItems = orderedIds.map(
+    (id) => itemsById.get(id)!,
+  );
+  const includedIds = new Set(orderedIds);
+
+  return [
+    ...orderedItems,
+    ...plan.items.filter(
+      (item) => !includedIds.has(item.id),
+    ),
+  ];
+}, [plan, planningOrder]);
+
+function movePlanningItem(
+  itemId: EntityId,
+  direction: -1 | 1,
+) {
+  const ids = orderedPlanItems.map((item) => item.id);
+  const currentIndex = ids.indexOf(itemId);
+  const nextIndex = currentIndex + direction;
+
+  if (
+    currentIndex < 0 ||
+    nextIndex < 0 ||
+    nextIndex >= ids.length
+  ) {
+    return;
+  }
+
+  [ids[currentIndex], ids[nextIndex]] = [
+    ids[nextIndex],
+    ids[currentIndex],
+  ];
+
+  setPlanningOrder(ids);
+}
   const hasIncompletePlanningChoice = Boolean(
     plan?.items.some((item) => {
       const choice = planningChoices[item.id] ?? "";
@@ -377,10 +422,20 @@ export default function StudyMvpPage() {
 
     try {
       const loggedAt = new Date().toISOString();
-      const result = applyDailyPlanDecisions(state, plan, { loggedAt });
+      const orderedPlan = {
+        ...plan,
+        items: orderedPlanItems,
+      };
+
+      const result = applyDailyPlanDecisions(
+        state,
+        orderedPlan,
+        { loggedAt },
+      );
+
       const appended = appendDailyPlanSnapshot(
         result.state,
-        plan,
+        orderedPlan,
         loggedAt,
       );
 
@@ -1493,7 +1548,7 @@ export default function StudyMvpPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {plan.items.map((item) => {
+                {orderedPlanItems.map((item, index) => {
                   const presentation = getDailyPlanItemPresentation(item, state);
                   const choice = planningChoices[item.id] ?? "";
                   const forcedControl =
@@ -1512,6 +1567,28 @@ export default function StudyMvpPage() {
                         </h3>
                         <p className="mt-1 text-xs font-semibold text-stone-500">
                           {presentation.subtitle}
+                          {planningMode && (
+  <div className="mt-3 flex gap-2">
+    <button
+      type="button"
+      disabled={index === 0}
+      onClick={() => movePlanningItem(item.id, -1)}
+      className="rounded-lg border border-[#d8ccb8] px-3 py-1.5 text-xs font-bold disabled:opacity-40"
+      aria-label={`Move ${presentation.title} earlier`}
+    >
+      ↑ Move earlier
+    </button>
+    <button
+      type="button"
+      disabled={index === orderedPlanItems.length - 1}
+      onClick={() => movePlanningItem(item.id, 1)}
+      className="rounded-lg border border-[#d8ccb8] px-3 py-1.5 text-xs font-bold disabled:opacity-40"
+      aria-label={`Move ${presentation.title} later`}
+    >
+      ↓ Move later
+    </button>
+  </div>
+)}
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -1717,6 +1794,7 @@ export default function StudyMvpPage() {
                         setPlanningReasons({});
                         setPlanningReentries({});
                         setIsReplanning(false);
+                        setPlanningOrder([]);
                       }}
                       className="rounded-xl border border-[#d8ccb8] bg-white px-5 py-3 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
                     >
