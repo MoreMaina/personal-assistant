@@ -2687,6 +2687,11 @@ function openCatalogTools() {
   useState<EntityId | null>(null);
   const [isReplanning, setIsReplanning] = useState(false);
 
+  const [
+  includeAdditionalInitialLearning,
+  setIncludeAdditionalInitialLearning,
+] = useState(false);
+
   const [gateTopicId, setGateTopicId] = useState("");
   const [gateSelectedTaskIds, setGateSelectedTaskIds] = useState<
     EntityId[]
@@ -2846,9 +2851,10 @@ const hasRecordedTodaysWork =
     try {
       return {
         build: buildStudyDailyPlan(state, today, {
-          explicitDecisions,
-          forcedDecisions,
-        }),
+  explicitDecisions,
+  forcedDecisions,
+  includeAdditionalInitialLearning,
+}),
         error: "",
       };
     } catch (error) {
@@ -2868,6 +2874,7 @@ const hasRecordedTodaysWork =
     planningChoices,
     planningReasons,
     planningReentries,
+    includeAdditionalInitialLearning,
   ]);
 
   const planBuild = planResult.build;
@@ -4204,6 +4211,29 @@ function movePlanningItemTo(
           </div>
         </div>
 
+                {planningMode && (
+          <label className="mb-5 flex cursor-pointer items-start gap-3 rounded-xl border border-[#d8ccb8] bg-white p-4">
+            <input
+              type="checkbox"
+              checked={includeAdditionalInitialLearning}
+              onChange={(event) =>
+                setIncludeAdditionalInitialLearning(event.target.checked)
+              }
+              className="mt-1 h-4 w-4 accent-[#23412f]"
+            />
+            <span>
+              <span className="block text-sm font-extrabold text-[#23412f]">
+                Consider additional new topics
+              </span>
+              <span className="mt-1 block text-xs font-semibold leading-5 text-stone-600">
+                Add more eligible topics when there is spare study time.
+                Prerequisites, topic priorities, review reserves, and the
+                daily time budget still apply.
+              </span>
+            </span>
+          </label>
+        )}
+        
         {planResult.error && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-900">
             {planResult.error}
