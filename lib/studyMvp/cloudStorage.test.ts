@@ -4,6 +4,9 @@ import type { StudyMvpState } from "./types";
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   assertStudyStateIntegrity: vi.fn(),
+  normalizeLegacyDailyPlanExecutions: vi.fn(
+    (state: unknown) => state,
+  ),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -12,6 +15,8 @@ vi.mock("@/lib/supabase/client", () => ({
 
 vi.mock("./storage", () => ({
   assertStudyStateIntegrity: mocks.assertStudyStateIntegrity,
+  normalizeLegacyDailyPlanExecutions:
+    mocks.normalizeLegacyDailyPlanExecutions,
 }));
 
 import {
@@ -27,6 +32,10 @@ const sampleState = {
 beforeEach(() => {
   mocks.createClient.mockReset();
   mocks.assertStudyStateIntegrity.mockReset();
+  mocks.normalizeLegacyDailyPlanExecutions.mockReset();
+mocks.normalizeLegacyDailyPlanExecutions.mockImplementation(
+  (state: unknown) => state,
+);
 });
 
 describe("Study MVP cloud storage adapter", () => {
