@@ -588,6 +588,131 @@ function assertDailyPlanHistory(value: unknown): void {
   }
 }
 
+function legacySectionId(
+  kind: unknown,
+): StudySessionSectionId | null {
+  switch (kind) {
+    case "initial_learning":
+      return "initial_learning";
+    case "gate":
+      return "topic_gate";
+    case "review":
+      return "reviews";
+    case "assignment":
+      return "assignments";
+    case "topic_consolidation":
+      return "topic_consolidation";
+    case "corrective":
+      return "corrective";
+    case "recovery":
+      return "recovery";
+    case "mixed_practice":
+      return "mixed_practice";
+    case "sampler":
+      return "sampler";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Migrate the older item-level completion format.
+ * Keep the original item IDs; mark a section complete only when all
+ * its saved plan items were completed.
+ */
+export function normalizeLegacyDailyPlanExecutions(
+  state: StudyMvpState,
+): StudyMvpState {
+  const executions = state.daily_plan_executions;
+
+  if (!Array.isArray(executions) || executions.length === 0) {
+    return state;
+  }
+
+  const snapshotsById = new Map<string, Record<string, unknown>>();
+
+  for (const snapshot of state.daily_plan_history ?? []) {
+    if (isRecord(snapshot) && isNonEmptyString(snapshot.id)) {
+      snapshotsById.set(snapshot.id, snapshot);
+    }
+  }
+
+  let changed = false;
+
+  const normalized = (executions as unknown[]).map((raw) => {
+    if (
+      !isRecord(raw) ||
+      Array.isArray(raw.completed_section_ids) ||
+      !Array.isArray(raw.completed_item_ids) ||
+      !raw.completed_item_ids.every(
+        (id) => typeof id === "string",
+      ) ||
+      !isNonEmptyString(raw.plan_snapshot_id)
+    ) {
+      return raw;
+    }
+
+    const snapshot = snapshotsById.get(raw.plan_snapshot_id);
+
+    if (
+      !snapshot ||
+      !isRecord(snapshot.plan) ||
+      !Array.isArray(snapshot.plan.items)
+    ) {
+      return raw;
+    }
+
+    const itemsBySection = new Map<StudySessionSectionId, string[]>();
+
+    for (const item of snapshot.plan.items) {
+      if (!isRecord(item) || !isNonEmptyString(item.id)) {
+        return raw;
+      }
+
+      const sectionId = legacySectionId(item.kind);
+
+      if (!sectionId) {
+        return raw;
+      }
+
+      const ids = itemsBySection.get(sectionId) ?? [];
+      ids.push(item.id);
+      itemsBySection.set(sectionId, ids);
+    }
+
+    const completedItemIds = new Set(
+      raw.completed_item_ids as string[],
+    );
+
+    const completedSectionIds = Array.from(
+      itemsBySection.entries(),
+    )
+      .filter(([, ids]) =>
+        ids.length > 0 &&
+        ids.every((id) => completedItemIds.has(id)),
+      )
+      .map(([sectionId]) => sectionId);
+
+    changed = true;
+
+    return {
+      ...raw,
+      completed_section_ids: completedSectionIds,
+    };
+  });
+
+  if (!changed) {
+    return state;
+  }
+
+  return {
+    ...state,
+    daily_plan_executions: normalized as NonNullable<
+      StudyMvpState["daily_plan_executions"]
+    >,
+  };
+}
+
 function assertDailyPlanExecutions(
   value: unknown,
   history: StudyMvpState["daily_plan_history"],
@@ -922,8 +1047,11 @@ function parseState(
     );
   }
 
+    let normalizedState: StudyMvpState;
+
   try {
-    assertStudyStateIntegrity(parsed);
+    normalizedState = normalizeLegacyDailyPlanExecutions(parsed);
+    assertStudyStateIntegrity(normalizedState);
   } catch (error) {
     preserveInvalidValue(rawValue, "invalid-shape");
 
@@ -935,7 +1063,7 @@ function parseState(
     );
   }
 
-  return parsed;
+  return normalizedState;
 }
 
 export function createDefaultSettings(
