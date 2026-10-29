@@ -1465,14 +1465,15 @@ export function recordWorkSession(
   }
 
   if (
-    event.subject_type !== (
-      session.subject_type === "assignment"
-        ? "assignment"
-        : session.subject_type === "corrective"
-          ? "corrective_task"
-          : "topic_consolidation"
-    )
-  ) {
+        event.subject_type !== (
+      session.subject_type === "initial_learning"
+        ? "initial_learning"
+        : session.subject_type === "assignment"
+          ? "assignment"
+          : session.subject_type === "corrective"
+            ? "corrective_task"
+            : "topic_consolidation"
+    ) {
     throw new StudyStorageError(
       "invalid-event",
       "WorkSession subject type does not match its TaskEvent.",
