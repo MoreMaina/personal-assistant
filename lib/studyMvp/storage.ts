@@ -1470,8 +1470,11 @@ export function recordWorkSession(
         ? "initial_learning"
         : session.subject_type === "assignment"
           ? "assignment"
-                  : session.subject_type === "corrective"
-          ? "corrective_task"
+                  : (
+              session.subject_type === "corrective" ||
+              session.subject_type === "recovery"
+            )
+            ? "corrective_task"
           : session.subject_type === "mixed_practice"
             ? "mixed_practice"
             : session.subject_type === "sampler"
