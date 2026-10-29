@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
   type FormEvent,
@@ -2638,6 +2639,28 @@ export default function StudyMvpPage() {
     downloadConflictCopy,
   } = useCloudStudyState();
 
+  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+
+useEffect(() => {
+  if (!isCatalogOpen) return;
+
+  document.getElementById("catalog")?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}, [isCatalogOpen]);
+
+function openCatalogTools() {
+  setIsCatalogOpen(true);
+
+  if (isCatalogOpen) {
+    document.getElementById("catalog")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+}
+  
   const [importText, setImportText] = useState("");
   const [importDiagnostics, setImportDiagnostics] = useState<
     TopicImportDiagnostic[]
@@ -3995,12 +4018,13 @@ function movePlanningItemTo(
           >
             View daily plan
           </a>
-          <a
-            href="#catalog"
-            className="rounded-xl border border-white/30 px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-white/10"
-          >
-            Import topic catalog
-          </a>
+          <button
+  type="button"
+  onClick={openCatalogTools}
+  className="rounded-xl border border-white/30 px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-white/10"
+>
+  Import topic catalog
+</button>
         </div>
       </header>
 
@@ -4676,6 +4700,7 @@ function movePlanningItemTo(
             persist={persist}
           />
         )}
+      {isCatalogOpen && (
       <section
         id="catalog"
         className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
@@ -4833,6 +4858,7 @@ function movePlanningItemTo(
           </div>
         )}
       </section>
+      )}
 
       {state &&
   latestTodaysPlan &&
@@ -4930,6 +4956,7 @@ function movePlanningItemTo(
                         <a
                           href="#catalog"
                           className="inline-flex rounded-xl border border-amber-800 px-4 py-2 font-extrabold text-amber-950 hover:bg-amber-100"
+                          onClick={openCatalogTools}
                         >
                           Open catalog import
                         </a>
@@ -4963,6 +4990,7 @@ function movePlanningItemTo(
                             <a
                               href="#catalog"
                               className="inline-flex rounded-xl border border-amber-800 px-4 py-2 font-extrabold text-amber-950 hover:bg-amber-100"
+                              onClick={openCatalogTools}
                             >
                               Open catalog and backup tools
                             </a>
