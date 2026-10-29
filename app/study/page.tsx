@@ -532,6 +532,361 @@ function InitialLearningSection({
   );
 }
 
+function TopicConsolidationSection({
+  state,
+  snapshot,
+  today,
+  persist,
+}: {
+  state: StudyMvpState;
+  snapshot: SavedDailyPlanSnapshot;
+  today: string;
+  persist: (
+    next: StudyMvpState,
+    successMessage?: string,
+  ) => boolean;
+}) {
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [actualDurationMin, setActualDurationMin] = useState(5);
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+
+  const items = snapshot.plan.items.filter(
+    (item) => item.kind === "topic_consolidation",
+  );
+
+  const selectedItem =
+    items.find((item) => item.id === selectedItemId) ??
+    items[0] ??
+    null;
+
+  function topicFor(
+    item: (typeof items)[number],
+  ): Topic | null {
+    return (
+      state.topics.find(
+        (topic) => topic.id === item.subject_id,
+      ) ?? null
+    );
+  }
+
+  function loggedMinutesFor(topicId: EntityId): number {
+    return state.work_sessions
+      .filter(
+        (session) =>
+          session.subject_type === "topic_consolidation" &&
+          session.subject_id === topicId &&
+          localDateOfTimestamp(
+            session.logged_at,
+            state.settings.timezone,
+          ) === today,
+      )
+      .reduce(
+        (total, session) => total + session.actual_duration_min,
+        0,
+      );
+  }
+
+  const allAllocationsRecorded =
+    items.length > 0 &&
+    items.every((item) => {
+      const topic = topicFor(item);
+
+      return Boolean(
+        topic &&
+          item.allocated_minutes > 0 &&
+          loggedMinutesFor(topic.id) >= item.allocated_minutes,
+      );
+    });
+
+  function saveSession(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    if (!selectedItem) {
+      setError("No topic-consolidation item is available in this plan.");
+      return;
+    }
+
+    const topic = topicFor(selectedItem);
+
+    if (!topic) {
+      setError("The planned topic could not be found. Review today's plan.");
+      return;
+    }
+
+    if (topic.status !== "in_learning") {
+      setError(
+        "This topic is no longer in the learning state. Review today's plan before recording work.",
+      );
+      return;
+    }
+
+    if (selectedItem.allocated_minutes <= 0) {
+      setError(
+        "This item has no positive time allocation. Replan today's worklist before continuing.",
+      );
+      return;
+    }
+
+    if (
+      !Number.isSafeInteger(actualDurationMin) ||
+      actualDurationMin < 1 ||
+      actualDurationMin > 600
+    ) {
+      setError("Enter an actual duration between 1 and 600 whole minutes.");
+      return;
+    }
+
+    if (
+      loggedMinutesFor(topic.id) >= selectedItem.allocated_minutes
+    ) {
+      setError(
+        "The allocated consolidation time is already recorded for this topic today.",
+      );
+      return;
+    }
+
+    const loggedAt = new Date().toISOString();
+    const sessionId = newId("work-session");
+    const trimmedNotes = notes.trim();
+
+    const session: WorkSession = {
+      id: sessionId,
+      subject_type: "topic_consolidation",
+      subject_id: topic.id,
+      planned_duration_min: selectedItem.allocated_minutes,
+      actual_duration_min: actualDurationMin,
+      logged_at: loggedAt,
+      notes: trimmedNotes,
+    };
+
+    const taskEvent: TaskEvent = {
+      id: newId("event"),
+      logged_at: loggedAt,
+      event_type: "work_session",
+      subject_type: "topic_consolidation",
+      subject_id: topic.id,
+      review_event_id: null,
+      retrieval_task_id: null,
+      gate_session_id: null,
+      gate_selected_task_ids_snapshot: null,
+      skill_demonstrated_without_hints: null,
+      work_session_id: sessionId,
+      related_event_id: null,
+      estimated_duration_min_at_event: selectedItem.estimated_minutes,
+      task_type_at_event: null,
+      priority_at_event: selectedItem.priority,
+      intended_due_date_at_event: selectedItem.intended_due_date,
+      current_due_date_at_event: selectedItem.current_due_date,
+      actual_duration_min: actualDurationMin,
+      result: null,
+      yellow_gap_severity: null,
+      disposition: null,
+      reason: trimmedNotes || null,
+      critical_error_flag: null,
+      defer_count_at_event: selectedItem.defer_count,
+      re_entry_condition: null,
+      old_priority: null,
+      new_priority: null,
+    };
+
+    const nextState: StudyMvpState = {
+      ...state,
+      work_sessions: [...state.work_sessions, session],
+      task_events: [...state.task_events, taskEvent],
+    };
+
+    if (
+      persist(
+        nextState,
+        `Recorded ${actualDurationMin} minutes of topic consolidation for "${topic.title}".`,
+      )
+    ) {
+      setNotes("");
+    }
+  }
+
+  function finishSection() {
+    if (!allAllocationsRecorded) return;
+
+    setError("");
+
+    try {
+      const nextState = completeDailyPlanSection(
+        state,
+        snapshot.id,
+        "topic_consolidation",
+        new Date().toISOString(),
+      );
+
+      persist(
+        nextState,
+        "Topic-consolidation section completed. The next planned section is now eligible.",
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not complete the topic-consolidation section.",
+      );
+    }
+  }
+
+  const selectedTopic = selectedItem
+    ? topicFor(selectedItem)
+    : null;
+
+  const selectedLoggedMinutes = selectedTopic
+    ? loggedMinutesFor(selectedTopic.id)
+    : 0;
+
+  const selectedAllocationReached = Boolean(
+    selectedItem &&
+      selectedLoggedMinutes >= selectedItem.allocated_minutes,
+  );
+
+  return (
+    <section
+      id="topic-consolidation"
+      className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
+    >
+      <SectionHeading
+        eyebrow="Study activity"
+        title="Topic consolidation"
+        detail="Record the actual work you complete for each planned topic. Only consolidation sessions recorded today count toward today's allocation; gate attempts and corrective work do not count."
+      />
+
+      <div className="mb-5 rounded-2xl bg-white p-4">
+        <h3 className="font-extrabold text-[#23412f]">
+          Today's consolidation allocations
+        </h3>
+        <ul className="mt-3 space-y-2">
+          {items.map((item) => {
+            const topic = topicFor(item);
+            const logged = topic ? loggedMinutesFor(topic.id) : 0;
+
+            return (
+              <li
+                key={item.id}
+                className="flex flex-wrap justify-between gap-2 rounded-xl bg-[#efe4d1] p-3 text-sm font-semibold"
+              >
+                <span>{topic?.title ?? "Missing planned topic"}</span>
+                <span>
+                  {logged} / {item.allocated_minutes} min recorded
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
+          No topic-consolidation items are available in this saved plan.
+        </p>
+      ) : (
+        <>
+          <form onSubmit={saveSession} className="space-y-4">
+            <label className="block">
+              <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                Topic to work on
+              </span>
+              <select
+                value={selectedItem?.id ?? ""}
+                onChange={(event) => setSelectedItemId(event.target.value)}
+                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+              >
+                {items.map((item) => {
+                  const topic = topicFor(item);
+
+                  return (
+                    <option key={item.id} value={item.id}>
+                      {topic?.title ?? item.subject_id} · {item.allocated_minutes} min
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+
+            {selectedTopic?.status === "in_learning" ? (
+              <>
+                <label className="block">
+                  <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                    Actual study duration (minutes)
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={600}
+                    step={1}
+                    value={actualDurationMin}
+                    onChange={(event) =>
+                      setActualDurationMin(Number(event.target.value))
+                    }
+                    disabled={selectedAllocationReached}
+                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold disabled:opacity-50"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                    What did you work on? (optional)
+                  </span>
+                  <textarea
+                    rows={3}
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    disabled={selectedAllocationReached}
+                    placeholder="Record the material reviewed or practice completed."
+                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={selectedAllocationReached}
+                  className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Record actual consolidation session
+                </button>
+              </>
+            ) : (
+              <p className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+                This topic is unavailable for consolidation in its current state. Review today's plan before continuing.
+              </p>
+            )}
+          </form>
+
+          <div className="mt-5 rounded-2xl border border-[#d8ccb8] p-4">
+            <p className="text-sm font-semibold text-stone-700">
+              {allAllocationsRecorded
+                ? "The actual consolidation time allocated to every planned topic has been recorded today."
+                : "Record the outstanding actual consolidation time for every planned topic before completing this section."}
+            </p>
+            <button
+              type="button"
+              onClick={finishSection}
+              disabled={!allAllocationsRecorded}
+              className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
+            >
+              Complete topic-consolidation section
+            </button>
+          </div>
+        </>
+      )}
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-800"
+        >
+          {error}
+        </p>
+      )}
+    </section>
+  );
+}
 
 export default function StudyMvpPage() {
   const {
@@ -2404,6 +2759,17 @@ function movePlanningItemTo(
             today={today}
             persist={persist}
             onStartLearning={beginPlannedTopicLearning}
+          />
+        )}
+            {state &&
+        latestTodaysPlan &&
+        !planningMode &&
+        activeSectionId === "topic_consolidation" && (
+          <TopicConsolidationSection
+            state={state}
+            snapshot={latestTodaysPlan}
+            today={today}
+            persist={persist}
           />
         )}
 
