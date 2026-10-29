@@ -2743,16 +2743,18 @@ function openCatalogTools() {
     todaysExecution?.completed_section_ids ?? [],
   );
 
-  const hasRecordedTodaysWork =
+  const studyTimezone = state?.settings.timezone ?? "UTC";
+
+const hasRecordedTodaysWork =
   completedSectionIds.size > 0 ||
-  state.work_sessions.some(
+  (state?.work_sessions ?? []).some(
     (session) =>
       localDateOfTimestamp(
         session.logged_at,
-        state.settings.timezone,
+        studyTimezone,
       ) === today,
   ) ||
-  state.task_events.some(
+  (state?.task_events ?? []).some(
     (event) =>
       [
         "attempt",
@@ -2762,7 +2764,7 @@ function openCatalogTools() {
       ].includes(event.event_type) &&
       localDateOfTimestamp(
         event.logged_at,
-        state.settings.timezone,
+        studyTimezone,
       ) === today,
   );
 
