@@ -115,6 +115,31 @@ function isForcedPlanningDisposition(
   );
 }
 
+function sectionIdForTaskKind(
+  kind: PlanTaskKind,
+): StudySessionSectionId {
+  switch (kind) {
+    case "initial_learning":
+      return "initial_learning";
+    case "gate":
+      return "topic_gate";
+    case "review":
+      return "reviews";
+    case "topic_consolidation":
+      return "topic_consolidation";
+    case "assignment":
+      return "assignments";
+    case "corrective":
+      return "corrective";
+    case "recovery":
+      return "recovery";
+    case "mixed_practice":
+      return "mixed_practice";
+    case "sampler":
+      return "sampler";
+  }
+}
+
 function pillClass(value: string): string {
   if (
     value === "DO" ||
