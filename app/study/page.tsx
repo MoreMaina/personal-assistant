@@ -3092,6 +3092,37 @@ function movePlanningItemTo(
       )
     : [];
 
+    const plannedReviewItems =
+    (latestTodaysPlan?.plan.items ?? []).filter(
+      (item) =>
+        item.kind === "review" &&
+        item.allocated_minutes > 0,
+    );
+
+  const reviewSectionReadyToComplete = Boolean(
+    state &&
+      plannedReviewItems.length > 0 &&
+      plannedReviewItems.every((item) => {
+        const review = state.review_events.find(
+          (candidate) => candidate.id === item.subject_id,
+        );
+
+        if (!review || review.status !== "completed") {
+          return false;
+        }
+
+        return state.task_events.some(
+          (event) =>
+            event.event_type === "attempt" &&
+            event.review_event_id === review.id &&
+            localDateOfTimestamp(
+              event.logged_at,
+              state.settings.timezone,
+            ) === today,
+        );
+      }),
+  );
+  
   const selectedReview =
     dueReviews.find((review) => review.id === reviewId) ??
     dueReviews[0] ??
@@ -3647,6 +3678,36 @@ function movePlanningItemTo(
     }
   }
 
+    function finishReviewSection() {
+    if (
+      !state ||
+      !latestTodaysPlan ||
+      !reviewSectionReadyToComplete
+    ) {
+      return;
+    }
+
+    try {
+      const nextState = completeDailyPlanSection(
+        state,
+        latestTodaysPlan.id,
+        "reviews",
+        new Date().toISOString(),
+      );
+
+      persist(
+        nextState,
+        "Due Reviews section completed. The next planned section is now eligible.",
+      );
+    } catch (cause) {
+      setProblem(
+        cause instanceof Error
+          ? cause.message
+          : "Could not complete today's Due Reviews section.",
+      );
+    }
+  }
+  
   function pauseReview() {
     if (!state || !selectedReview) return;
 
@@ -5443,6 +5504,21 @@ function movePlanningItemTo(
             )}
           </div>
         )}
+                    <div className="mt-6 border-t border-[#e4dac9] pt-5">
+          <p className="text-sm font-semibold text-stone-600">
+            {reviewSectionReadyToComplete
+              ? "All allocated reviews have been completed today."
+              : "Complete every allocated review today before continuing."}
+          </p>
+          <button
+            type="button"
+            disabled={!reviewSectionReadyToComplete}
+            onClick={finishReviewSection}
+            className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Complete Due Reviews section
+          </button>
+        </div>
                 </section>
         )}
     </div>
