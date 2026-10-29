@@ -255,6 +255,7 @@ export interface ReviewEvent {
 export type WorkSubjectType =
   | "assignment"
   | "corrective"
+  | "recovery"
   | "topic_consolidation"
   | "initial_learning"
   | "mixed_practice"
