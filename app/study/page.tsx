@@ -59,9 +59,12 @@ import type {
   EntityId,
   ForcedDisposition,
   RetrievalTask,
+  SavedDailyPlanSnapshot,
   SkipReentryCondition,
   StudyMvpState,
+  TaskEvent,
   Topic,
+  WorkSession,
   YellowGapSeverity,
 } from "@/lib/studyMvp/types";
 
@@ -199,6 +202,336 @@ function SectionHeading({
     </div>
   );
 }
+
+function InitialLearningSection({
+  state,
+  snapshot,
+  today,
+  persist,
+  onStartLearning,
+}: {
+  state: StudyMvpState;
+  snapshot: SavedDailyPlanSnapshot;
+  today: string;
+  persist: (
+    next: StudyMvpState,
+    successMessage?: string,
+  ) => boolean;
+  onStartLearning: (topicId: EntityId) => void;
+}) {
+  const [actualDurationMin, setActualDurationMin] = useState(5);
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+
+  const item =
+    snapshot.plan.items.find(
+      (candidate) => candidate.kind === "initial_learning",
+    ) ?? null;
+
+  const topic = item
+    ? state.topics.find(
+        (candidate) => candidate.id === item.subject_id,
+      ) ?? null
+    : null;
+
+  const loggedMinutes = topic
+    ? state.work_sessions
+        .filter(
+          (session) =>
+            session.subject_type === "initial_learning" &&
+            session.subject_id === topic.id &&
+            localDateOfTimestamp(
+              session.logged_at,
+              state.settings.timezone,
+            ) === today,
+        )
+        .reduce(
+          (total, session) => total + session.actual_duration_min,
+          0,
+        )
+    : 0;
+
+  const requiredTimeRecorded = Boolean(
+    item &&
+      item.allocated_minutes > 0 &&
+      loggedMinutes >= item.allocated_minutes,
+  );
+
+  function saveLearningSession(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    setError("");
+
+    if (!item || !topic || item.allocated_minutes <= 0) {
+      setError(
+        "This learning item is unavailable or has no allocated time. Review today's plan before continuing.",
+      );
+      return;
+    }
+
+    if (topic.status !== "in_learning") {
+      setError(
+        "Start learning for this topic before recording a learning session.",
+      );
+      return;
+    }
+
+    if (
+      !Number.isFinite(actualDurationMin) ||
+      actualDurationMin < 1 ||
+      actualDurationMin > 600
+    ) {
+      setError("Enter an actual duration between 1 and 600 minutes.");
+      return;
+    }
+
+    if (requiredTimeRecorded) {
+      setError(
+        "The allocated learning time has already been recorded. Complete this section before moving on.",
+      );
+      return;
+    }
+
+    const loggedAt = new Date().toISOString();
+    const sessionId = newId("work-session");
+    const trimmedNotes = notes.trim();
+
+    const session: WorkSession = {
+      id: sessionId,
+      subject_type: "initial_learning",
+      subject_id: topic.id,
+      planned_duration_min: item.allocated_minutes,
+      actual_duration_min: actualDurationMin,
+      logged_at: loggedAt,
+      notes: trimmedNotes,
+    };
+
+    const taskEvent: TaskEvent = {
+      id: newId("event"),
+      logged_at: loggedAt,
+      event_type: "work_session",
+      subject_type: "initial_learning",
+      subject_id: topic.id,
+      review_event_id: null,
+      retrieval_task_id: null,
+      gate_session_id: null,
+      gate_selected_task_ids_snapshot: null,
+      skill_demonstrated_without_hints: null,
+      work_session_id: sessionId,
+      related_event_id: null,
+      estimated_duration_min_at_event: item.allocated_minutes,
+      task_type_at_event: null,
+      priority_at_event: item.priority,
+      intended_due_date_at_event: item.intended_due_date,
+      current_due_date_at_event: item.current_due_date,
+      actual_duration_min: actualDurationMin,
+      result: null,
+      yellow_gap_severity: null,
+      disposition: null,
+      reason: trimmedNotes || null,
+      critical_error_flag: null,
+      defer_count_at_event: item.defer_count,
+      re_entry_condition: null,
+      old_priority: null,
+      new_priority: null,
+    };
+
+    const nextState: StudyMvpState = {
+      ...state,
+      work_sessions: [
+        ...state.work_sessions,
+        session,
+      ],
+      task_events: [
+        ...state.task_events,
+        taskEvent,
+      ],
+    };
+
+    if (
+      persist(
+        nextState,
+        `Recorded ${actualDurationMin} minutes of initial learning for "${topic.title}".`,
+      )
+    ) {
+      setNotes("");
+    }
+  }
+
+  function finishLearningSection() {
+    if (!requiredTimeRecorded || !item) return;
+
+    setError("");
+
+    try {
+      const nextState = completeDailyPlanSection(
+        state,
+        snapshot.id,
+        "initial_learning",
+        new Date().toISOString(),
+      );
+
+      persist(
+        nextState,
+        "Initial learning section completed. The next planned section is now eligible.",
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not complete the initial-learning section.",
+      );
+    }
+  }
+
+  return (
+    <section
+      id="initial-learning"
+      className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
+    >
+      <SectionHeading
+        eyebrow="Study activity"
+        title="Initial learning"
+        detail="Start the planned topic, record the actual work you complete, and finish this section only after the required study time has been recorded. Saving a plan alone does not count as work."
+      />
+
+      {!item || item.allocated_minutes <= 0 ? (
+        <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
+          This plan has no positive initial-learning allocation to work on.
+          Review or replan today's worklist before continuing.
+        </p>
+      ) : !topic ? (
+        <p className="rounded-xl bg-white p-4 text-sm font-semibold text-rose-800">
+          The planned topic could not be found. Replan today's worklist before continuing.
+        </p>
+      ) : (
+        <>
+          <div className="rounded-2xl border border-[#e4dac9] bg-white p-4">
+            <h3 className="font-extrabold text-[#23412f]">
+              {topic.title}
+            </h3>
+            <p className="mt-2 text-sm font-semibold text-stone-600">
+              {topic.learning_objective}
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-[#efe4d1] p-3">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
+                  Planned allocation
+                </p>
+                <p className="mt-1 text-xl font-extrabold text-[#23412f]">
+                  {item.allocated_minutes} min
+                </p>
+              </div>
+              <div className="rounded-xl bg-[#efe4d1] p-3">
+                <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
+                  Actual time recorded today
+                </p>
+                <p className="mt-1 text-xl font-extrabold text-[#23412f]">
+                  {loggedMinutes} min
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {topic.status === "not_started" ? (
+            <div className="mt-4">
+              <p className="mb-3 text-sm font-semibold text-stone-600">
+                Start the topic before recording your learning session.
+              </p>
+              <button
+                type="button"
+                onClick={() => onStartLearning(topic.id)}
+                className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021]"
+              >
+                Start learning
+              </button>
+            </div>
+          ) : topic.status === "in_learning" ? (
+            <form
+              onSubmit={saveLearningSession}
+              className="mt-5 space-y-4"
+            >
+              <label className="block">
+                <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                  Actual study duration (minutes)
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={600}
+                  step={1}
+                  value={actualDurationMin}
+                  onChange={(event) =>
+                    setActualDurationMin(Number(event.target.value))
+                  }
+                  disabled={requiredTimeRecorded}
+                  className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold disabled:opacity-50"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                  What did you work on? (optional)
+                </span>
+                <textarea
+                  rows={3}
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  disabled={requiredTimeRecorded}
+                  placeholder="Record the material studied or work completed."
+                  className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={requiredTimeRecorded}
+                className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Record actual learning session
+              </button>
+            </form>
+          ) : (
+            <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+              This topic is currently marked {topic.status.replace(/_/g, " ")}.
+              Review the saved plan before continuing with initial learning.
+            </p>
+          )}
+
+          <div className="mt-5 rounded-2xl border border-[#d8ccb8] p-4">
+            <p className="text-sm font-semibold text-stone-700">
+              {requiredTimeRecorded
+                ? "The planned initial-learning time has been recorded as actual work."
+                : `Record ${Math.max(
+                    0,
+                    item.allocated_minutes - loggedMinutes,
+                  )} more actual minute(s) before completing this section.`}
+            </p>
+            <button
+              type="button"
+              onClick={finishLearningSection}
+              disabled={!requiredTimeRecorded}
+              className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
+            >
+              Complete initial-learning section
+            </button>
+          </div>
+        </>
+      )}
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-800"
+        >
+          {error}
+        </p>
+      )}
+    </section>
+  );
+}
+
 
 export default function StudyMvpPage() {
   const {
@@ -2058,8 +2391,21 @@ function movePlanningItemTo(
               </div>
             )}
           </>
-        )}
+                )}
       </section>
+
+      {state &&
+        latestTodaysPlan &&
+        !planningMode &&
+        activeSectionId === "initial_learning" && (
+          <InitialLearningSection
+            state={state}
+            snapshot={latestTodaysPlan}
+            today={today}
+            persist={persist}
+            onStartLearning={beginPlannedTopicLearning}
+          />
+        )}
 
       <section
         id="catalog"
