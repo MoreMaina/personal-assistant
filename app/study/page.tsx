@@ -987,11 +987,11 @@ export default function StudyMvpPage() {
     todaysExecution?.completed_section_ids ?? [],
   );
 
-  const plannedSectionIds = [
+    const plannedSectionIds = [
     ...new Set(
-      (latestTodaysPlan?.plan.items ?? []).map(
-        (item) => sectionIdForTaskKind(item.kind),
-      ),
+      (latestTodaysPlan?.plan.items ?? [])
+        .filter((item) => item.allocated_minutes > 0)
+        .map((item) => sectionIdForTaskKind(item.kind)),
     ),
   ];
 
