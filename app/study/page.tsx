@@ -1662,6 +1662,16 @@ function movePlanningItemTo(
             </div>
             )}
 
+                        <details
+              open={planningMode}
+              className="rounded-2xl"
+            >
+              <summary className="cursor-pointer rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#23412f]">
+                {planningMode
+                  ? "Review and order planned activities"
+                  : `View saved plan details (${plan.items.length} activities)`}
+              </summary>
+              <div className="mt-3">
             {plan.items.length === 0 ? (
               <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
                 No study tasks are scheduled for this date.
@@ -1955,7 +1965,9 @@ function movePlanningItemTo(
                   );
                 })}
               </div>
-            )}
+                        )}
+              </div>
+            </details>
 
             {plan.warnings.length > 0 && (
               <div className="mt-5 rounded-2xl bg-[#efe4d1] p-4">
