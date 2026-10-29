@@ -4222,6 +4222,17 @@ function movePlanningItemTo(
             persist={persist}
           />
         )}
+            {state &&
+        latestTodaysPlan &&
+        !planningMode &&
+        activeSectionId === "mixed_practice" && (
+          <MixedPracticeSection
+            state={state}
+            snapshot={latestTodaysPlan}
+            today={today}
+            persist={persist}
+          />
+        )}
       <section
         id="catalog"
         className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
