@@ -888,6 +888,488 @@ function TopicConsolidationSection({
   );
 }
 
+function AssignmentSection({
+  state,
+  snapshot,
+  today,
+  persist,
+}: {
+  state: StudyMvpState;
+  snapshot: SavedDailyPlanSnapshot;
+  today: string;
+  persist: (
+    next: StudyMvpState,
+    successMessage?: string,
+  ) => boolean;
+}) {
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [actualDurationMin, setActualDurationMin] = useState(5);
+  const [remainingAfterSession, setRemainingAfterSession] =
+    useState<number | null>(null);
+  const [markComplete, setMarkComplete] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+
+  const items = snapshot.plan.items.filter(
+    (item) =>
+      item.kind === "assignment" &&
+      item.allocated_minutes > 0,
+  );
+
+  const selectedItem =
+    items.find((item) => item.id === selectedItemId) ??
+    items[0] ??
+    null;
+
+  function assignmentFor(item: (typeof items)[number]) {
+    return (
+      state.assignments.find(
+        (assignment) => assignment.id === item.subject_id,
+      ) ?? null
+    );
+  }
+
+  const assignment = selectedItem
+    ? assignmentFor(selectedItem)
+    : null;
+
+  function loggedMinutesFor(assignmentId: EntityId): number {
+    return state.work_sessions
+      .filter(
+        (session) =>
+          session.subject_type === "assignment" &&
+          session.subject_id === assignmentId &&
+          localDateOfTimestamp(
+            session.logged_at,
+            state.settings.timezone,
+          ) === today,
+      )
+      .reduce(
+        (total, session) => total + session.actual_duration_min,
+        0,
+      );
+  }
+
+  const allAllocationsRecorded =
+    items.length > 0 &&
+    items.every((item) => {
+      const plannedAssignment = assignmentFor(item);
+
+      return Boolean(
+        plannedAssignment &&
+          (
+            plannedAssignment.status === "completed" ||
+            plannedAssignment.status === "cancelled" ||
+            loggedMinutesFor(plannedAssignment.id) >=
+              item.allocated_minutes
+          ),
+      );
+    });
+
+  const defaultRemainingMinutes = assignment
+    ? Math.max(
+        0,
+        assignment.remaining_min - actualDurationMin,
+      )
+    : 0;
+
+  const remainingMinutesAfterSession =
+    remainingAfterSession ?? defaultRemainingMinutes;
+
+  function saveSession(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    if (!selectedItem || !assignment) {
+      setError(
+        "The selected assignment could not be found. Review today's plan.",
+      );
+      return;
+    }
+
+    if (
+      assignment.status === "completed" ||
+      assignment.status === "cancelled"
+    ) {
+      setError(
+        "This assignment is no longer active. Select another planned assignment.",
+      );
+      return;
+    }
+
+    if (
+      !Number.isSafeInteger(actualDurationMin) ||
+      actualDurationMin < 1 ||
+      actualDurationMin > 600
+    ) {
+      setError(
+        "Enter an actual duration between 1 and 600 whole minutes.",
+      );
+      return;
+    }
+
+    if (
+      loggedMinutesFor(assignment.id) >=
+      selectedItem.allocated_minutes
+    ) {
+      setError(
+        "The planned assignment time has already been recorded today.",
+      );
+      return;
+    }
+
+    if (
+      !Number.isSafeInteger(remainingMinutesAfterSession) ||
+      remainingMinutesAfterSession < 0
+    ) {
+      setError(
+        "Enter a valid non-negative estimate for the remaining work.",
+      );
+      return;
+    }
+
+    if (
+      markComplete &&
+      remainingMinutesAfterSession !== 0
+    ) {
+      setError(
+        "Set the remaining estimate to zero when confirming completion.",
+      );
+      return;
+    }
+
+    if (
+      !markComplete &&
+      remainingMinutesAfterSession === 0
+    ) {
+      setError(
+        "If work remains unfinished, enter a positive remaining-time estimate. Otherwise, explicitly confirm completion.",
+      );
+      return;
+    }
+
+    const loggedAt = new Date().toISOString();
+    const sessionId = newId("work-session");
+    const trimmedNotes = notes.trim();
+
+    const session: WorkSession = {
+      id: sessionId,
+      subject_type: "assignment",
+      subject_id: assignment.id,
+      planned_duration_min: selectedItem.allocated_minutes,
+      actual_duration_min: actualDurationMin,
+      logged_at: loggedAt,
+      notes: trimmedNotes,
+    };
+
+    const taskEvent: TaskEvent = {
+      id: newId("event"),
+      logged_at: loggedAt,
+      event_type: "work_session",
+      subject_type: "assignment",
+      subject_id: assignment.id,
+      review_event_id: null,
+      retrieval_task_id: null,
+      gate_session_id: null,
+      gate_selected_task_ids_snapshot: null,
+      skill_demonstrated_without_hints: null,
+      work_session_id: sessionId,
+      related_event_id: null,
+      estimated_duration_min_at_event:
+        selectedItem.estimated_minutes,
+      task_type_at_event: null,
+      priority_at_event: selectedItem.priority,
+      intended_due_date_at_event:
+        selectedItem.intended_due_date,
+      current_due_date_at_event:
+        selectedItem.current_due_date,
+      actual_duration_min: actualDurationMin,
+      result: null,
+      yellow_gap_severity: null,
+      disposition: null,
+      reason: markComplete
+        ? `Assignment explicitly marked complete. ${trimmedNotes}`.trim()
+        : trimmedNotes || null,
+      critical_error_flag: null,
+      defer_count_at_event: selectedItem.defer_count,
+      re_entry_condition: null,
+      old_priority: null,
+      new_priority: null,
+    };
+
+    const nextState: StudyMvpState = {
+      ...state,
+      assignments: state.assignments.map((item) =>
+        item.id === assignment.id
+          ? {
+              ...item,
+              remaining_min: markComplete
+                ? 0
+                : remainingMinutesAfterSession,
+              status: markComplete
+                ? "completed"
+                : item.status === "pending"
+                  ? "in_progress"
+                  : item.status,
+            }
+          : item,
+      ),
+      work_sessions: [...state.work_sessions, session],
+      task_events: [...state.task_events, taskEvent],
+    };
+
+    if (
+      persist(
+        nextState,
+        markComplete
+          ? `Recorded ${actualDurationMin} minutes and marked "${assignment.title}" complete.`
+          : `Recorded ${actualDurationMin} minutes for "${assignment.title}".`,
+      )
+    ) {
+      setNotes("");
+      setRemainingAfterSession(null);
+      setMarkComplete(false);
+    }
+  }
+
+  function finishSection() {
+    if (!allAllocationsRecorded) return;
+
+    setError("");
+
+    try {
+      const nextState = completeDailyPlanSection(
+        state,
+        snapshot.id,
+        "assignments",
+        new Date().toISOString(),
+      );
+
+      persist(
+        nextState,
+        "Assignments section completed. The next planned section is now eligible.",
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not complete the assignments section.",
+      );
+    }
+  }
+
+  return (
+    <section
+      id="assignments"
+      className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
+    >
+      <SectionHeading
+        eyebrow="Study activity"
+        title="Assignments"
+        detail="Record actual time spent on each planned assignment and update the estimate of work remaining. An assignment is marked complete only when you explicitly confirm it."
+      />
+
+      {items.length === 0 ? (
+        <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
+          There are no positively allocated assignments in today's saved plan.
+        </p>
+      ) : (
+        <>
+          <div className="mb-5 rounded-2xl bg-white p-4">
+            <h3 className="font-extrabold text-[#23412f]">
+              Today's assignment allocations
+            </h3>
+            <ul className="mt-3 space-y-2">
+              {items.map((item) => {
+                const plannedAssignment = assignmentFor(item);
+                const logged = plannedAssignment
+                  ? loggedMinutesFor(plannedAssignment.id)
+                  : 0;
+
+                return (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap justify-between gap-2 rounded-xl bg-[#efe4d1] p-3 text-sm font-semibold"
+                  >
+                    <span>
+                      {plannedAssignment?.title ??
+                        "Missing planned assignment"}
+                    </span>
+                    <span>
+                      {logged} / {item.allocated_minutes} min recorded
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <form onSubmit={saveSession} className="space-y-4">
+            <label className="block">
+              <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                Assignment to work on
+              </span>
+              <select
+                value={selectedItem?.id ?? ""}
+                onChange={(event) => {
+                  setSelectedItemId(event.target.value);
+                  setRemainingAfterSession(null);
+                  setMarkComplete(false);
+                  setError("");
+                }}
+                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+              >
+                {items.map((item) => {
+                  const plannedAssignment = assignmentFor(item);
+
+                  return (
+                    <option key={item.id} value={item.id}>
+                      {plannedAssignment?.title ?? item.subject_id}
+                      {" · "}
+                      {item.allocated_minutes} min allocated
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+
+            {!assignment ? (
+              <p className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+                The planned assignment could not be found. Review today's plan.
+              </p>
+            ) : assignment.status === "completed" ||
+              assignment.status === "cancelled" ? (
+              <p className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+                This assignment is {assignment.status}. Select another active assignment or review today's plan.
+              </p>
+            ) : (
+              <>
+                <div className="rounded-xl bg-white p-4">
+                  <p className="text-sm font-bold text-stone-600">
+                    Due {assignment.due_date}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-stone-600">
+                    Estimated work remaining: {assignment.remaining_min} min
+                  </p>
+                </div>
+
+                <label className="block">
+                  <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                    Actual work duration (minutes)
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={600}
+                    step={1}
+                    value={actualDurationMin}
+                    onChange={(event) =>
+                      setActualDurationMin(Number(event.target.value))
+                    }
+                    disabled={
+                      loggedMinutesFor(assignment.id) >=
+                      selectedItem!.allocated_minutes
+                    }
+                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold disabled:opacity-50"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                    Estimated minutes remaining after this session
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100000}
+                    step={1}
+                    value={remainingMinutesAfterSession}
+                    onChange={(event) =>
+                      setRemainingAfterSession(Number(event.target.value))
+                    }
+                    disabled={markComplete}
+                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold disabled:opacity-50"
+                  />
+                  <span className="mt-1 block text-xs font-semibold text-stone-500">
+                    Defaults to the current estimate minus this session's duration. Adjust it if your actual remaining workload is different.
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 rounded-xl bg-white p-3 text-sm font-semibold text-stone-700">
+                  <input
+                    type="checkbox"
+                    checked={markComplete}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setMarkComplete(checked);
+                      setRemainingAfterSession(checked ? 0 : null);
+                    }}
+                    className="mt-1 accent-[#23412f]"
+                  />
+                  I confirm that this assignment is complete.
+                </label>
+
+                <label className="block">
+                  <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                    Work completed (optional)
+                  </span>
+                  <textarea
+                    rows={3}
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    disabled={
+                      loggedMinutesFor(assignment.id) >=
+                      selectedItem!.allocated_minutes
+                    }
+                    placeholder="Describe the work completed during this session."
+                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm disabled:opacity-50"
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={
+                    loggedMinutesFor(assignment.id) >=
+                    selectedItem!.allocated_minutes
+                  }
+                  className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Record assignment work session
+                </button>
+              </>
+            )}
+          </form>
+
+          <div className="mt-5 rounded-2xl border border-[#d8ccb8] p-4">
+            <p className="text-sm font-semibold text-stone-700">
+              {allAllocationsRecorded
+                ? "All planned assignment allocations have been recorded or explicitly resolved."
+                : "Record the planned time for every active assignment, or explicitly resolve an assignment, before completing this section."}
+            </p>
+            <button
+              type="button"
+              onClick={finishSection}
+              disabled={!allAllocationsRecorded}
+              className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
+            >
+              Complete assignments section
+            </button>
+          </div>
+        </>
+      )}
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-bold text-rose-800"
+        >
+          {error}
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function StudyMvpPage() {
   const {
     state,
@@ -2766,6 +3248,17 @@ function movePlanningItemTo(
         !planningMode &&
         activeSectionId === "topic_consolidation" && (
           <TopicConsolidationSection
+            state={state}
+            snapshot={latestTodaysPlan}
+            today={today}
+            persist={persist}
+          />
+        )}
+            {state &&
+        latestTodaysPlan &&
+        !planningMode &&
+        activeSectionId === "assignments" && (
+          <AssignmentSection
             state={state}
             snapshot={latestTodaysPlan}
             today={today}
