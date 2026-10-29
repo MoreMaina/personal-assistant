@@ -15,6 +15,14 @@ import {
   type Semester,
 } from "@/lib/studyStorage";
 
+import { defaultIdFactory } from "@/lib/studyMvp/reviewEngine";
+import {
+  exportTopicCatalogCsv,
+  importTopicCatalogText,
+  type TopicImportDiagnostic,
+} from "@/lib/studyMvp/csvImport";
+import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
+
 export default function GeneralSettingsPage() {
   const [programName, setProgramName] = useState("");
   const [studyYear, setStudyYear] = useState("1");
@@ -23,6 +31,22 @@ export default function GeneralSettingsPage() {
   const [ready, setReady] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const {
+    state: studyState,
+    loadingError: studyLoadingError,
+    syncConflict: studySyncConflict,
+    persist: persistStudyState,
+  } = useCloudStudyState();
+
+  const [catalogImportText, setCatalogImportText] = useState("");
+  const [catalogImportDiagnostics, setCatalogImportDiagnostics] =
+    useState<TopicImportDiagnostic[]>([]);
+  const [catalogImportCounts, setCatalogImportCounts] =
+    useState<string[]>([]);
+  const [catalogImportPreviewReady, setCatalogImportPreviewReady] =
+    useState(false);
+  const [catalogImportMessage, setCatalogImportMessage] = useState("");
+  const [catalogImportError, setCatalogImportError] = useState("");
 
   useEffect(() => {
     const program = getGlobalProgram();
@@ -40,6 +64,209 @@ export default function GeneralSettingsPage() {
 
     setReady(true);
   }, []);
+
+  function catalogImportCountLabels(
+    counts: ReturnType<typeof importTopicCatalogText>["counts"],
+  ): string[] {
+    return [
+      `Courses created: ${counts.courses_created}`,
+      `Units created: ${counts.units_created}`,
+      `Topics created: ${counts.topics_created}`,
+      `Existing topics reused: ${counts.existing_topics_reused}`,
+      `Tasks created: ${counts.tasks_created}`,
+      `Duplicate tasks skipped: ${counts.duplicate_tasks_skipped}`,
+    ];
+  }
+
+  function importCatalog(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!studyState) {
+      setCatalogImportError("Study data is not ready.");
+      return;
+    }
+
+    if (studyLoadingError || studySyncConflict) {
+      setCatalogImportError(
+        "Resolve the Study loading or sync issue before importing.",
+      );
+      return;
+    }
+
+    setCatalogImportDiagnostics([]);
+    setCatalogImportCounts([]);
+    setCatalogImportPreviewReady(false);
+    setCatalogImportError("");
+    setCatalogImportMessage("");
+
+    try {
+      const result = importTopicCatalogText(
+        studyState,
+        catalogImportText,
+        {
+          now: new Date().toISOString(),
+          idFactory: defaultIdFactory,
+        },
+      );
+
+      setCatalogImportDiagnostics(result.diagnostics);
+
+      if (!result.ok) {
+        setCatalogImportError(
+          "Import rejected. No catalog changes were saved.",
+        );
+        return;
+      }
+
+      setCatalogImportCounts(
+        catalogImportCountLabels(result.counts),
+      );
+      setCatalogImportPreviewReady(true);
+      setCatalogImportMessage(
+        "Preview ready. No catalog changes have been saved yet.",
+      );
+    } catch (error) {
+      setCatalogImportError(
+        error instanceof Error
+          ? error.message
+          : "The catalog preview failed.",
+      );
+    }
+  }
+
+  function applyCatalogImport() {
+    if (
+      !studyState ||
+      !catalogImportText.trim() ||
+      !catalogImportPreviewReady
+    ) {
+      return;
+    }
+
+    if (studyLoadingError || studySyncConflict) {
+      setCatalogImportError(
+        "Resolve the Study loading or sync issue before importing.",
+      );
+      return;
+    }
+
+    setCatalogImportError("");
+    setCatalogImportMessage("");
+
+    try {
+      // Revalidate against the latest Study state.
+      // Preview itself never saves changes.
+      const result = importTopicCatalogText(
+        studyState,
+        catalogImportText,
+        {
+          now: new Date().toISOString(),
+          idFactory: defaultIdFactory,
+        },
+      );
+
+      setCatalogImportDiagnostics(result.diagnostics);
+
+      if (!result.ok) {
+        setCatalogImportCounts([]);
+        setCatalogImportPreviewReady(false);
+        setCatalogImportError(
+          "The import is no longer valid against the current Study state. " +
+          "No changes were saved. Review the diagnostics and create a new preview.",
+        );
+        return;
+      }
+
+      const saved = persistStudyState(
+        result.state,
+        "Catalog imported successfully.",
+      );
+
+      if (saved) {
+        setCatalogImportCounts(
+          catalogImportCountLabels(result.counts),
+        );
+        setCatalogImportPreviewReady(false);
+        setCatalogImportMessage(
+          "Catalog imported successfully.",
+        );
+      }
+    } catch (error) {
+      setCatalogImportPreviewReady(false);
+      setCatalogImportError(
+        error instanceof Error
+          ? error.message
+          : "The catalog import failed. No changes were applied by this handler.",
+      );
+    }
+  }
+
+  function cancelCatalogImport() {
+    setCatalogImportText("");
+    setCatalogImportDiagnostics([]);
+    setCatalogImportCounts([]);
+    setCatalogImportPreviewReady(false);
+    setCatalogImportMessage("");
+    setCatalogImportError("");
+  }
+
+  function handleCatalogFileChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    void file.text()
+      .then((text) => {
+        setCatalogImportText(text);
+        setCatalogImportDiagnostics([]);
+        setCatalogImportCounts([]);
+        setCatalogImportPreviewReady(false);
+        setCatalogImportMessage("");
+        setCatalogImportError("");
+      })
+      .catch(() => {
+        setCatalogImportError(
+          "Could not read the selected catalog file.",
+        );
+      });
+  }
+
+  function downloadCatalogCsv() {
+    if (!studyState || studyLoadingError || studySyncConflict) {
+      setCatalogImportError(
+        "Study data is not ready. Resolve any loading or sync conflict first.",
+      );
+      return;
+    }
+
+    try {
+      const csv = exportTopicCatalogCsv(studyState);
+      const blob = new Blob([csv], {
+        type: "text/csv;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `study-topic-catalog-${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setCatalogImportError("");
+      setCatalogImportMessage("Topic catalog CSV downloaded.");
+    } catch (error) {
+      setCatalogImportError(
+        error instanceof Error
+          ? error.message
+          : "Could not export the topic catalog.",
+      );
+    }
+  }
 
   function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -225,6 +452,147 @@ export default function GeneralSettingsPage() {
       </form>
 
       <GoogleCalendarSettings />
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+  <h2 className="text-xl font-extrabold">
+    Study catalog
+  </h2>
+
+  <p className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">
+    Import courses, units, topics and tasks. Preview validates
+    the catalog without saving changes. Applying an import
+    validates it again against the latest Study data.
+  </p>
+
+  {studyLoadingError && (
+    <p role="alert" className="mt-3 text-sm text-red-700">
+      Study data could not be loaded:{" "}
+      {String(studyLoadingError)}
+    </p>
+  )}
+
+  {studySyncConflict && (
+    <p role="alert" className="mt-3 text-sm text-amber-800">
+      Resolve the Study synchronization conflict before importing.
+    </p>
+  )}
+
+  {catalogImportMessage && (
+    <p role="status" className="mt-3 text-sm font-bold text-green-800">
+      {catalogImportMessage}
+    </p>
+  )}
+
+  {catalogImportError && (
+    <p role="alert" className="mt-3 text-sm font-bold text-red-700">
+      {catalogImportError}
+    </p>
+  )}
+
+  <form onSubmit={importCatalog} className="mt-4 space-y-4">
+    <label className="block space-y-2">
+      <span className="text-sm font-bold">
+        Choose a catalog file
+      </span>
+      <input
+        type="file"
+        accept=".csv,.txt,.json,text/csv,text/plain,application/json"
+        onChange={handleCatalogFileChange}
+        disabled={!studyState || Boolean(studyLoadingError) || Boolean(studySyncConflict)}
+        className="block w-full text-sm"
+      />
+    </label>
+
+    <label className="block space-y-2">
+      <span className="text-sm font-bold">
+        Or paste catalog content
+      </span>
+      <textarea
+        value={catalogImportText}
+        onChange={(event) => {
+          setCatalogImportText(event.target.value);
+          setCatalogImportPreviewReady(false);
+          setCatalogImportDiagnostics([]);
+          setCatalogImportCounts([]);
+          setCatalogImportMessage("");
+          setCatalogImportError("");
+        }}
+        rows={8}
+        placeholder="Paste your catalog CSV or supported text format here…"
+        className="w-full rounded-xl border border-[var(--border)] bg-white p-3 text-sm"
+      />
+    </label>
+
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="submit"
+        disabled={
+          !studyState ||
+          Boolean(studyLoadingError) ||
+          Boolean(studySyncConflict) ||
+          !catalogImportText.trim()
+        }
+        className="rounded-xl bg-[var(--primary)] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+      >
+        Preview import
+      </button>
+
+      <button
+        type="button"
+        onClick={cancelCatalogImport}
+        className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-bold"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="button"
+        onClick={downloadCatalogCsv}
+        disabled={!studyState || Boolean(studyLoadingError) || Boolean(studySyncConflict)}
+        className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-bold disabled:opacity-50"
+      >
+        Export catalog CSV
+      </button>
+    </div>
+  </form>
+
+  {catalogImportCounts.length > 0 && (
+    <ul className="mt-4 space-y-1 rounded-xl bg-stone-50 p-4 text-sm">
+      {catalogImportCounts.map((count) => (
+        <li key={count}>{count}</li>
+      ))}
+    </ul>
+  )}
+
+  {catalogImportDiagnostics.length > 0 && (
+    <div className="mt-4 space-y-2">
+      <h3 className="font-bold">Import diagnostics</h3>
+      {catalogImportDiagnostics.map((diagnostic, index) => (
+        <pre
+          key={index}
+          className="overflow-x-auto rounded-lg bg-stone-50 p-3 text-xs whitespace-pre-wrap"
+        >
+          {JSON.stringify(diagnostic, null, 2)}
+        </pre>
+      ))}
+    </div>
+  )}
+
+  {catalogImportPreviewReady && (
+    <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+      <p className="text-sm font-bold text-emerald-900">
+        Preview is ready. No catalog changes have been saved yet.
+      </p>
+      <button
+        type="button"
+        onClick={applyCatalogImport}
+        disabled={!studyState || Boolean(studyLoadingError) || Boolean(studySyncConflict)}
+        className="mt-3 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+      >
+        Apply import
+      </button>
+    </div>
+  )}
+</section>
 
       <section className="flex flex-col gap-3 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="space-y-1">

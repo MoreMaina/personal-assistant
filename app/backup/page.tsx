@@ -19,6 +19,8 @@ import {
   saveLocalBackup,
   type AppSnapshot,
 } from "@/lib/supabase/sync";
+import { exportStudyMvpJSON } from "@/lib/studyMvp/storage";
+import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
 type BackupRow = {
   id: number;
@@ -132,6 +134,52 @@ function downloadRecoveryCopy(
 }
 
 export default function BackupRecoveryPage() {
+  const {
+    state: studyState,
+    loadingError: studyLoadingError,
+    cloudSyncStatus: studyCloudSyncStatus,
+    syncConflict: studySyncConflict,
+  } = useCloudStudyState();
+  const [studyExportMessage, setStudyExportMessage] =
+    useState<string | null>(null);
+  function exportStudyDataAndHistory() {
+    if (!studyState || studyLoadingError || studySyncConflict) {
+      setStudyExportMessage(
+        "Study data is not ready to export. Resolve any loading or sync conflict first.",
+      );
+      return;
+    }
+
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      const content = exportStudyMvpJSON(studyState);
+      const blob = new Blob([content], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `${
+        studyCloudSyncStatus === "migration"
+          ? "study-mvp-recovery"
+          : "study-mvp-backup"
+      }-${date}.json`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      setStudyExportMessage(
+        "Study data and event history downloaded.",
+      );
+    } catch (error) {
+      setStudyExportMessage(
+        `Could not export Study data: ${describeError(error)}`,
+      );
+    }
+  }
   const [backups, setBackups] =
     useState<BackupRow[]>([]);
   const [recoveryCopies, setRecoveryCopies] =
@@ -557,7 +605,67 @@ export default function BackupRecoveryPage() {
           {error}
         </div>
       )}
+      <section className="rounded-2xl border border-[#e4dac9] bg-white p-5">
+  <h2 className="text-lg font-extrabold text-[#23412f]">
+    Study data and history
+  </h2>
 
+  <p className="mt-2 text-sm text-stone-600">
+    Download your Study state and event history as a JSON backup.
+    This is separate from the full-app backup below.
+  </p>
+  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+  <div className="rounded-xl bg-stone-50 p-4">
+    <p className="text-sm font-extrabold text-[#23412f]">
+      Storage key
+    </p>
+    <code className="mt-2 block break-all text-xs font-semibold text-stone-600">
+      personal-assistant-study-mvp-v1
+    </code>
+  </div>
+
+  <div className="rounded-xl bg-stone-50 p-4">
+    <p className="text-sm font-extrabold text-[#23412f]">
+      Storage location
+    </p>
+    <p className="mt-2 text-sm font-semibold text-stone-600">
+      Cloud-backed Study state with a local recovery copy.
+    </p>
+  </div>
+</div>
+
+  {studyLoadingError && (
+    <p className="mt-3 text-sm text-red-700" role="alert">
+      Study data could not be loaded:{" "}
+      {describeError(studyLoadingError)}
+    </p>
+  )}
+
+  {studySyncConflict && (
+    <p className="mt-3 text-sm text-amber-800" role="alert">
+      Resolve the Study cloud-sync conflict before exporting.
+    </p>
+  )}
+
+  {studyExportMessage && (
+    <p className="mt-3 text-sm text-stone-600" role="status">
+      {studyExportMessage}
+    </p>
+  )}
+
+  <button
+    type="button"
+    onClick={exportStudyDataAndHistory}
+    disabled={
+      !studyState ||
+      Boolean(studyLoadingError) ||
+      Boolean(studySyncConflict)
+    }
+    className="mt-4 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    Export Study data and history
+  </button>
+</section>
       <section className="rounded-2xl bg-[var(--surface)] p-5">
         <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
           Portable backup

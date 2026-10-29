@@ -1,4 +1,6 @@
-import type { DailyPlan } from "./dailyPlanner";
+import type {
+  DailyPlan,
+} from "./dailyPlanner";
 import { assertStudyStateIntegrity } from "./storage";
 import type {
   SavedDailyPlanSnapshot,
@@ -51,22 +53,49 @@ export function appendDailyPlanSnapshot(
   return { state: nextState, snapshot };
 }
 
-export function completeDailyPlanItem(
+export function completeDailyPlanSection(
   state: StudyMvpState,
   planSnapshotId: string,
-  itemId: string,
+  sectionId: StudySessionID,
   updatedAt: string = new Date().toISOString(),
 ): StudyMvpState {
-  const snapshot = (state.daily_plan_history ?? []).find(
-    (entry) => entry.id === planSnapshotId,
-  );
+  const snapshot = (
+    state.daily_plan_history ?? []
+  ).find((entry) => entry.id === planSnapshotId);
 
   if (!snapshot) {
     throw new Error("The saved daily plan could not be found.");
   }
 
-  if (!snapshot.plan.items.some((item) => item.id === itemId)) {
-    throw new Error("This activity does not belong to the saved plan.");
+  const validSectionIds = new Set<StudySessionSectionId>(
+    snapshot.plan.items.map((item): StudySessionSectionId => {
+      switch (item.kind) {
+        case "initial_learning":
+          return "initial_learning";
+        case "gate":
+          return "topic_gate";
+        case "review":
+          return "reviews";
+        case "topic_consolidation":
+          return "topic_consolidation";
+        case "assignment":
+          return "assignments";
+        case "corrective":
+          return "corrective";
+        case "recovery":
+          return "recovery";
+        case "mixed_practice":
+          return "mixed_practice";
+        case "sampler":
+          return "sampler";
+      }
+    }),
+  );
+
+  if (!validSectionIds.has(sectionId)) {
+    throw new Error(
+      "This section does not belong to the saved plan.",
+    );
   }
 
   const executions = state.daily_plan_executions ?? [];
@@ -74,16 +103,16 @@ export function completeDailyPlanItem(
     (entry) => entry.plan_snapshot_id === planSnapshotId,
   );
 
-  if (existing?.completed_item_ids.includes(itemId)) {
+  if (existing?.completed_section_ids.includes(sectionId)) {
     return state;
   }
 
   const updatedExecution = existing
     ? {
         ...existing,
-        completed_item_ids: [
-          ...existing.completed_item_ids,
-          itemId,
+        completed_section_ids: [
+          ...existing.completed_section_ids,
+          sectionId,
         ],
         updated_at: updatedAt,
       }
@@ -91,7 +120,7 @@ export function completeDailyPlanItem(
         id: `daily-plan-execution-${planSnapshotId}`,
         date: snapshot.date,
         plan_snapshot_id: planSnapshotId,
-        completed_item_ids: [itemId],
+        completed_section_ids: [sectionId],
         updated_at: updatedAt,
       };
 

@@ -21,6 +21,7 @@ import type {
   Unit,
   WeekMetrics,
   WorkSession,
+  StudySessionSectionId,
 } from "./types";
 
 /**
@@ -620,7 +621,7 @@ function assertDailyPlanExecutions(
       id,
       date,
       plan_snapshot_id: planSnapshotId,
-      completed_item_ids: completedItemIds,
+      completed_section_ids: completedSectionIds,
       updated_at: updatedAt,
     } = raw;
 
@@ -629,7 +630,7 @@ function assertDailyPlanExecutions(
       seenIds.has(id) ||
       !isDateOnly(date) ||
       !isNonEmptyString(planSnapshotId) ||
-      !isStringArray(completedItemIds) ||
+      !isStringArray(completedSectionIds) ||
       !hasTimezone(updatedAt)
     ) {
       throw new StudyStorageError(
@@ -647,25 +648,42 @@ function assertDailyPlanExecutions(
       );
     }
 
-    const snapshotItemIds = new Set(
-      snapshot.plan.items.map((item) => item.id),
+    const snapshotSectionIds = new Set<StudySessionSectionId>(
+      snapshot.plan.items.map((item): StudySessionSectionId => {
+        switch (item.kind) {
+          case "initial_learning":
+            return "initial_learning";
+          case "gate":
+            return "topic_gate";
+          case "review":
+            return "reviews";
+          case "assignment":
+            return "assignments";
+          case "topic_consolidation":
+            return "topic_consolidation";
+          case "corrective":
+            return "corrective";
+          case "recovery":
+            return "recovery";
+          case "mixed_practice":
+            return "mixed_practice";
+          case "sampler":
+            return "sampler";
+        }
+      }),
     );
 
     if (
-      new Set(completedItemIds).size !== completedItemIds.length ||
-      completedItemIds.some(
-        (itemId) => !snapshotItemIds.has(itemId),
+      new Set(completedSectionIds).size !== completedSectionIds.length ||
+      completedSectionIds.some(
+        (sectionId) => !snapshotSectionIds.has(sectionId),
       )
     ) {
       throw new StudyStorageError(
         "invalid-shape",
-        "Completed activity IDs must be unique and belong to the saved plan.",
+        "Completed section IDs must be unique and belong to the saved plan.",
       );
     }
-
-    seenIds.add(id);
-  }
-}
 
 export function assertStudyStateIntegrity(
   state: StudyMvpState,

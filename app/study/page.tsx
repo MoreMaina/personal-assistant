@@ -26,7 +26,7 @@ import type {
 import { applyDailyPlanDecisions } from "@/lib/studyMvp/planningWorkflow";
 import {
   appendDailyPlanSnapshot,
-  completeDailyPlanItem,
+  completeDailyPlanSection,
 } from "@/lib/studyMvp/dailyPlanHistory";
 import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
@@ -265,9 +265,22 @@ export default function StudyMvpPage() {
     ) ?? null
   : null;
 
-  const completedPlanItemIds = new Set(
-    todaysExecution?.completed_item_ids ?? [],
+  const completedSectionIds = new Set(
+    todaysExecution?.completed_section_ids ?? [],
   );
+
+  const plannedSectionIds = [
+    ...new Set(
+      (latestTodaysPlan?.plan.items ?? []).map(
+        (item) => item.kind,
+      ),
+    ),
+  ];
+
+  const activeSectionId =
+    plannedSectionIds.find(
+      (sectionId) => !completedSectionIds.has(sectionId),
+    ) ?? null;
 
   const activePlanItem =
     latestTodaysPlan?.plan.items.find(
@@ -896,39 +909,6 @@ function movePlanningItemTo(
     }
   }
 
-  function completeActivePlanItem() {
-    if (!state || !latestTodaysPlan || !activePlanItem) {
-      return;
-    }
-
-    try {
-      const next = completeDailyPlanItem(
-        state,
-        latestTodaysPlan.id,
-        activePlanItem.id,
-      );
-
-      const title = getDailyPlanItemPresentation(
-        activePlanItem,
-        state,
-      ).title;
-
-      const saved = persist(
-        next,
-        `"${title}" marked complete in today's study sequence.`,
-      );
-
-      if (saved) {
-        setProblem("");
-      }
-    } catch (error) {
-      setProblem(
-        error instanceof Error
-          ? error.message
-          : "Could not record completion of this activity.",
-      );
-    }
-  }
 
   function beginSelectedTopicLearning() {
     if (!state || !selectedGateTopic) return;
@@ -1612,6 +1592,7 @@ function movePlanningItemTo(
 
         {plan && (
           <>
+          {planningMode && (
             <div className="mb-5">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-extrabold text-stone-700">
@@ -1641,6 +1622,7 @@ function movePlanningItemTo(
                   }}
                 />
               </div>
+              )}
               <div className="mt-2 flex justify-between text-xs font-bold text-stone-500">
                 <span>{plan.remaining_budget_minutes} min remaining</span>
                 <span>
@@ -1665,50 +1647,7 @@ function movePlanningItemTo(
                   const forcedControl =
                     item.decision_required ||
                     isForcedPlanningDisposition(choice);
-                  const itemIsComplete = completedPlanItemIds.has(item.id);
-
-                  const itemIsActive =
-                    !itemIsComplete &&
-                    activePlanItem?.id === item.id;
-
-                  const itemIsLocked =
-                    !itemIsComplete && !itemIsActive;
-
-                  if (!planningMode && (itemIsComplete || itemIsLocked)) {
-                    return (
-                      <div
-                        key={item.id}
-                        className={`rounded-2xl border p-4 ${
-                          itemIsComplete
-                            ? "border-emerald-200 bg-emerald-50"
-                            : "border-stone-200 bg-stone-50"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="text-lg" aria-hidden="true">
-                            {itemIsComplete ? "✓" : "🔒"}
-                          </span>
-
-                          <div className="min-w-0 flex-1">
-                            <h3 className="font-extrabold text-[#23412f]">
-                              {presentation.title}
-                            </h3>
-
-                            <p className="mt-1 text-xs font-semibold text-stone-500">
-                              {presentation.subtitle}
-                            </p>
-
-                            <p className="mt-2 text-xs font-semibold text-stone-600">
-                              {itemIsComplete
-                                ? "Completed in today's sequence."
-                                : "Locked — complete the activity above to unlock this one."}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-
+                  
                   return (
                     <div
                       key={item.id}
@@ -1828,13 +1767,6 @@ function movePlanningItemTo(
                                 complete to unlock the next step.
                               </p>
 
-                              <button
-                                type="button"
-                                onClick={completeActivePlanItem}
-                                className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-800"
-                              >
-                                Complete activity &amp; continue
-                              </button>
                             </div>
                           )}
                       </div>
@@ -2902,53 +2834,6 @@ function movePlanningItemTo(
             )}
           </div>
         )}
-      </section>
-
-      <section className="rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8">
-        <SectionHeading
-          eyebrow="05 · Integrity"
-          title="Cloud data and history"
-          detail="Supabase is the cloud source of truth when synchronization is current; this browser retains a local working and recovery copy. Retrieval attempts, scheduling evidence, work sessions, and metrics are retained as history rather than rewritten during ordinary updates."
-        />
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl bg-white p-4">
-            <p className="text-sm font-extrabold text-[#23412f]">
-              Storage key
-            </p>
-            <code className="mt-2 block break-all text-xs font-semibold text-stone-600">
-              personal-assistant-study-mvp-v1
-            </code>
-          </div>
-          <div className="rounded-2xl bg-white p-4">
-            <p className="text-sm font-extrabold text-[#23412f]">
-              Storage location
-            </p>
-            <p className="mt-2 text-sm font-semibold text-stone-600">
-              Cloud-backed state with a local recovery copy.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={exportBackup}
-            className="rounded-xl bg-[#23412f] px-4 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a2e24]"
-          >
-            Export full state and event history
-          </button>
-          <Link
-            href="/"
-            className="rounded-xl border border-[#d8ccb8] px-4 py-2.5 text-sm font-extrabold text-[#23412f] hover:bg-[#efe4d1]"
-          >
-            Return to Today
-          </Link>
-        </div>
-
-        <p className="mt-5 text-xs font-semibold leading-5 text-stone-500">
-          Keep regular JSON backups as an additional recovery option. The browser&apos;s local recovery copy may be unavailable after clearing browser storage or changing profiles; the cloud copy remains available after a successful sync.
-        </p>
       </section>
     </div>
   );

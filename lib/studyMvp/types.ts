@@ -11,6 +11,16 @@ import type { DailyPlan } from "./dailyPlanner";
 export type ISODate = string;
 export type ISODateTime = string;
 export type EntityId = string;
+export type StudySessionSectionId =
+  | "initial_learning"
+  | "topic_gate"
+  | "reviews"
+  | "topic_consolidation"
+  | "assignments"
+  | "corrective"
+  | "recovery"
+  | "mixed_practice"
+  | "sampler";
 
 export type ObjectiveType =
   | "recall"
@@ -419,7 +429,7 @@ export interface DailyPlanExecution {
   id: EntityId;
   date: ISODate;
   plan_snapshot_id: EntityId;
-  completed_item_ids: EntityId[];
+  completed_section_ids: StudySessionSectionId[];
   updated_at: ISODateTime;
 }
 
