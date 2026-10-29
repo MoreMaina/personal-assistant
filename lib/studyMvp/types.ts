@@ -6,7 +6,9 @@
  * before the existing interface or storage is changed.
  */
 
-import type { DailyPlan } from "./dailyPlanner";
+import type { DailyPlan,
+  StudySessionSectionId,
+ } from "./dailyPlanner";
 
 export type ISODate = string;
 export type ISODateTime = string;

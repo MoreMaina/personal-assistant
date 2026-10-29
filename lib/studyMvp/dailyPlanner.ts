@@ -10,6 +10,7 @@ import type {
   TaskPriority,
   TopicImportance,
   RetrievalTaskType,
+  PlanTaskKind,
 } from "./types";
 
 import { addCalendarDays } from "./reviewEngine";
