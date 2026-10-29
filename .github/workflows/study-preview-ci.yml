@@ -28,14 +28,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Upload regenerated package lock
-        uses: actions/upload-artifact@v4
-        with:
-          name: regenerated-package-lock
-          path: package-lock.json
-          if-no-files-found: error
+        run: npm ci
 
       - name: Run all tests
         run: npx vitest run
