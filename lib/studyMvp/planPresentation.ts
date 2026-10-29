@@ -1,5 +1,5 @@
-import type { PlannedItem, PlanTaskKind } from "./dailyPlanner";
-import type { StudyMvpState } from "./types";
+import type { PlannedItem } from "./dailyPlanner";
+import type { PlanTaskKind, StudyMvpState } from "./types";
 
 type PresentationItem = Pick<
   PlannedItem,

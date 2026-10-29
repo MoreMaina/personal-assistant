@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { PlannedItem, PlanTaskKind } from "./dailyPlanner";
+import type { PlannedItem } from "./dailyPlanner";
+import type { PlanTaskKind } from "./types";
 import { getDailyPlanItemPresentation } from "./planPresentation";
 import { createEmptyStudyState } from "./storage";
 import type {
