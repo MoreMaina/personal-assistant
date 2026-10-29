@@ -1470,9 +1470,13 @@ export function recordWorkSession(
         ? "initial_learning"
         : session.subject_type === "assignment"
           ? "assignment"
-          : session.subject_type === "corrective"
-            ? "corrective_task"
-            : "topic_consolidation"
+                  : session.subject_type === "corrective"
+          ? "corrective_task"
+          : session.subject_type === "mixed_practice"
+            ? "mixed_practice"
+            : session.subject_type === "sampler"
+              ? "sampler"
+              : "topic_consolidation"
     )
   ) {
     throw new StudyStorageError(
