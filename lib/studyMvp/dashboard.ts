@@ -97,6 +97,7 @@ export function getDefaultGateTaskIds(
 export function buildDailyPlannerTasks(
   state: StudyMvpState,
   date: ISODate,
+  includeAdditionalInitialLearning = false,
 ): DailyPlannerTaskBuild {
   const tasks: PlanningTask[] = [];
   const omittedReviewIds: EntityId[] = [];
@@ -165,58 +166,60 @@ export function buildDailyPlannerTasks(
       ),
     });
   }
-    // Add at most one eligible initial-learning topic on weekdays.
-    // Saturday remains sampler-focused; Sunday remains a rest day.
-    if (weekday(date) >= 1 && weekday(date) <= 5) {
-      const nextTopic = state.topics
-        .filter((topic) => {
-          if (
-            topic.status !== "not_started" ||
-            topic.gate_passed ||
-            topic.gate_result === "passed" ||
-            topic.gate_result === "skill_based_passed"
-          ) {
-            return false;
-          }
+      // Offer one eligible new topic by default. When requested, allow
+  // additional eligible topics; the planner still enforces the daily budget.
+  if (weekday(date) >= 1 && weekday(date) <= 5) {
+    const eligibleTopics = state.topics
+      .filter((topic) => {
+        if (
+          topic.status !== "not_started" ||
+          topic.gate_passed ||
+          topic.gate_result === "passed" ||
+          topic.gate_result === "skill_based_passed"
+        ) {
+          return false;
+        }
 
-          return topic.prerequisite_topic_ids.every(
-            (prerequisiteId) => {
-              const prerequisite = topicsById.get(prerequisiteId);
+        return topic.prerequisite_topic_ids.every((prerequisiteId) => {
+          const prerequisite = topicsById.get(prerequisiteId);
 
-              return Boolean(
-                prerequisite &&
-                (
-                  prerequisite.gate_passed ||
-                  prerequisite.gate_result === "passed" ||
-                  prerequisite.gate_result === "skill_based_passed"
-                )
-              );
-            },
+          return Boolean(
+            prerequisite &&
+              (
+                prerequisite.gate_passed ||
+                prerequisite.gate_result === "passed" ||
+                prerequisite.gate_result === "skill_based_passed"
+              ),
           );
-        })
-        .sort(
-          (a, b) =>
-            topicPriority(a) - topicPriority(b) ||
-            a.order_index - b.order_index ||
-            a.topic_number - b.topic_number ||
-            a.id.localeCompare(b.id),
-        )[0];
-
-      if (nextTopic) {
-        tasks.push({
-          id: `initial-learning:${nextTopic.id}`,
-          subjectId: nextTopic.id,
-          priority: topicPriority(nextTopic),
-          importance: nextTopic.topic_importance,
-          weaknessFlag: nextTopic.weakness_flag,
-          considered: true,
-          kind: "initial_learning",
-          topicId: nextTopic.id,
-          plannedDate: date,
-          estimatedDurationMin: 45,
         });
-      }
+      })
+      .sort(
+        (a, b) =>
+          topicPriority(a) - topicPriority(b) ||
+          a.order_index - b.order_index ||
+          a.topic_number - b.topic_number ||
+          a.id.localeCompare(b.id),
+      );
+
+    const topicsToAdd = includeAdditionalInitialLearning
+      ? eligibleTopics
+      : eligibleTopics.slice(0, 1);
+
+    for (const topic of topicsToAdd) {
+      tasks.push({
+        id: `initial-learning:${topic.id}`,
+        subjectId: topic.id,
+        priority: topicPriority(topic),
+        importance: topic.topic_importance,
+        weaknessFlag: topic.weakness_flag,
+        considered: true,
+        kind: "initial_learning",
+        topicId: topic.id,
+        plannedDate: date,
+        estimatedDurationMin: 45,
+      });
     }
+  }
   // New-topic gates enter the shared daily plan only when the topic is
   // in learning and its gate date has arrived. An interrupted gate keeps
   // the exact task IDs captured by its immutable attempt evidence.
@@ -411,6 +414,7 @@ export interface DailyPlanOverrides {
   forcedDecisions?: Readonly<
     Record<string, ForcedPlanningDecision | undefined>
   >;
+  includeAdditionalInitialLearning?: boolean;
 }
 
 export function buildStudyDailyPlan(
@@ -418,7 +422,11 @@ export function buildStudyDailyPlan(
   date: ISODate,
   overrides: DailyPlanOverrides = {},
 ): StudyDailyPlanBuild {
-  const built = buildDailyPlannerTasks(state, date);
+    const built = buildDailyPlannerTasks(
+    state,
+    date,
+    overrides.includeAdditionalInitialLearning ?? false,
+  );
 
   return {
     ...built,
