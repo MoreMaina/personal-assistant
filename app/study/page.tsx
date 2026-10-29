@@ -2524,7 +2524,7 @@ function SamplerSection({
                       {logged} / {planned} min recorded
                     </span>
                     <span className="w-full text-xs font-medium text-stone-600">
-                      Sampler: {item.allocated_minutes} min · Analysis:{" "}
+                      Sampler: {Math.max(   0,   item.allocated_minutes - item.analysis_minutes, )}{" "} min · Analysis:{" "}
                       {item.analysis_minutes} min
                     </span>
                   </li>
