@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import { assertStudyStateIntegrity } from "./storage";
+import {   assertStudyStateIntegrity,   normalizeLegacyDailyPlanExecutions, } from "./storage";
 import type { StudyMvpState } from "./types";
 
 export interface StudyMvpCloudRecord {
@@ -34,7 +34,7 @@ function validateCloudState(value: unknown): StudyMvpState {
     throw new Error("The saved cloud Study state is not a valid object.");
   }
 
-  const state = value as StudyMvpState;
+  const state = normalizeLegacyDailyPlanExecutions(     value as StudyMvpState,   );
 
   try {
     assertStudyStateIntegrity(state);
