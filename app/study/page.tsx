@@ -1622,7 +1622,7 @@ function movePlanningItemTo(
                   }}
                 />
               </div>
-              )}
+              
               <div className="mt-2 flex justify-between text-xs font-bold text-stone-500">
                 <span>{plan.remaining_budget_minutes} min remaining</span>
                 <span>
@@ -1634,6 +1634,7 @@ function movePlanningItemTo(
                 </span>
               </div>
             </div>
+            )}
 
             {plan.items.length === 0 ? (
               <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
