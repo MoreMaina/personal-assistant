@@ -465,6 +465,64 @@ describe("WorkSession persistence", () => {
     expect(result.task_events[0].result).toBeNull();
   });
 
+    it.each([
+    ["recovery", "corrective_task"],
+    ["mixed_practice", "mixed_practice"],
+    ["sampler", "sampler"],
+  ] as const)(
+    "persists %s sessions with the matching TaskEvent subject type",
+    (subjectType, eventSubjectType) => {
+      const storage = new MemoryStorage();
+
+      saveStudyMvpState(
+        createEmptyStudyState({
+          now: NOW,
+          timezone: "UTC",
+        }),
+        storage,
+      );
+
+      const session: WorkSession = {
+        id: "work-1",
+        subject_type: subjectType,
+        subject_id: "plan-item-1",
+        planned_duration_min: 30,
+        actual_duration_min: 12,
+        logged_at: NOW,
+        notes: "Regression test session.",
+      };
+
+      const event = validEvent({
+        id: "work-event-1",
+        event_type: "work_session",
+        subject_type: eventSubjectType,
+        subject_id: "plan-item-1",
+        review_event_id: null,
+        retrieval_task_id: null,
+        task_type_at_event: null,
+        work_session_id: "work-1",
+        estimated_duration_min_at_event: 30,
+        actual_duration_min: 12,
+        result: null,
+      });
+
+      const result = recordWorkSession(
+        session,
+        event,
+        storage,
+      );
+
+      expect(result.work_sessions).toHaveLength(1);
+      expect(result.task_events).toHaveLength(1);
+      expect(result.work_sessions[0].subject_type).toBe(
+        subjectType,
+      );
+      expect(result.task_events[0].subject_type).toBe(
+        eventSubjectType,
+      );
+    },
+  );
+  
   it("makes exact WorkSession replay idempotent", () => {
     const storage = new MemoryStorage();
 
