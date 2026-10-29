@@ -3024,7 +3024,7 @@ function movePlanningItemTo(
       (task) => task !== undefined && !task.active,
     ),
   );
-  const gateReadiness = state && selectedGateTopic
+    const gateReadiness = state && selectedGateTopic
     ? getGateReadiness(
         selectedGateTopic,
         gateTasks,
@@ -3032,6 +3032,31 @@ function movePlanningItemTo(
         openGateSession?.selectedTaskIds ?? [],
       )
     : null;
+
+  const plannedGateItems =
+    (latestTodaysPlan?.plan.items ?? []).filter(
+      (item) => item.kind === "gate" && item.allocated_minutes > 0,
+    );
+
+  const gateSectionReadyToComplete = (() => {
+    if (!state || plannedGateItems.length === 0) return false;
+
+    return plannedGateItems.every((item) => {
+      const latestSession = getLatestGateSession(state, item.subject_id);
+
+      if (!latestSession?.complete) return false;
+
+      return state.task_events.some(
+        (event) =>
+          event.event_type === "gate_attempt" &&
+          event.gate_session_id === latestSession.id &&
+          localDateOfTimestamp(
+            event.logged_at,
+            state.settings.timezone,
+          ) === today,
+      );
+    });
+  })();
 
   const defaultGateTaskIds = getDefaultGateTaskIds(gateTasks);
 
@@ -3530,6 +3555,36 @@ function movePlanningItemTo(
     }
   }
 
+    function finishTopicGateSection() {
+    if (
+      !state ||
+      !latestTodaysPlan ||
+      !gateSectionReadyToComplete
+    ) {
+      return;
+    }
+
+    try {
+      const nextState = completeDailyPlanSection(
+        state,
+        latestTodaysPlan.id,
+        "topic_gate",
+        new Date().toISOString(),
+      );
+
+      persist(
+        nextState,
+        "Topic Gate section completed. The next planned section is now eligible.",
+      );
+    } catch (cause) {
+      setProblem(
+        cause instanceof Error
+          ? cause.message
+          : "Could not complete today's Topic Gate section.",
+      );
+    }
+  }
+  
   function submitReviewAttempt(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!state || !selectedReview) return;
@@ -5097,6 +5152,21 @@ function movePlanningItemTo(
             )}
           </form>
         )}
+              <div className="mt-6 border-t border-[#e4dac9] pt-5">
+          <p className="text-sm font-semibold text-stone-600">
+            {gateSectionReadyToComplete
+              ? "All allocated gate sessions have been completed today."
+              : "Complete every allocated gate session today before continuing."}
+          </p>
+          <button
+            type="button"
+            disabled={!gateSectionReadyToComplete}
+            onClick={finishTopicGateSection}
+            className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Complete Topic Gate section
+          </button>
+        </div>
       </section>
       )}
 
