@@ -685,6 +685,11 @@ function assertDailyPlanExecutions(
       );
     }
 
+    seenIds.add(id);
+  }
+}
+
+
 export function assertStudyStateIntegrity(
   state: StudyMvpState,
 ): void {
