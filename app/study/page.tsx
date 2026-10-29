@@ -65,6 +65,11 @@ import type {
   YellowGapSeverity,
 } from "@/lib/studyMvp/types";
 
+import type {
+  PlanTaskKind,
+  StudySessionSectionId,
+} from "@/lib/studyMvp/types";
+
 function newId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }

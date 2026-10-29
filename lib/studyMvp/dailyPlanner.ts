@@ -30,16 +30,6 @@ import { addCalendarDays } from "./reviewEngine";
  * 6. Scheduling decisions can be recorded idempotently.
  */
 
-export type PlanTaskKind =
-  | "initial_learning"
-  | "topic_consolidation"
-  | "gate"
-  | "review"
-  | "assignment"
-  | "corrective"
-  | "recovery"
-  | "mixed_practice"
-  | "sampler";
 
 export type PlanCategory =
   | "PROTECTED"

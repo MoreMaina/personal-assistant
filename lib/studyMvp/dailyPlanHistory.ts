@@ -89,6 +89,10 @@ export function completeDailyPlanSection(
           return "mixed_practice";
         case "sampler":
           return "sampler";
+        default:
+          throw new Error(
+            `Unsupported daily plan task kind: ${item.kind}`,
+          );
       }
     }),
   );

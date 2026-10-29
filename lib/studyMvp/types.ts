@@ -6,9 +6,7 @@
  * before the existing interface or storage is changed.
  */
 
-import type { DailyPlan,
-  StudySessionSectionId,
- } from "./dailyPlanner";
+import type { DailyPlan } from "./dailyPlanner";
 
 export type ISODate = string;
 export type ISODateTime = string;
@@ -19,6 +17,17 @@ export type StudySessionSectionId =
   | "reviews"
   | "topic_consolidation"
   | "assignments"
+  | "corrective"
+  | "recovery"
+  | "mixed_practice"
+  | "sampler";
+
+export type PlanTaskKind =
+  | "initial_learning"
+  | "topic_consolidation"
+  | "gate"
+  | "review"
+  | "assignment"
   | "corrective"
   | "recovery"
   | "mixed_practice"
