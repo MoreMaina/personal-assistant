@@ -2743,6 +2743,29 @@ function openCatalogTools() {
     todaysExecution?.completed_section_ids ?? [],
   );
 
+  const hasRecordedTodaysWork =
+  completedSectionIds.size > 0 ||
+  state.work_sessions.some(
+    (session) =>
+      localDateOfTimestamp(
+        session.logged_at,
+        state.settings.timezone,
+      ) === today,
+  ) ||
+  state.task_events.some(
+    (event) =>
+      [
+        "attempt",
+        "gate_attempt",
+        "work_session",
+        "content_preparation",
+      ].includes(event.event_type) &&
+      localDateOfTimestamp(
+        event.logged_at,
+        state.settings.timezone,
+      ) === today,
+  );
+
     const plannedSectionIds = [
     ...new Set(
       (latestTodaysPlan?.plan.items ?? [])
@@ -2933,6 +2956,14 @@ function movePlanningItemTo(
 
   function saveDailyPlan() {
     if (!state || !plan || !planningMode) return;
+
+      if (latestTodaysPlan && hasRecordedTodaysWork) {
+    setIsReplanning(false);
+    setProblem(
+      "Today's plan is locked because study work or a section completion has already been recorded. The saved plan has not been changed.",
+    );
+    return;
+  }
 
     if (!plan.can_finalize) {
       setProblem(
@@ -4604,18 +4635,25 @@ function movePlanningItemTo(
                     count as completed work.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPlanningChoices({});
-                    setPlanningReasons({});
-                    setPlanningReentries({});
-                    setIsReplanning(true);
-                  }}
-                  className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021]"
-                >
-                  Replan today
-                </button>
+                {hasRecordedTodaysWork ? (
+  <p className="max-w-md text-sm font-semibold leading-6 text-stone-600">
+    Today's plan is locked because work or a section completion has
+    already been recorded. Your saved plan and history are preserved.
+  </p>
+) : (
+  <button
+    type="button"
+    onClick={() => {
+      setPlanningChoices({});
+      setPlanningReasons({});
+      setPlanningReentries({});
+      setIsReplanning(true);
+    }}
+    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021]"
+  >
+    Replan today
+  </button>
+)}
               </div>
             )}
           </>
