@@ -2947,10 +2947,14 @@ function movePlanningItemTo(
       </section>
       )}
 
-      <section
-        id="reviews"
-        className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
-      >
+            {state &&
+        latestTodaysPlan &&
+        !planningMode &&
+        activeSectionId === "reviews" && (
+          <section
+            id="reviews"
+            className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
+          >
         <SectionHeading
           eyebrow="04 · Retrieval"
           title="Due reviews"
@@ -3216,7 +3220,8 @@ function movePlanningItemTo(
             )}
           </div>
         )}
-      </section>
+                </section>
+        )}
     </div>
   );
 }
