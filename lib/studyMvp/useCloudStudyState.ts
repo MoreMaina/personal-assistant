@@ -106,20 +106,37 @@ export function useCloudStudyState() {
     let cancelled = false;
 
     async function initialize() {
-      let localState: StudyMvpState | null = null;
+            let localState: StudyMvpState | null = null;
+      let localStateLoadError = "";
 
       try {
         const hasLocalData =
           window.localStorage.getItem(STUDY_MVP_STORAGE_KEY) !== null;
 
         if (hasLocalData) {
-          localState = loadStudyMvpState();
+          try {
+            localState = loadStudyMvpState();
+          } catch (error) {
+            localStateLoadError =
+              error instanceof Error
+                ? error.message
+                : "The browser Study copy failed integrity validation.";
+
+            if (!/preserved/i.test(localStateLoadError)) {
+              throw error;
+            }
+          }
         }
 
         const remote = await loadStudyMvpCloudState();
         if (cancelled) return;
 
         if (!remote && !localState) {
+          if (localStateLoadError) {
+            throw new Error(
+              "No valid cloud Study copy was available to restore from the preserved browser copy.",
+            );
+          }
           // Do not create an empty remote record merely because a new
           // browser opens Study. A real save will create revision 1.
           const initial = loadStudyMvpState();
@@ -189,11 +206,20 @@ export function useCloudStudyState() {
           ? error.message
           : "Check your connection and Study storage configuration.";
 
-        if (localState) {
+                if (localState) {
           currentStateRef.current = localState;
           setState(localState);
           setProblem(
             `Cloud initialization failed. Your browser copy remains available. ${detail}`,
+          );
+        } else if (localStateLoadError) {
+          const recoveryCopyPreserved =
+            /preserved/i.test(localStateLoadError);
+
+          setLoadingError(
+            recoveryCopyPreserved
+              ? `The browser Study copy failed integrity validation. A recovery copy was preserved. ${localStateLoadError} ${detail}`
+              : `The browser Study copy could not be safely validated or preserved. No replacement was made. ${detail}`,
           );
         } else {
           setLoadingError(
