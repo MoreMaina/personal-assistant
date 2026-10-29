@@ -2004,6 +2004,307 @@ function RecoverySection({
   );
 }
 
+function MixedPracticeSection({
+  state,
+  snapshot,
+  today,
+  persist,
+}: {
+  state: StudyMvpState;
+  snapshot: SavedDailyPlanSnapshot;
+  today: string;
+  persist: (
+    next: StudyMvpState,
+    successMessage?: string,
+  ) => boolean;
+}) {
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [actualDurationMin, setActualDurationMin] = useState(5);
+  const [notes, setNotes] = useState("");
+  const [error, setError] = useState("");
+
+  const items = snapshot.plan.items.filter(
+    (item) =>
+      item.kind === "mixed_practice" &&
+      item.allocated_minutes > 0,
+  );
+
+  const selectedItem =
+    items.find((item) => item.id === selectedItemId) ??
+    items[0] ??
+    null;
+
+  function loggedMinutesFor(subjectId: EntityId): number {
+    return state.work_sessions
+      .filter(
+        (session) =>
+          session.subject_type === "mixed_practice" &&
+          session.subject_id === subjectId &&
+          localDateOfTimestamp(
+            session.logged_at,
+            state.settings.timezone,
+          ) === today,
+      )
+      .reduce(
+        (total, session) => total + session.actual_duration_min,
+        0,
+      );
+  }
+
+  const allAllocationsRecorded =
+    items.length > 0 &&
+    items.every(
+      (item) =>
+        loggedMinutesFor(item.subject_id) >=
+        item.allocated_minutes,
+    );
+
+  function saveSession(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    if (!selectedItem) {
+      setError(
+        "No mixed-practice block is available in today's saved plan.",
+      );
+      return;
+    }
+
+    if (
+      !Number.isSafeInteger(actualDurationMin) ||
+      actualDurationMin < 1 ||
+      actualDurationMin > 600
+    ) {
+      setError(
+        "Enter an actual duration between 1 and 600 whole minutes.",
+      );
+      return;
+    }
+
+    if (
+      loggedMinutesFor(selectedItem.subject_id) >=
+      selectedItem.allocated_minutes
+    ) {
+      setError(
+        "The planned mixed-practice time has already been recorded today.",
+      );
+      return;
+    }
+
+    const loggedAt = new Date().toISOString();
+    const sessionId = newId("work-session");
+    const trimmedNotes = notes.trim();
+
+    const session: WorkSession = {
+      id: sessionId,
+      subject_type: "mixed_practice",
+      subject_id: selectedItem.subject_id,
+      planned_duration_min: selectedItem.allocated_minutes,
+      actual_duration_min: actualDurationMin,
+      logged_at: loggedAt,
+      notes: trimmedNotes,
+    };
+
+    const taskEvent: TaskEvent = {
+      id: newId("event"),
+      logged_at: loggedAt,
+      event_type: "work_session",
+      subject_type: "mixed_practice",
+      subject_id: selectedItem.subject_id,
+      review_event_id: null,
+      retrieval_task_id: null,
+      gate_session_id: null,
+      gate_selected_task_ids_snapshot: null,
+      skill_demonstrated_without_hints: null,
+      work_session_id: sessionId,
+      related_event_id: null,
+      estimated_duration_min_at_event:
+        selectedItem.estimated_minutes,
+      task_type_at_event: null,
+      priority_at_event: selectedItem.priority,
+      intended_due_date_at_event:
+        selectedItem.intended_due_date,
+      current_due_date_at_event:
+        selectedItem.current_due_date,
+      actual_duration_min: actualDurationMin,
+      result: null,
+      yellow_gap_severity: null,
+      disposition: null,
+      reason: trimmedNotes || null,
+      critical_error_flag: null,
+      defer_count_at_event: selectedItem.defer_count,
+      re_entry_condition: null,
+      old_priority: null,
+      new_priority: null,
+    };
+
+    const nextState: StudyMvpState = {
+      ...state,
+      work_sessions: [...state.work_sessions, session],
+      task_events: [...state.task_events, taskEvent],
+    };
+
+    if (
+      persist(
+        nextState,
+        `Recorded ${actualDurationMin} minutes of mixed practice.`,
+      )
+    ) {
+      setNotes("");
+    }
+  }
+
+  function finishSection() {
+    if (!allAllocationsRecorded) return;
+
+    setError("");
+
+    try {
+      const nextState = completeDailyPlanSection(
+        state,
+        snapshot.id,
+        "mixed_practice",
+        new Date().toISOString(),
+      );
+
+      persist(
+        nextState,
+        "Mixed-practice section completed. The next planned section is now eligible.",
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not complete today's mixed-practice section.",
+      );
+    }
+  }
+
+  return (
+    <section
+      id="mixed-practice"
+      className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
+    >
+      <SectionHeading
+        eyebrow="Study activity"
+        title="Mixed practice"
+        detail="Practise across topics rather than focusing on a single topic. Record the actual work time for each planned block; only mixed-practice sessions count toward these allocations."
+      />
+
+      {items.length === 0 ? (
+        <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
+          There are no positively allocated mixed-practice blocks in today's saved plan.
+        </p>
+      ) : (
+        <>
+          <div className="mb-5 rounded-2xl bg-white p-4">
+            <h3 className="font-extrabold text-[#23412f]">
+              Today's mixed-practice allocations
+            </h3>
+            <ul className="mt-3 space-y-2">
+              {items.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap justify-between gap-2 rounded-xl bg-[#efe4d1] p-3 text-sm font-semibold"
+                >
+                  <span>Mixed-practice block</span>
+                  <span>
+                    {loggedMinutesFor(item.subject_id)} /{" "}
+                    {item.allocated_minutes} min recorded
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <form onSubmit={saveSession} className="space-y-4">
+            <label className="block">
+              <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                Block to record
+              </span>
+              <select
+                value={selectedItem?.id ?? ""}
+                onChange={(event) => {
+                  setSelectedItemId(event.target.value);
+                  setError("");
+                }}
+                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+              >
+                {items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    Mixed-practice block · {item.allocated_minutes} min
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block max-w-sm">
+              <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                Actual work duration (minutes)
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={600}
+                value={actualDurationMin}
+                onChange={(event) =>
+                  setActualDurationMin(Number(event.target.value))
+                }
+                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-sm font-extrabold text-stone-700">
+                Notes (optional)
+              </span>
+              <textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                rows={3}
+                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                placeholder="Which topics or skills did you mix together?"
+              />
+            </label>
+
+            {error && (
+              <p
+                role="alert"
+                className="rounded-xl bg-rose-100 p-3 text-sm font-bold text-rose-900"
+              >
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f]"
+            >
+              Record mixed-practice session
+            </button>
+          </form>
+
+          <div className="mt-6 border-t border-[#e4dac9] pt-5">
+            <p className="text-sm font-semibold text-stone-600">
+              {allAllocationsRecorded
+                ? "All mixed-practice allocations have enough recorded time."
+                : "Record the allocated time for every mixed-practice block before continuing."}
+            </p>
+            <button
+              type="button"
+              disabled={!allAllocationsRecorded}
+              onClick={finishSection}
+              className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Complete mixed-practice section
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function StudyMvpPage() {
   const {
     state,
