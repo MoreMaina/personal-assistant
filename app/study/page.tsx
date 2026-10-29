@@ -2565,10 +2565,14 @@ function movePlanningItemTo(
         )}
       </section>
 
-      <section
-        id="gate"
-        className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
-      >
+      {state &&
+  latestTodaysPlan &&
+  !planningMode &&
+  activeSectionId === "topic_gate" && (
+    <section
+      id="gate"
+      className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
+    >
         <SectionHeading
           eyebrow="03 · Initial learning"
           title="Topic gate"
@@ -2941,6 +2945,7 @@ function movePlanningItemTo(
           </form>
         )}
       </section>
+      )}
 
       <section
         id="reviews"
