@@ -5,6 +5,7 @@ import { assertStudyStateIntegrity } from "./storage";
 import type {
   SavedDailyPlanSnapshot,
   StudyMvpState,
+  StudySessionSectionId,
 } from "./types";
 
 export interface AppendDailyPlanSnapshotResult {
@@ -56,7 +57,7 @@ export function appendDailyPlanSnapshot(
 export function completeDailyPlanSection(
   state: StudyMvpState,
   planSnapshotId: string,
-  sectionId: StudySessionID,
+  sectionId: StudySessionSectionId,
   updatedAt: string = new Date().toISOString(),
 ): StudyMvpState {
   const snapshot = (

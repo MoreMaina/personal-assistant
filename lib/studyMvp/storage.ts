@@ -676,7 +676,9 @@ function assertDailyPlanExecutions(
     if (
       new Set(completedSectionIds).size !== completedSectionIds.length ||
       completedSectionIds.some(
-        (sectionId) => !snapshotSectionIds.has(sectionId),
+        (sectionId) => !snapshotSectionIds.has(
+  sectionId as StudySessionSectionId,
+),
       )
     ) {
       throw new StudyStorageError(

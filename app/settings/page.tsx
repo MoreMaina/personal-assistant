@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import GoogleCalendarSettings from "@/app/components/GoogleCalendarSettings";
 

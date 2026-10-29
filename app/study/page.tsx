@@ -272,7 +272,7 @@ export default function StudyMvpPage() {
   const plannedSectionIds = [
     ...new Set(
       (latestTodaysPlan?.plan.items ?? []).map(
-        (item) => item.kind,
+        (item) => sectionIdForTaskKind(item.kind),
       ),
     ),
   ];
@@ -282,11 +282,7 @@ export default function StudyMvpPage() {
       (sectionId) => !completedSectionIds.has(sectionId),
     ) ?? null;
 
-  const activePlanItem =
-    latestTodaysPlan?.plan.items.find(
-      (item) => !completedPlanItemIds.has(item.id),
-    ) ?? null;
-
+  
   const planningMode = !latestTodaysPlan || isReplanning;
 
   const planResult = useMemo(() => {
@@ -1761,15 +1757,7 @@ function movePlanningItemTo(
                               Start learning
                             </button>
                           )}
-                          {!planningMode && itemIsActive && (
-                            <div className="mt-4 border-t border-stone-200 pt-4">
-                              <p className="mb-3 text-sm text-stone-600">
-                                When you have finished this activity, mark it
-                                complete to unlock the next step.
-                              </p>
-
-                            </div>
-                          )}
+                          
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <span
