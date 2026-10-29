@@ -255,7 +255,8 @@ export interface ReviewEvent {
 export type WorkSubjectType =
   | "assignment"
   | "corrective"
-  | "topic_consolidation";
+  | "topic_consolidation"
+  | "initial_learning";
 
 export interface WorkSession {
   id: EntityId;
