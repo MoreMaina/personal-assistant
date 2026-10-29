@@ -256,7 +256,9 @@ export type WorkSubjectType =
   | "assignment"
   | "corrective"
   | "topic_consolidation"
-  | "initial_learning";
+  | "initial_learning"
+  | "mixed_practice"
+  | "sampler";
 
 export interface WorkSession {
   id: EntityId;
