@@ -187,6 +187,48 @@ describe("safe local persistence", () => {
     expect(loadStudyMvpState(storage)).toEqual(state);
   });
 
+    it("accepts and preserves a valid course archive timestamp", () => {
+    const storage = new MemoryStorage();
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    state.courses.push({
+      id: "course-1",
+      name: "Test Course",
+      code: "TEST101",
+      color: "#557C8A",
+      created_at: NOW,
+      archived_at: NOW,
+    });
+
+    saveStudyMvpState(state, storage);
+
+    expect(loadStudyMvpState(storage).courses[0].archived_at).toBe(NOW);
+  });
+
+  it("rejects an invalid course archive timestamp", () => {
+    const storage = new MemoryStorage();
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    state.courses.push({
+      id: "course-1",
+      name: "Test Course",
+      code: "TEST101",
+      color: "#557C8A",
+      created_at: NOW,
+      archived_at: "not-a-timestamp",
+    });
+
+    expect(() => saveStudyMvpState(state, storage)).toThrow(
+      /archived_at must be a valid ISO 8601 timestamp/,
+    );
+  });
+
   it("refuses to overwrite malformed JSON and preserves a recovery copy", () => {
     const storage = new MemoryStorage();
     const original = "{broken json";
