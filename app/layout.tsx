@@ -6,7 +6,7 @@ import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 import Navigation from "./components/Navigation";
 import CloudSync from "./components/CloudSync";
-import FocusTimer from "./components/FocusTimer";
+import { ItemWorkTimerProvider } from "./components/ItemWorkTimer";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -51,28 +51,26 @@ export default function RootLayout({
           <CloudSync />
         </Suspense>
 
-        <Suspense fallback={null}>
-          <FocusTimer />
-        </Suspense>
+        <ItemWorkTimerProvider>
+          <div className="app-frame">
+            <header className="topbar">
+              <Link
+                href="/"
+                className="topbar__brand"
+                aria-label="Personal Assistant home"
+              >
+                <span className="topbar__brand-mark" aria-hidden="true">PA</span>
+                <span>Personal Assistant</span>
+              </Link>
+            </header>
 
-        <div className="app-frame">
-          <header className="topbar">
-            <Link
-              href="/"
-              className="topbar__brand"
-              aria-label="Personal Assistant home"
-            >
-              <span className="topbar__brand-mark" aria-hidden="true">PA</span>
-              <span>Personal Assistant</span>
-            </Link>
-          </header>
-
-          <main className="app-content">
-            <div className="page-shell">
-              {children}
-            </div>
-          </main>
-        </div>
+            <main className="app-content">
+              <div className="page-shell">
+                {children}
+              </div>
+            </main>
+          </div>
+        </ItemWorkTimerProvider>
       </body>
     </html>
   );
