@@ -13,6 +13,7 @@ import {
   loadStudyMvpState,
   recordWorkSession,
   saveStudyMvpState,
+  setCourseArchivedAt,
   STUDY_MVP_STORAGE_KEY,
   StudyStorageError,
   type StorageLike,
@@ -227,6 +228,93 @@ describe("safe local persistence", () => {
     expect(() => saveStudyMvpState(state, storage)).toThrow(
       /archived_at must be a valid ISO 8601 timestamp/,
     );
+  });
+
+    it("archives and restores a course without changing associated records", () => {
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    state.courses.push({
+      id: "course-1",
+      name: "Test Course",
+      code: "TEST101",
+      color: "#557C8A",
+      created_at: NOW,
+    });
+
+    state.units.push({
+      id: "unit-1",
+      course_id: "course-1",
+      code: "A",
+      name: "Unit A",
+      order_index: 1,
+    });
+
+    const originalUnits = state.units;
+    const originalTopics = state.topics;
+    const originalReviews = state.review_events;
+    const originalTaskEvents = state.task_events;
+
+    const archived = setCourseArchivedAt(
+      state,
+      "course-1",
+      NOW,
+    );
+
+    expect(archived.courses[0].archived_at).toBe(NOW);
+    expect(state.courses[0].archived_at).toBeUndefined();
+
+    expect(archived.units).toBe(originalUnits);
+    expect(archived.topics).toBe(originalTopics);
+    expect(archived.review_events).toBe(originalReviews);
+    expect(archived.task_events).toBe(originalTaskEvents);
+    expect(archived.units[0].course_id).toBe("course-1");
+
+    const restored = setCourseArchivedAt(
+      archived,
+      "course-1",
+      null,
+    );
+
+    expect(restored.courses[0].archived_at).toBeNull();
+    expect(restored.units).toBe(originalUnits);
+    expect(restored.review_events).toBe(originalReviews);
+  });
+
+  it("rejects archiving a course that does not exist", () => {
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    expect(() =>
+      setCourseArchivedAt(state, "missing-course", NOW),
+    ).toThrow(/Course "missing-course" was not found/);
+  });
+
+  it("rejects an invalid timestamp passed to the archive operation", () => {
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    state.courses.push({
+      id: "course-1",
+      name: "Test Course",
+      code: "TEST101",
+      color: "#557C8A",
+      created_at: NOW,
+    });
+
+    expect(() =>
+      setCourseArchivedAt(
+        state,
+        "course-1",
+        "not-a-timestamp",
+      ),
+    ).toThrow(/valid ISO 8601 timestamp/);
   });
 
   it("refuses to overwrite malformed JSON and preserves a recovery copy", () => {
