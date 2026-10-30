@@ -109,9 +109,33 @@ export function buildDailyPlannerTasks(
     state.topics.map((topic) => [topic.id, topic]),
   );
 
-  const dueReviews = state.review_events.filter((review) =>
+    const unitsById = new Map(
+    state.units.map((unit) => [unit.id, unit]),
+  );
+
+  const coursesById = new Map(
+    state.courses.map((course) => [course.id, course]),
+  );
+
+  const isCourseArchived = (courseId: EntityId): boolean =>
+    Boolean(coursesById.get(courseId)?.archived_at);
+
+  const isTopicArchived = (topicId: EntityId): boolean => {
+    const topic = topicsById.get(topicId);
+    const unit = topic
+      ? unitsById.get(topic.unit_id)
+      : undefined;
+    const course = unit
+      ? coursesById.get(unit.course_id)
+      : undefined;
+
+    return Boolean(course?.archived_at);
+  };
+
+    const dueReviews = state.review_events.filter((review) =>
     ["pending", "in_progress", "deferred", "missed"].includes(review.status) &&
-    review.current_due_date <= date,
+    review.current_due_date <= date &&
+    !isTopicArchived(review.topic_id),
   );
 
   for (const review of dueReviews) {
@@ -172,6 +196,7 @@ export function buildDailyPlannerTasks(
     const eligibleTopics = state.topics
       .filter((topic) => {
         if (
+          isTopicArchived(topic.id) ||
           topic.status !== "not_started" ||
           topic.gate_passed ||
           topic.gate_result === "passed" ||
@@ -226,7 +251,8 @@ export function buildDailyPlannerTasks(
   // in learning and its gate date has arrived. An interrupted gate keeps
   // the exact task IDs captured by its immutable attempt evidence.
   for (const topic of state.topics) {
-    if (
+        if (
+      isTopicArchived(topic.id) ||
       topic.status !== "in_learning" ||
       topic.gate_passed ||
       topic.gate_result === "passed" ||
@@ -303,7 +329,8 @@ export function buildDailyPlannerTasks(
   }
 
   for (const topic of state.topics) {
-    if (
+        if (
+      isTopicArchived(topic.id) ||
       topic.status !== "in_learning" ||
       topic.planned_consolidation_date === null ||
       topic.planned_consolidation_date > date
@@ -344,7 +371,8 @@ export function buildDailyPlannerTasks(
   }
 
   for (const assignment of state.assignments) {
-    if (
+        if (
+      isCourseArchived(assignment.course_id) ||
       assignment.status === "completed" ||
       assignment.status === "cancelled" ||
       (
