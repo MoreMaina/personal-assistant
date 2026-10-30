@@ -146,6 +146,14 @@ describe("Today Study MVP data adapter", () => {
     expect(tasks[0].dueAt).toBe("2026-10-23");
   });
 
+    it("does not show Study reviews belonging to archived courses", () => {
+    const state = fixtureState();
+
+    state.courses[0].archived_at = NOW.toISOString();
+
+    expect(getStudyMvpTasks(state, NOW)).toEqual([]);
+  });
+
   it("includes eligible outstanding review statuses", () => {
     const state = fixtureState();
 
