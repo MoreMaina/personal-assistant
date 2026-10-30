@@ -283,6 +283,10 @@ export function getStudyMvpTasks(
       return [];
     }
 
+    if (course?.archived_at) {
+      return [];
+    }
+
     const selectedTasks = review.selected_task_ids.map(
       (id) => retrievalTasksById.get(id),
     );
