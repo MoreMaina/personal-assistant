@@ -51,7 +51,9 @@ export default function RootLayout({
           <CloudSync />
         </Suspense>
 
-        <FocusTimer />
+        <Suspense fallback={null}>
+          <FocusTimer />
+        </Suspense>
 
         <div className="app-frame">
           <header className="topbar">
