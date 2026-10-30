@@ -151,6 +151,7 @@ export interface Course {
   code: string;
   color: string;
   created_at: ISODateTime;
+  archived_at?: ISODateTime | null;
 }
 
 export interface Unit {
