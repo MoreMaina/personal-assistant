@@ -19,6 +19,22 @@ function fixtureState(): StudyMvpState {
     now: "2026-10-23T07:00:00.000Z",
   });
 
+    state.courses.push({
+    id: "course-1",
+    name: "Computer Science",
+    code: "CS",
+    color: "#23412f",
+    created_at: "2026-10-23T07:00:00.000Z",
+  });
+
+  state.units.push({
+    id: "unit-1",
+    course_id: "course-1",
+    code: "UNIT-1",
+    name: "Unit one",
+    order_index: 1,
+  });
+
   const topic: Topic = {
     id: "topic-1",
     unit_id: "unit-1",
@@ -145,6 +161,70 @@ describe("Study MVP dashboard planner adapter", () => {
 
     expect(built.tasks.some((item) => item.kind === "review")).toBe(false);
     expect(built.omittedReviewIds).toEqual([]);
+  });
+
+    it("excludes reviews, gates, and consolidation from archived courses", () => {
+    const state = fixtureState();
+
+    state.topics[0] = {
+      ...state.topics[0],
+      status: "in_learning",
+      gate_passed: false,
+      gate_result: "pending",
+      planned_consolidation_date: "2026-10-22",
+    };
+
+    state.courses[0].archived_at =
+      "2026-10-23T07:00:00.000Z";
+
+    const built = buildDailyPlannerTasks(
+      state,
+      "2026-10-23",
+    );
+
+    expect(
+      built.tasks.some((item) =>
+        ["review", "gate", "topic_consolidation"].includes(item.kind),
+      ),
+    ).toBe(false);
+  });
+
+  it("excludes initial learning and assignments from archived courses", () => {
+    const state = fixtureState();
+
+    state.topics[0] = {
+      ...state.topics[0],
+      status: "not_started",
+      gate_passed: false,
+      gate_result: "pending",
+      planned_consolidation_date: null,
+    };
+
+    state.assignments.push({
+      id: "assignment-1",
+      course_id: "course-1",
+      title: "Test assignment",
+      due_date: "2026-10-23",
+      estimated_duration_min: 60,
+      remaining_min: 60,
+      max_session_min: 30,
+      importance: "high",
+      status: "pending",
+    });
+
+    state.courses[0].archived_at =
+      "2026-10-23T07:00:00.000Z";
+
+    const built = buildDailyPlannerTasks(
+      state,
+      "2026-10-23",
+    );
+
+    expect(
+      built.tasks.some((item) =>
+        ["initial_learning", "assignment"].includes(item.kind),
+      ),
+    ).toBe(false);
   });
 
   it("counts only topic-consolidation WorkSessions for consolidation progress", () => {
