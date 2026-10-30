@@ -283,10 +283,15 @@ export function getStudyMvpTasks(
       return [];
     }
 
+    const unit = unitsById.get(topic.unit_id);
+
+    const course = unit
+      ? coursesById.get(unit.course_id)
+      : undefined;
+
     if (course?.archived_at) {
       return [];
     }
-
     const selectedTasks = review.selected_task_ids.map(
       (id) => retrievalTasksById.get(id),
     );
@@ -313,12 +318,6 @@ export function getStudyMvpTasks(
     ) {
       return [];
     }
-
-    const unit = unitsById.get(topic.unit_id);
-
-    const course = unit
-      ? coursesById.get(unit.course_id)
-      : undefined;
 
     const unitName = [
       course?.name,
