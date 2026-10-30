@@ -176,6 +176,68 @@ describe("daily allocation acceptance tests", () => {
     expect(plan.can_finalize).toBe(true);
   });
 
+  it("does not partially allocate an additional initial-learning topic", () => {
+  const plan = generateDailyPlan(
+    makeInput(
+      [
+        consolidation("consolidation-1", 30),
+        {
+          id: "extra-topic",
+          subjectId: "extra-topic",
+          topicId: "extra-topic",
+          kind: "initial_learning",
+          plannedDate: DATE,
+          estimatedDurationMin: 45,
+          onlyAllocateIfFull: true,
+          priority: 3,
+          considered: true,
+        },
+      ],
+      {
+        settings: {
+          ...DEFAULT_PLANNER_SETTINGS,
+          daily_budget_min: 60,
+        },
+      },
+    ),
+  );
+
+  expect(item(plan, "consolidation-1").allocated_minutes).toBe(30);
+  expect(item(plan, "extra-topic").allocated_minutes).toBe(0);
+  expect(plan.allocated_minutes).toBe(30);
+});
+
+it("allocates an additional initial-learning topic when the full estimate fits", () => {
+  const plan = generateDailyPlan(
+    makeInput(
+      [
+        consolidation("consolidation-1", 30),
+        {
+          id: "extra-topic",
+          subjectId: "extra-topic",
+          topicId: "extra-topic",
+          kind: "initial_learning",
+          plannedDate: DATE,
+          estimatedDurationMin: 45,
+          onlyAllocateIfFull: true,
+          priority: 3,
+          considered: true,
+        },
+      ],
+      {
+        settings: {
+          ...DEFAULT_PLANNER_SETTINGS,
+          daily_budget_min: 75,
+        },
+      },
+    ),
+  );
+
+  expect(item(plan, "extra-topic").allocated_minutes).toBe(45);
+  expect(plan.allocated_minutes).toBe(75);
+  expect(plan.remaining_budget_minutes).toBe(0);
+});
+  
   it("H2 — services a review flood without exceeding budget or hiding remaining work", () => {
     const tasks: PlanningTask[] = [
       consolidation("new-1", 45),
