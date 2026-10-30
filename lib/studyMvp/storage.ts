@@ -1458,6 +1458,49 @@ export function saveStudyMvpState(
 }
 
 /**
+ * Reversibly archive or restore a course.
+ *
+ * Pass an ISO timestamp to archive it, or null to restore it.
+ * All associated catalog and historical records remain unchanged.
+ */
+export function setCourseArchivedAt(
+  state: StudyMvpState,
+  courseId: EntityId,
+  archivedAt: ISODateTime | null,
+): StudyMvpState {
+  if (archivedAt !== null && !hasTimezone(archivedAt)) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Course archive timestamp must be a valid ISO 8601 timestamp with a timezone.",
+    );
+  }
+
+  const course = state.courses.find(
+    (item) => item.id === courseId,
+  );
+
+  if (!course) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      `Course "${courseId}" was not found.`,
+    );
+  }
+
+  if ((course.archived_at ?? null) === archivedAt) {
+    return state;
+  }
+
+  return {
+    ...state,
+    courses: state.courses.map((item) =>
+      item.id === courseId
+        ? { ...item, archived_at: archivedAt }
+        : item,
+    ),
+  };
+}
+
+/**
  * Explicitly replace the local Study state after preserving its exact
  * previous value under a separate recovery key.
  *
