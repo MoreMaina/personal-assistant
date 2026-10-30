@@ -6,6 +6,7 @@ import { Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 import Navigation from "./components/Navigation";
 import CloudSync from "./components/CloudSync";
+import FocusTimer from "./components/FocusTimer";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -49,6 +50,10 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <CloudSync />
         </Suspense>
+
+        <FocusTimer />
+
+        <div className="app-frame">
 
         <div className="app-frame">
           <header className="topbar">
