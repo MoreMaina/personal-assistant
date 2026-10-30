@@ -7,6 +7,7 @@ import {
   type FormEvent,
 } from "react";
 import Link from "next/link";
+import { ItemWorkTimer } from "@/app/components/ItemWorkTimer";
 
 import {
   addCalendarDays,
@@ -4337,7 +4338,7 @@ function movePlanningItemTo(
               <summary className="cursor-pointer rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#23412f]">
                 {planningMode
                   ? "Review and order planned activities"
-                  : `View saved plan details (${plan.items.length} activities)`}
+                  : `View saved plan details and timers (${plan.items.length} activities)`}
               </summary>
               <div className="mt-3">
             {plan.items.length === 0 ? (
@@ -4493,6 +4494,21 @@ function movePlanningItemTo(
                         </span>
                       )}
                     </div>
+
+                    <ItemWorkTimer
+                      itemId={`study:${item.id}`}
+                      itemName={presentation.title}
+                      defaultMinutes={Math.min(
+                        1440,
+                        Math.max(
+                          1,
+                          item.allocated_minutes ||
+                            item.estimated_minutes ||
+                            25,
+                        ),
+                      )}
+                    />
+
                     {planningMode && (
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       <label className="block">
