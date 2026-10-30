@@ -12,6 +12,8 @@ import {
 } from "@/lib/today-engine";
 
 import { getTodayData } from "@/lib/today-data";
+import { createEmptyStudyState } from "@/lib/studyMvp/storage";
+import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 import { loadAIPreferences } from "@/lib/assistantPreferences";
 import {
   getCalendarItems,
@@ -74,7 +76,11 @@ function getTaskHref(
   const taskId =
     task.id.toString();
 
-  if (task.type === "study") {
+    if (task.type === "study") {
+    if (taskId.startsWith("study-review-")) {
+      return "/study";
+    }
+
     const lectureId =
       taskId.replace(
         "study-",
@@ -142,37 +148,64 @@ export default function TodayPage() {
   const [dailyPlan, setDailyPlan] = useState("");
   const [isPlanning, setIsPlanning] = useState(false);
   const [planError, setPlanError] = useState("");
+    const {
+    state: studyState,
+    cloudSyncStatus,
+    loadingError: studyLoadingError,
+    problem: studyProblem,
+  } = useCloudStudyState();
 
-  useEffect(() => {
+  const emptyStudyState = useMemo(
+    () => createEmptyStudyState(),
+    [],
+  );
+
+  const canUseStudyState =
+    studyState !== null &&
+    ["ready", "synced", "syncing"].includes(cloudSyncStatus);
+
+  const todayStudyState = canUseStudyState
+    ? studyState
+    : emptyStudyState;
+
+  const studyUnavailableMessage =
+    cloudSyncStatus === "loading"
+      ? "Connecting to your Study workspace. Study tasks will appear when the connection is ready."
+      : cloudSyncStatus === "migration"
+        ? "Your existing browser Study data has not yet been migrated. Open Study to review and approve migration before Today can display Study tasks."
+        : cloudSyncStatus === "conflict"
+          ? studyProblem ||
+            "Your browser and cloud Study records differ. Resolve the difference in Study before continuing."
+          : cloudSyncStatus === "error"
+            ? studyLoadingError ||
+              studyProblem ||
+              "Study storage needs attention. Study tasks are temporarily unavailable."
+            : "";
+
+    useEffect(() => {
     function refreshToday() {
-      const current =
-        new Date();
+      const current = new Date();
 
       setNow(current);
 
-      const data =
-        getTodayData(current);
-
-      setFixedEvents(
-        data.fixedEvents,
+      const data = getTodayData(
+        current,
+        todayStudyState,
       );
 
+      setFixedEvents(data.fixedEvents);
       setTasks(data.tasks);
     }
 
     refreshToday();
 
-    const interval =
-      window.setInterval(
-        refreshToday,
-        30_000,
-      );
+    const interval = window.setInterval(
+      refreshToday,
+      30_000,
+    );
 
     function handleVisibilityChange() {
-      if (
-        document.visibilityState ===
-        "visible"
-      ) {
+      if (document.visibilityState === "visible") {
         refreshToday();
       }
     }
@@ -183,16 +216,14 @@ export default function TodayPage() {
     );
 
     return () => {
-      window.clearInterval(
-        interval,
-      );
+      window.clearInterval(interval);
 
       document.removeEventListener(
         "visibilitychange",
         handleVisibilityChange,
       );
     };
-  }, []);
+  }, [todayStudyState]);
 
   const freeWindows =
     useMemo(() => {
@@ -810,6 +841,19 @@ export default function TodayPage() {
         </p>
       </div>
 
+            {studyUnavailableMessage && (
+        <p
+          role={
+            cloudSyncStatus === "loading"
+              ? "status"
+              : "alert"
+          }
+          className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--ink-soft)]"
+        >
+          {studyUnavailableMessage}
+        </p>
+      )}
+      
       <section
         aria-labelledby="daily-plan-heading"
         className="card mb-6 bg-[var(--surface)] p-4 sm:p-5"
