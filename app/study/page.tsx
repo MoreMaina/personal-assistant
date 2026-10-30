@@ -43,6 +43,7 @@ import {
 import {
   createDefaultCourseScaffold,
   exportStudyMvpJSON,
+  setCourseArchivedAt,
 } from "@/lib/studyMvp/storage";
 
 import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
@@ -3794,6 +3795,49 @@ function movePlanningItemTo(
     }
   }
 
+  function updateCourseArchiveStatus(
+    courseId: EntityId,
+    courseName: string,
+    isArchived: boolean,
+  ): void {
+    if (!state) return;
+
+    const actionLabel = isArchived ? "Restore" : "Archive";
+
+    const effect = isArchived
+      ? "This course will become eligible for future Study plans and Today lists."
+      : "This course will be excluded from future Study plans and Today lists.";
+
+    if (
+      !window.confirm(
+        `${actionLabel} "${courseName}"?\n\n${effect}\n\nAll associated units, topics, reviews, assignments, and historical evidence will remain saved. Existing saved daily plan snapshots will not be rewritten.\n\nContinue?`,
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const next = setCourseArchivedAt(
+        state,
+        courseId,
+        isArchived ? null : new Date().toISOString(),
+      );
+
+      persist(
+        next,
+        isArchived
+          ? `Restored "${courseName}".`
+          : `Archived "${courseName}". Its associated records were retained.`,
+      );
+    } catch (error) {
+      setProblem(
+        error instanceof Error
+          ? error.message
+          : `Could not ${isArchived ? "restore" : "archive"} this course.`,
+      );
+    }
+  }
+  
   function exportCatalog() {
     if (!state) return;
 
@@ -4798,6 +4842,71 @@ function movePlanningItemTo(
           </button>
         </div>
 
+        {state && (
+          <div className="mb-8 rounded-2xl border border-[#d8ccb8] bg-white p-4 sm:p-5">
+            <div>
+              <h3 className="font-extrabold text-[#23412f]">
+                Course archive
+              </h3>
+              <p className="mt-2 text-sm font-semibold leading-6 text-stone-600">
+                Archive courses you are no longer actively studying. Their
+                records and history remain saved, and you can restore them
+                at any time. Existing saved daily plans are not rewritten.
+              </p>
+            </div>
+
+            {state.courses.length === 0 ? (
+              <p className="mt-4 rounded-xl bg-stone-50 p-4 text-sm font-semibold text-stone-600">
+                There are no courses to archive or restore.
+              </p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {state.courses.map((course) => {
+                  const isArchived = Boolean(course.archived_at);
+
+                  return (
+                    <div
+                      key={course.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e4dac9] p-3"
+                    >
+                      <div>
+                        <p className="font-extrabold text-stone-800">
+                          {course.name}
+                          {course.code ? ` (${course.code})` : ""}
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-stone-500">
+                          {isArchived ? "Archived" : "Active"}
+                          {isArchived && course.archived_at
+                            ? ` · ${new Date(course.archived_at).toLocaleString()}`
+                            : ""}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateCourseArchiveStatus(
+                            course.id,
+                            course.name,
+                            isArchived,
+                          )
+                        }
+                        className={
+                          isArchived
+                            ? "rounded-xl bg-[#23412f] px-4 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a2e24]"
+                            : "rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-extrabold text-amber-900 hover:bg-amber-100"
+                        }
+                      >
+                        {isArchived ? "Restore course" : "Archive course"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+        
         <form onSubmit={importCatalog} className="space-y-4">
           <label className="block">
             <span className="mb-2 block text-sm font-extrabold text-stone-700">
