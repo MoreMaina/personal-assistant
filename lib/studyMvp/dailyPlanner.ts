@@ -92,6 +92,7 @@ export interface InitialLearningPlanTask
   topicId: EntityId;
   plannedDate: ISODate;
   estimatedDurationMin: number;
+  onlyAllocateIfFull?: boolean;
 }
 
 export interface GatePlanTask extends PlanningTaskBase {
@@ -1545,6 +1546,21 @@ export function generateDailyPlan(
   );
 
   for (const item of initialLearningTasks) {
+    const available = unreservedFreeMinutes(
+      allocatedTotal.value,
+      settings.daily_budget_min,
+      reviewReserve.value,
+      mixedReserve.value,
+    );
+
+    if (
+      item.task.kind === "initial_learning" &&
+      item.task.onlyAllocateIfFull &&
+      available < item.remaining_minutes
+    ) {
+      continue;
+    }
+
     consumeSimpleAllocation(
       item,
       item.estimated_minutes,
