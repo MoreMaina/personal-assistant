@@ -868,6 +868,19 @@ export function assertStudyStateIntegrity(
     assertUniqueIds(values, name);
   }
 
+    for (const course of state.courses) {
+    if (
+      course.archived_at !== undefined &&
+      course.archived_at !== null &&
+      !hasTimezone(course.archived_at)
+    ) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        `Course "${course.id}" archived_at must be a valid ISO 8601 timestamp with a timezone.`,
+      );
+    }
+  }
+  
   for (const event of state.task_events) {
     validateTaskEventShape(event);
   }
