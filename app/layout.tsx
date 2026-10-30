@@ -54,8 +54,6 @@ export default function RootLayout({
         <FocusTimer />
 
         <div className="app-frame">
-
-        <div className="app-frame">
           <header className="topbar">
             <Link
               href="/"
