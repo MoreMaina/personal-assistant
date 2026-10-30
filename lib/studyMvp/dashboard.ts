@@ -205,7 +205,7 @@ export function buildDailyPlannerTasks(
       ? eligibleTopics
       : eligibleTopics.slice(0, 1);
 
-    for (const topic of topicsToAdd) {
+    for (const [index, topic] of topicsToAdd.entries()) {
       tasks.push({
         id: `initial-learning:${topic.id}`,
         subjectId: topic.id,
@@ -217,6 +217,8 @@ export function buildDailyPlannerTasks(
         topicId: topic.id,
         plannedDate: date,
         estimatedDurationMin: 45,
+        onlyAllocateIfFull:
+  includeAdditionalInitialLearning && index > 0,
       });
     }
   }
