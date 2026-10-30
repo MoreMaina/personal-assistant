@@ -27,6 +27,8 @@ import type {
   TodayTask,
 } from "./today-engine";
 
+import type { StudyMvpState } from "./studyMvp/types";
+
 function getLocalDateKey(
   date: Date,
 ): string {
@@ -208,6 +210,134 @@ function getStudyTasks(): TodayTask[] {
   });
 }
 
+
+function getStudyDateKey(
+  now: Date,
+  timezone: string,
+): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
+
+    const year = parts.find((part) => part.type === "year")?.value;
+    const month = parts.find((part) => part.type === "month")?.value;
+    const day = parts.find((part) => part.type === "day")?.value;
+
+    if (year && month && day) {
+      return `${year}-${month}-${day}`;
+    }
+  } catch {
+    // Fall back to the browser's local date.
+  }
+
+  return getLocalDateKey(now);
+}
+
+export function getStudyMvpTasks(
+  state: StudyMvpState,
+  now = new Date(),
+): TodayTask[] {
+  const today = getStudyDateKey(
+    now,
+    state.settings.timezone,
+  );
+
+  const topicsById = new Map(
+    state.topics.map((topic) => [topic.id, topic]),
+  );
+
+  const unitsById = new Map(
+    state.units.map((unit) => [unit.id, unit]),
+  );
+
+  const coursesById = new Map(
+    state.courses.map((course) => [course.id, course]),
+  );
+
+  const retrievalTasksById = new Map(
+    state.retrieval_tasks.map((task) => [task.id, task]),
+  );
+
+  const eligibleStatuses = new Set([
+    "pending",
+    "in_progress",
+    "deferred",
+    "missed",
+  ]);
+
+  return state.review_events.flatMap((review): TodayTask[] => {
+    if (
+      !eligibleStatuses.has(review.status) ||
+      review.current_due_date > today
+    ) {
+      return [];
+    }
+
+    const topic = topicsById.get(review.topic_id);
+
+    if (!topic) {
+      return [];
+    }
+
+    const selectedTasks = review.selected_task_ids.map(
+      (id) => retrievalTasksById.get(id),
+    );
+
+    if (
+      review.selected_task_ids.length < 2 ||
+      review.selected_task_ids.length > 3 ||
+      selectedTasks.some(
+        (task) => !task || task.topic_id !== review.topic_id,
+      )
+    ) {
+      return [];
+    }
+
+    const durationMinutes = selectedTasks.reduce(
+      (total, task) =>
+        total + (task?.estimated_duration_min ?? 0),
+      0,
+    );
+
+    if (
+      !Number.isSafeInteger(durationMinutes) ||
+      durationMinutes < 1
+    ) {
+      return [];
+    }
+
+    const unit = unitsById.get(topic.unit_id);
+
+    const course = unit
+      ? coursesById.get(unit.course_id)
+      : undefined;
+
+    const unitName = [
+      course?.name,
+      unit?.name,
+    ]
+      .filter((name): name is string => Boolean(name))
+      .join(" · ");
+
+    return [
+      {
+        id: `study-review-${review.id}`,
+        title: `Review — ${topic.title}`,
+        ...(unitName ? { unitName } : {}),
+        type: "study",
+        durationMinutes,
+        priority: review.current_priority,
+        dueAt: review.current_due_date,
+      },
+    ];
+  });
+}
+
+
 function getReadingTasks(): TodayTask[] {
   const tasks: TodayTask[] =
     [];
@@ -386,9 +516,14 @@ function getProjectTasks(): TodayTask[] {
     }));
 }
 
-export function getTodayTasks(): TodayTask[] {
+export function getTodayTasks(
+  studyState?: StudyMvpState,
+  now = new Date(),
+): TodayTask[] {
   return [
-    ...getStudyTasks(),
+    ...(studyState
+      ? getStudyMvpTasks(studyState, now)
+      : getStudyTasks()),
     ...getReadingTasks(),
     ...getProjectTasks(),
   ];
@@ -396,11 +531,12 @@ export function getTodayTasks(): TodayTask[] {
 
 export function getTodayData(
   now = new Date(),
+  studyState?: StudyMvpState,
 ) {
   return {
     fixedEvents:
       getTodayFixedEvents(now),
     tasks:
-      getTodayTasks(),
+      getTodayTasks(studyState, now),
   };
 }
