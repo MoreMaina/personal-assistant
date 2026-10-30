@@ -4495,19 +4495,6 @@ function movePlanningItemTo(
                       )}
                     </div>
 
-                    <ItemWorkTimer
-                      itemId={`study:${item.id}`}
-                      itemName={presentation.title}
-                      defaultMinutes={Math.min(
-                        1440,
-                        Math.max(
-                          1,
-                          item.allocated_minutes ||
-                            item.estimated_minutes ||
-                            25,
-                        ),
-                      )}
-                    />
 
                     {planningMode && (
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
