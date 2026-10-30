@@ -19,13 +19,24 @@ import {
   saveLocalBackup,
   type AppSnapshot,
 } from "@/lib/supabase/sync";
-import { exportStudyMvpJSON } from "@/lib/studyMvp/storage";
+import {
+  exportStudyMvpJSON,
+  normalizeLegacyDailyPlanExecutions,
+} from "@/lib/studyMvp/storage";
+import type { StudyMvpState } from "@/lib/studyMvp/types";
 import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
 type BackupRow = {
   id: number;
   created_at: string;
   data: unknown;
+};
+
+type StudyBackupRow = {
+  id: number | string;
+  created_at: string;
+  revision: number | string;
+  state: unknown;
 };
 
 type ImportedBackupPreview = {
@@ -182,6 +193,12 @@ export default function BackupRecoveryPage() {
   }
   const [backups, setBackups] =
     useState<BackupRow[]>([]);
+  const [studyBackups, setStudyBackups] =
+    useState<StudyBackupRow[]>([]);
+  const [studyBackupsLoading, setStudyBackupsLoading] =
+    useState(true);
+  const [studyBackupsError, setStudyBackupsError] =
+    useState("");
   const [recoveryCopies, setRecoveryCopies] =
     useState<LocalStorageRecoveryCopy[]>([]);
   const [filePreview, setFilePreview] =
@@ -246,9 +263,65 @@ export default function BackupRecoveryPage() {
     }
   }, []);
 
+    const refreshStudyBackups = useCallback(async () => {
+    setStudyBackupsLoading(true);
+    setStudyBackupsError("");
+
+    try {
+      const supabase = createClient();
+
+      const {
+        data: authResult,
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        throw authError;
+      }
+
+      const user = authResult.user;
+
+      if (!user) {
+        throw new Error(
+          "Please sign in again to view Study history.",
+        );
+      }
+
+      const {
+        data: backupRows,
+        error: backupError,
+      } = await supabase
+        .from("user_study_mvp_state_backups")
+        .select("id, created_at, revision, state")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(50);
+
+      if (backupError) {
+        throw backupError;
+      }
+
+      setStudyBackups(
+        (backupRows ?? []) as StudyBackupRow[],
+      );
+    } catch (caughtError) {
+      setStudyBackupsError(
+        "Could not load Study backup history. " +
+          describeError(caughtError),
+      );
+    } finally {
+      setStudyBackupsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void refreshBackups();
   }, [refreshBackups]);
+
+    useEffect(() => {
+    void refreshStudyBackups();
+  }, [refreshStudyBackups]);
 
   const refreshRecoveryCopies = useCallback(() => {
     try {
@@ -568,6 +641,46 @@ export default function BackupRecoveryPage() {
     }
   }
 
+    function downloadStudyHistoryBackup(
+    backup: StudyBackupRow,
+  ): void {
+    try {
+      const state = normalizeLegacyDailyPlanExecutions(
+        backup.state as StudyMvpState,
+      );
+
+      const content = exportStudyMvpJSON(state);
+      const blob = new Blob([content], {
+        type: "application/json;charset=utf-8",
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download =
+        `study-mvp-history-revision-${backup.revision}-` +
+        `${backup.created_at.slice(0, 10)}.json`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+
+      setStudyExportMessage(
+        `Study cloud backup revision ${backup.revision} downloaded.`,
+      );
+    } catch (caughtError) {
+      setStudyExportMessage(
+        "Could not download this Study backup. " +
+          describeError(caughtError),
+      );
+    }
+  }
+  
   const restoreIsRunning = working === "restore";
 
   return (
@@ -665,6 +778,72 @@ export default function BackupRecoveryPage() {
   >
     Export Study data and history
   </button>
+        <div className="mt-6 border-t border-stone-200 pt-5">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h3 className="text-lg font-extrabold text-[#23412f]">
+          Previous Study versions
+        </h3>
+        <p className="mt-1 text-sm text-stone-600">
+          Previous cloud versions are saved automatically.
+          Up to 50 are retained.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => void refreshStudyBackups()}
+        disabled={studyBackupsLoading || working !== null}
+        className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-700 disabled:opacity-50"
+      >
+        {studyBackupsLoading ? "Loading…" : "Refresh history"}
+      </button>
+    </div>
+
+    {studyBackupsError && (
+      <p className="mt-3 text-sm text-red-700" role="alert">
+        {studyBackupsError}
+      </p>
+    )}
+
+    {studyBackupsLoading ? (
+      <p className="mt-4 text-sm text-stone-600">
+        Loading previous Study versions…
+      </p>
+    ) : studyBackups.length === 0 ? (
+      <p className="mt-4 rounded-xl border border-dashed border-stone-300 p-4 text-sm text-stone-600">
+        No previous Study versions have been recorded yet.
+        They will appear here after cloud Study data changes.
+      </p>
+    ) : (
+      <div className="mt-4 space-y-3">
+        {studyBackups.map((backup) => (
+          <article
+            key={String(backup.id)}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50 p-4"
+          >
+            <div>
+              <p className="font-extrabold text-[#23412f]">
+                {formatDate(backup.created_at)}
+              </p>
+              <p className="mt-1 text-sm text-stone-600">
+                Revision {backup.revision} · Backup #{backup.id}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={working !== null}
+              onClick={() => downloadStudyHistoryBackup(backup)}
+              className="rounded-xl border border-emerald-800 bg-emerald-800 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              Download Study copy
+            </button>
+          </article>
+        ))}
+      </div>
+    )}
+  </div>  
 </section>
       <section className="rounded-2xl bg-[var(--surface)] p-5">
         <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
