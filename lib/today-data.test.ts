@@ -221,4 +221,20 @@ describe("Today Study MVP data adapter", () => {
 
     expect(getStudyMvpTasks(state, NOW)).toEqual([]);
   });
+
+  it("does not generate a task when the topic's unit is missing", () => {
+    const state = fixtureState();
+
+    state.units = [];
+
+    expect(getStudyMvpTasks(state, NOW)).toEqual([]);
+  });
+
+  it("does not generate a task when the unit's course is missing", () => {
+    const state = fixtureState();
+
+    state.courses = [];
+
+    expect(getStudyMvpTasks(state, NOW)).toEqual([]);
+  });
 });
