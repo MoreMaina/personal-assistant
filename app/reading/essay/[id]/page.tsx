@@ -138,6 +138,8 @@ function EssayDetailContent() {
       whyEnding: "",
     });
 
+  const [criticismNotesDraft, setCriticismNotesDraft] = useState("");
+
   useEffect(() => {
     const id = Number(params.id);
     const found = Number.isSafeInteger(id)
@@ -148,6 +150,8 @@ function EssayDetailContent() {
     setEditTitle(found?.title ?? "");
     setEditAuthor(found?.author ?? "");
     setEditSource(found?.source ?? "");
+    setCriticismNotesDraft(found?.criticismNotes ?? "");
+
     if (found) {
       setMarksDraft({ ...found.marks });
       setReflectionDraft({ ...found.reflection });
@@ -306,6 +310,60 @@ function EssayDetailContent() {
       setFeedback("Your reflection could not be saved. Please try again.");
     }
   }
+
+  function saveCriticismNotes(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!essay) return;
+
+    if (!criticismNotesDraft.trim()) {
+      setFeedback("Write your criticism notes before saving.");
+      return;
+    }
+
+    try {
+      const updated: Essay = {
+        ...essay,
+        criticismNotes: criticismNotesDraft.trim(),
+      };
+
+      updateEssay(updated);
+      setEssay(updated);
+      setFeedback("Criticism notes saved.");
+    } catch {
+      setFeedback("Criticism notes could not be saved. Please try again.");
+    }
+  }
+
+  function completeCriticism() {
+    if (!essay) return;
+
+    if (!criticismNotesDraft.trim()) {
+      setFeedback("Write your criticism notes before completing this stage.");
+      return;
+    }
+
+    try {
+      const completedSteps = new Set(
+        essay.workflowCompletedSteps ?? [],
+      );
+      completedSteps.add("criticism");
+
+      const updated: Essay = {
+        ...essay,
+        status: "Finished",
+        criticismNotes: criticismNotesDraft.trim(),
+        criticismCompletedAt: new Date().toISOString(),
+        workflowCompletedSteps: Array.from(completedSteps),
+      };
+
+      updateEssay(updated);
+      setEssay(updated);
+      setFeedback("Criticism completed. Your essay workflow is finished.");
+    } catch {
+      setFeedback("Criticism completion could not be saved. Please try again.");
+    }
+  }
+  
   function downloadNotes() {
     if (!essay) return;
 
@@ -316,6 +374,8 @@ function EssayDetailContent() {
     const reconstruction = RECONSTRUCTION_PROMPTS
       .filter((item) => essay.reflection[item.key].trim())
       .map((item) => `### ${item.title}\n\n${essay.reflection[item.key]}`);
+
+    const criticism = essay.criticismNotes?.trim() ?? "";
 
     const totalSeconds =
       (essay.firstPassSeconds ?? 0) +
@@ -343,6 +403,10 @@ function EssayDetailContent() {
       reconstruction.length
         ? reconstruction.join("\n\n")
         : "No reconstruction saved yet.",
+      "",
+      "## Criticism and interpretation",
+      "",
+      criticism || "No criticism notes saved yet.",
       "",
     ].join("\n");
 
@@ -374,8 +438,7 @@ function EssayDetailContent() {
     if (!essay) return;
 
     const confirmed = window.confirm(
-      `Restart "${essay.title}" from the beginning? This clears its recorded stage progress, observations and reconstruction. Export your notes first if you want to keep a copy.`,
-    );
+      `Restart "${essay.title}" from the beginning? This clears its recorded stage progress, observations, reconstruction and criticism notes. Export your notes first if you want to keep a copy.`,
     if (!confirmed) return;
 
     try {
@@ -393,6 +456,9 @@ function EssayDetailContent() {
         reflectionCompletedAt: undefined,
         reflectionSeconds: 0,
         criticismUnlockedAt: undefined,
+        criticismNotes: "",
+        criticismCompletedAt: undefined,
+        workflowCompletedSteps: [],        
         marks: {
           turns: "",
           rhythm: "",
@@ -410,6 +476,7 @@ function EssayDetailContent() {
       setEssay(updated);
       setMarksDraft({ ...updated.marks });
       setReflectionDraft({ ...updated.reflection });
+      setCriticismNotesDraft("");
       setFeedback("Essay restarted. You can begin again with an uninterrupted first reading.");
     } catch {
       setFeedback("The essay could not be restarted. Please try again.");
@@ -571,33 +638,65 @@ function EssayDetailContent() {
         hidden={currentWorkflowStep !== "first_pass"}
         open={currentWorkflowStep === "first_pass"}
       >
-        <summary className="cursor-pointer text-sm font-semibold">Stage 1 · Experience</summary>
-        <div className="mt-4">
-        <h2 className="mt-1 text-base font-semibold">Read the essay straight through</h2>
-        <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
-          Read once for the experience. Notice where your attention changes, but resist the
-          urge to stop and explain why. Don&apos;t mark sentences or analyze the structure yet.
-          The aim is to experience the whole piece before examining its construction.
-        </p>
-        <ItemWorkTimer
-          itemId={`reading-essay-${essay.id}-first-pass`}
-          itemName={`First reading: ${essay.title}`}
-          defaultMinutes={25}
-        />
+        <div className="mt-4 space-y-4">
+          <h2 className="text-base font-semibold">
+            Consider what the structure means
+          </h2>
 
-        <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
-          The timer measures your focused reading separately from your recorded
-          reading-session history. When you have finished experiencing the whole
-          essay, mark this stage complete.
-        </p>
+          <p className="text-sm leading-6 text-[var(--ink-soft)]">
+            Having made your own observations and reconstruction, consider
+            whether the structure itself produces the essay&apos;s meaning.
+            Does the narrative make an argument the author never states
+            directly? Does the ending transform an earlier detail? What
+            would be lost if the essay ended somewhere else?
+          </p>
 
-        <button
-          type="button"
-          onClick={finishFirstPass}
-          className="reading-detail-page__action mt-3"
-        >
-          Mark first reading complete
-        </button>
+          <p className="text-sm leading-6 text-[var(--ink-soft)]">
+            Compare your understanding with the text. Identify what remains
+            uncertain and consult criticism when it can genuinely deepen
+            your reading.
+          </p>
+
+          <ItemWorkTimer
+            itemId={`reading-essay-${essay.id}-criticism`}
+            itemName={`Criticism: ${essay.title}`}
+            defaultMinutes={25}
+          />
+
+          <form onSubmit={saveCriticismNotes} className="space-y-3">
+            <label className="block">
+              <span className="reading-detail-page__label mb-1 block">
+                Your criticism and interpretation notes
+              </span>
+              <textarea
+                required
+                rows={6}
+                value={criticismNotesDraft}
+                onChange={(event) =>
+                  setCriticismNotesDraft(event.target.value)
+                }
+                placeholder="What does the structure reveal? What remains uncertain? What did comparing your interpretation with the text change?"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="submit"
+                className="reading-detail-page__back"
+              >
+                Save criticism notes
+              </button>
+
+              <button
+                type="button"
+                onClick={completeCriticism}
+                className="reading-detail-page__action"
+              >
+                Mark criticism complete
+              </button>
+            </div>
+          </form>
         </div>
       </details>
 
