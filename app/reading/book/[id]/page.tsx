@@ -16,6 +16,7 @@ import {
   type WholeBookReconstruction,
 } from "@/lib/readingStorage";
 import { getCurrentBookWorkflowStep } from "@/lib/readingWorkflow";
+import { ItemWorkTimer } from "@/app/components/ItemWorkTimer";
 
 const ACTIVE_READING_TIMER_KEY = "personal-assistant-active-reading-timer";
 
@@ -734,6 +735,12 @@ function BookDetailContent() {
             difficult, and reconstruct what matters before continuing.
           </p>
 
+          <ItemWorkTimer
+            itemId={`reading-book-${book.id}-first-pass`}
+            itemName={`First pass: ${book.title}`}
+            defaultMinutes={25}
+          />
+
           <form onSubmit={savePage} className="flex flex-wrap items-end gap-3">
             <label className="min-w-0 flex-1">
               <span className="reading-detail-page__label mb-1 block">
@@ -873,6 +880,12 @@ function BookDetailContent() {
           <span className="mr-2 text-[var(--primary-dark)]">3</span>
           After finishing: reconstruct the whole
         </summary>
+
+        <ItemWorkTimer
+          itemId={`reading-book-${book.id}-reconstruction`}
+          itemName={`Reconstruction: ${book.title}`}
+          defaultMinutes={25}
+        />
 
         <form onSubmit={saveReconstruction} className="mt-4 space-y-4">
           <p className="text-sm leading-6 text-[var(--ink-soft)]">
@@ -1032,6 +1045,12 @@ function BookDetailContent() {
                 </span>
               </div>
 
+              <ItemWorkTimer
+                itemId={`reading-book-${book.id}-second-pass-${currentSecondPassSection.id}`}
+                itemName={`Revisit: ${currentSecondPassSection.section}`}
+                defaultMinutes={25}
+              />
+
               <form
                 onSubmit={(event) =>
                   saveSecondPassNotes(event, currentSecondPassSection.id)
@@ -1127,6 +1146,12 @@ function BookDetailContent() {
           <span className="mr-2 text-[var(--primary-dark)]">5</span>
           Apply what matters—or decide to stop
         </summary>
+
+        <ItemWorkTimer
+          itemId={`reading-book-${book.id}-application`}
+          itemName={`Application: ${book.title}`}
+          defaultMinutes={25}
+        />
 
         <form onSubmit={saveApplicationAndDecision} className="mt-4 space-y-4">
           <p className="text-sm leading-6 text-[var(--ink-soft)]">
