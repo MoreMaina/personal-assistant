@@ -439,6 +439,7 @@ function EssayDetailContent() {
 
     const confirmed = window.confirm(
       `Restart "${essay.title}" from the beginning? This clears its recorded stage progress, observations, reconstruction and criticism notes. Export your notes first if you want to keep a copy.`,
+        );
     if (!confirmed) return;
 
     try {
