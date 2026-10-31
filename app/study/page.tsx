@@ -8,6 +8,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { ItemWorkTimer } from "@/app/components/ItemWorkTimer";
+import GuidedPracticeRunner from "@/app/study/GuidedPracticeRunner";
 
 import {
   addCalendarDays,
@@ -33,6 +34,9 @@ import {
 } from "@/lib/studyMvp/dailyPlanHistory";
 import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
+import {
+  getGuidedPracticeSessionSelection,
+} from "@/lib/studyMvp/guidedPractice";
 
 import {
   applyGateAttempt,
@@ -610,6 +614,26 @@ function TopicConsolidationSection({
       );
     });
 
+  const allGuidedQuestionsCompleted =
+    items.length > 0 &&
+    items.every((item) => {
+      const selection = getGuidedPracticeSessionSelection(
+        state,
+        "mixed",
+        item.subject_id,
+        today,
+        item.allocated_minutes,
+      );
+
+      return (
+        selection.selectedTaskIds.length > 0 &&
+        selection.missingTaskIds.length === 0 &&
+        selection.selectedTaskIds.every((id) =>
+          selection.attemptedTaskIds.includes(id),
+        )
+      );
+    });
+
   function saveSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -719,7 +743,12 @@ function TopicConsolidationSection({
   }
 
   function finishSection() {
-    if (!allAllocationsRecorded) return;
+    if (
+      !allAllocationsRecorded ||
+      !allGuidedQuestionsCompleted
+    ) {
+      return;
+    }
 
     setError("");
 
@@ -1883,7 +1912,12 @@ function RecoverySection({
   }
 
   function finishSection() {
-    if (!allAllocationsRecorded) return;
+    if (
+      !allAllocationsRecorded ||
+      !allGuidedQuestionsCompleted
+    ) {
+      return;
+    }
 
     setError("");
 
@@ -2223,7 +2257,7 @@ function MixedPracticeSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Mixed practice"
-        detail="Practise across topics rather than focusing on a single topic. Record the actual work time for each planned block; only mixed-practice sessions count toward these allocations."
+        detail="Answer questions across different active topics. Write your answer before revealing the criteria, assess it, and save it. Record the actual work time separately."
       />
 
       <ItemWorkTimer
@@ -2323,17 +2357,33 @@ function MixedPracticeSection({
             >
               Record mixed-practice session
             </button>
-          </form>
+             </form>
+
+          {selectedItem && (
+            <GuidedPracticeRunner
+              state={state}
+              purpose="mixed"
+              subjectId={selectedItem.subject_id}
+              plannedMinutes={selectedItem.allocated_minutes}
+              today={today}
+              persist={persist}
+            />
+          )}
 
           <div className="mt-6 border-t border-[#e4dac9] pt-5">
             <p className="text-sm font-semibold text-stone-600">
-              {allAllocationsRecorded
-                ? "All mixed-practice allocations have enough recorded time."
-                : "Record the allocated time for every mixed-practice block before continuing."}
+              {!allGuidedQuestionsCompleted
+                ? "Answer every selected guided-practice question before continuing."
+                : allAllocationsRecorded
+                  ? "All guided questions are answered and all mixed-practice time is recorded."
+                  : "Record the allocated time for every mixed-practice block before continuing."}
             </p>
             <button
               type="button"
-              disabled={!allAllocationsRecorded}
+              disabled={
+                !allAllocationsRecorded ||
+                !allGuidedQuestionsCompleted
+              }
               onClick={finishSection}
               className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -2406,6 +2456,26 @@ function SamplerSection({
         loggedMinutesFor(item.subject_id) >=
         plannedMinutesFor(item),
     );
+
+  const allGuidedQuestionsCompleted =
+    items.length > 0 &&
+    items.every((item) => {
+      const selection = getGuidedPracticeSessionSelection(
+        state,
+        "sampler",
+        item.subject_id,
+        today,
+        item.allocated_minutes,
+      );
+
+      return (
+        selection.selectedTaskIds.length > 0 &&
+        selection.missingTaskIds.length === 0 &&
+        selection.selectedTaskIds.every((id) =>
+          selection.attemptedTaskIds.includes(id),
+        )
+      );
+    });
 
   function saveSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2537,7 +2607,7 @@ function SamplerSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Saturday Sampler"
-        detail="Record time spent on the sampler and its allocated analysis. Both count toward this section's planned time, and completion is recorded explicitly."
+        detail="Work through the selected Sampler questions, write each answer before revealing the criteria, and assess your performance. Record Sampler and analysis time separately."
       />
 
       <ItemWorkTimer
@@ -2647,15 +2717,31 @@ function SamplerSection({
             </button>
           </form>
 
+          {selectedItem && (
+            <GuidedPracticeRunner
+              state={state}
+              purpose="sampler"
+              subjectId={selectedItem.subject_id}
+              plannedMinutes={selectedItem.allocated_minutes}
+              today={today}
+              persist={persist}
+            />
+          )}
+
           <div className="mt-6 border-t border-[#e4dac9] pt-5">
             <p className="text-sm font-semibold text-stone-600">
-              {allAllocationsRecorded
-                ? "All Sampler and analysis allocations have enough recorded time."
-                : "Record the planned time for the Sampler and its analysis before continuing."}
+              {!allGuidedQuestionsCompleted
+                ? "Answer every selected Sampler question before continuing."
+                : allAllocationsRecorded
+                  ? "All Sampler questions are answered and all Sampler and analysis time is recorded."
+                  : "Record the planned time for the Sampler and its analysis before continuing."}
             </p>
             <button
               type="button"
-              disabled={!allAllocationsRecorded}
+              disabled={
+                !allAllocationsRecorded ||
+                !allGuidedQuestionsCompleted
+              }
               onClick={finishSection}
               className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
             >
