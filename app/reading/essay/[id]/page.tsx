@@ -9,6 +9,8 @@ import {
   updateEssay,
   type Essay,
 } from "@/lib/readingStorage";
+import { getCurrentEssayWorkflowStep } from "@/lib/readingWorkflow";
+import { ItemWorkTimer } from "@/app/components/ItemWorkTimer";
 
 const OBSERVATION_PROMPTS: {
   key: keyof Essay["marks"];
@@ -150,6 +152,24 @@ function EssayDetailContent() {
       setFeedback("Essay details saved.");
     } catch {
       setFeedback("Essay details could not be saved. Please try again.");
+    }
+  }
+
+  function finishFirstPass() {
+    if (!essay) return;
+
+    const updated: Essay = {
+      ...essay,
+      status: "First pass",
+      firstPassCompletedAt: new Date().toISOString(),
+    };
+
+    try {
+      updateEssay(updated);
+      setEssay(updated);
+      setFeedback("First reading completed. Your examination stage is now unlocked.");
+    } catch {
+      setFeedback("First reading progress could not be saved. Please try again.");
     }
   }
 
@@ -350,7 +370,18 @@ function EssayDetailContent() {
     (essay.reflectionSeconds ?? 0);
 
   const currentStage = stageNumber(essay.status);
+  const currentWorkflowStep = getCurrentEssayWorkflowStep(essay);
 
+  const isObservationStep =
+    currentWorkflowStep === "second_pass_turns" ||
+    currentWorkflowStep === "second_pass_rhythm" ||
+    currentWorkflowStep === "second_pass_essential_sentences" ||
+    currentWorkflowStep === "second_pass_ending";
+
+  const isReflectionStep =
+    currentWorkflowStep === "reflection_what_happened" ||
+    currentWorkflowStep === "reflection_what_changed" ||
+    currentWorkflowStep === "reflection_why_ending";
   return (
     <main className="reading-detail-page">
       <Link
@@ -433,7 +464,11 @@ function EssayDetailContent() {
         </ol>
       </section>
 
-      <details className="reading-detail-page__panel" open={essay.status === "To read" || essay.status === "First pass"}>
+      <details
+        className="reading-detail-page__panel"
+        hidden={currentWorkflowStep !== "first_pass"}
+        open={currentWorkflowStep === "first_pass"}
+      >
         <summary className="cursor-pointer text-sm font-semibold">Stage 1 · Experience</summary>
         <div className="mt-4">
         <h2 className="mt-1 text-base font-semibold">Read the essay straight through</h2>
@@ -442,10 +477,25 @@ function EssayDetailContent() {
           urge to stop and explain why. Don&apos;t mark sentences or analyze the structure yet.
           The aim is to experience the whole piece before examining its construction.
         </p>
+        <ItemWorkTimer
+          itemId={`reading-essay-${essay.id}-first-pass`}
+          itemName={`First reading: ${essay.title}`}
+          defaultMinutes={25}
+        />
+
         <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
-          When you are ready, explicitly start the reading session using the button above.
-          Opening this page itself does not start a timer or advance the essay.
+          The timer measures your focused reading separately from your recorded
+          reading-session history. When you have finished experiencing the whole
+          essay, mark this stage complete.
         </p>
+
+        <button
+          type="button"
+          onClick={finishFirstPass}
+          className="reading-detail-page__action mt-3"
+        >
+          Mark first reading complete
+        </button>
         </div>
       </details>
 
@@ -547,6 +597,16 @@ function EssayDetailContent() {
         </div>
       </details>
 
+      {currentWorkflowStep === null && (
+        <section className="reading-detail-page__panel">
+          <h2 className="text-base font-bold">Essay workflow complete</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+            You have completed the essay experience, examination,
+            reconstruction and criticism stages.
+          </p>
+        </section>
+      )}
+      
       <details className="reading-detail-page__panel">
         <summary className="cursor-pointer text-sm font-semibold">
           Manage essay details
