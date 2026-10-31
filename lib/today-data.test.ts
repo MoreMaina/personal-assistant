@@ -1,7 +1,10 @@
 
 import { describe, expect, it } from "vitest";
 
-import { getStudyMvpTasks } from "./today-data";
+import {
+  getStudyMvpTasks,
+  getTodayData,
+} from "./today-data";
 import { createEmptyStudyState } from "./studyMvp/storage";
 
 import type {
@@ -236,5 +239,15 @@ describe("Today Study MVP data adapter", () => {
     state.courses = [];
 
     expect(getStudyMvpTasks(state, NOW)).toEqual([]);
+  });
+
+    it("uses the supplied cloud Study state in the Today data adapter", () => {
+    const state = fixtureState();
+
+    const { tasks } = getTodayData(state, NOW);
+
+    expect(
+      tasks.filter((task) => task.type === "study"),
+    ).toEqual(getStudyMvpTasks(state, NOW));
   });
 });
