@@ -543,6 +543,7 @@ export function applyGuidedPracticeAttempt(
     );
   }
 
+  return {
     state: {
       ...state,
       retrieval_tasks: state.retrieval_tasks.map(
