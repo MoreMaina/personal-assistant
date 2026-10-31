@@ -990,6 +990,21 @@ function AssignmentSection({
       );
   }
 
+  const allAllocationsRecorded =
+    items.length > 0 &&
+    items.every((item) => {
+      const plannedAssignment = assignmentFor(item);
+
+      return Boolean(
+        plannedAssignment &&
+          (
+            plannedAssignment.status === "completed" ||
+            plannedAssignment.status === "cancelled" ||
+            loggedMinutesFor(plannedAssignment.id) >=
+              item.allocated_minutes
+          ),
+      );
+    });  
 
   const defaultRemainingMinutes = assignment
     ? Math.max(
@@ -2102,6 +2117,26 @@ function MixedPracticeSection({
         item.allocated_minutes,
     );
 
+  const allGuidedQuestionsCompleted =
+    items.length > 0 &&
+    items.every((item) => {
+      const selection = getGuidedPracticeSessionSelection(
+        state,
+        "mixed",
+        item.subject_id,
+        today,
+        item.allocated_minutes,
+      );
+
+      return (
+        selection.selectedTaskIds.length > 0 &&
+        selection.missingTaskIds.length === 0 &&
+        selection.selectedTaskIds.every((id) =>
+          selection.attemptedTaskIds.includes(id),
+        )
+      );
+    });
+
   function saveSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -2435,17 +2470,6 @@ function SamplerSection({
         loggedMinutesFor(item.subject_id) >=
         plannedMinutesFor(item),
     );
-
-  const allGuidedQuestionsCompleted =
-    items.length > 0 &&
-    items.every((item) => {
-      const selection = getGuidedPracticeSessionSelection(
-        state,
-        "mixed",
-        item.subject_id,
-        today,
-        item.allocated_minutes,
-      );
 
       return (
         selection.selectedTaskIds.length > 0 &&
