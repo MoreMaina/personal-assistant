@@ -169,7 +169,9 @@ describe("Study reference diagnostics", () => {
     const state = validState();
 
     state.courses = [];
-    state.units = [];
+    state.topics.push(
+      makeTopic("topic-orphan", "missing-unit"),
+    );
 
     const issues = findStudyReferenceIssues(state);
 
