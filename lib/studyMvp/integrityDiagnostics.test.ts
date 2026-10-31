@@ -186,9 +186,9 @@ describe("Study reference diagnostics", () => {
         }),
         expect.objectContaining({
           collection: "topics",
-          recordId: "topic-1",
+          recordId: "topic-orphan",
           field: "unit_id",
-          referencedId: "unit-1",
+          referencedId: "missing-unit",
           problem: "missing_reference",
         }),
       ]),
