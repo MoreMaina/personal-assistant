@@ -164,6 +164,7 @@ function isTaskEventType(value: unknown): value is TaskEvent["event_type"] {
     "priority_change",
     "skip_resolution",
     "content_preparation",
+    "guided_practice_attempt",
   ].includes(String(value));
 }
 
@@ -320,10 +321,68 @@ function validateTaskEventShape(
         "Each gate attempt requires the selected gate-task snapshot.",
       );
     }
+  } else if (
+    event.event_type === "guided_practice_attempt"
+  ) {
+    if (!isAttemptResult(event.result) || event.result === null) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "A guided-practice attempt requires a G/Y/R result.",
+      );
+    }
+
+    if (
+      event.subject_type !== "mixed_practice" &&
+      event.subject_type !== "sampler"
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "A guided-practice attempt must belong to mixed practice or sampler.",
+      );
+    }
+
+    if (
+      !isNonEmptyString(event.retrieval_task_id) ||
+      !isNonEmptyString(event.task_type_at_event) ||
+      !isPositiveNumber(event.estimated_duration_min_at_event)
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "A guided-practice attempt requires its retrieval task and task snapshots.",
+      );
+    }
+
+    if (
+      !isNonEmptyString(event.prompt_snapshot) ||
+      event.prompt_snapshot.length > 10_000 ||
+      !isNonEmptyString(event.expected_answer_criteria_snapshot) ||
+      event.expected_answer_criteria_snapshot.length > 10_000 ||
+      !isNonEmptyString(event.response_text) ||
+      event.response_text.length > 20_000
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "A guided-practice attempt requires valid question, criteria, and response snapshots.",
+      );
+    }
+
+    if (
+      event.actual_duration_min !== null ||
+      event.yellow_gap_severity !== null ||
+      event.review_event_id !== null ||
+      event.gate_session_id !== null ||
+      event.gate_selected_task_ids_snapshot !== null ||
+      event.work_session_id !== null
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "Guided-practice attempts must not be linked to review, gate, or duration records.",
+      );
+    }
   } else if (event.result !== null) {
     throw new StudyStorageError(
       "invalid-event",
-      "Only attempt and gate_attempt events may contain a G/Y/R result.",
+      "Only attempt, gate_attempt, and guided_practice_attempt events may contain a G/Y/R result.",
     );
   }
 
@@ -883,6 +942,25 @@ export function assertStudyStateIntegrity(
   
   for (const event of state.task_events) {
     validateTaskEventShape(event);
+  }
+
+  const retrievalTaskIds = new Set(
+    state.retrieval_tasks.map((task) => task.id),
+  );
+
+  for (const event of state.task_events) {
+    if (
+      event.event_type === "guided_practice_attempt" &&
+      (
+        !event.retrieval_task_id ||
+        !retrievalTaskIds.has(event.retrieval_task_id)
+      )
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "Every guided-practice attempt must reference an existing retrieval task.",
+      );
+    }
   }
 
   const workSessionIds = new Set(
