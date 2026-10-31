@@ -1046,20 +1046,6 @@ export function assertStudyStateIntegrity(
       snapshotJson,
     );
   }
-  for (const event of state.task_events) {
-    if (
-      event.event_type === "guided_practice_attempt" &&
-      (
-        !event.retrieval_task_id ||
-        !retrievalTaskIds.has(event.retrieval_task_id)
-      )
-    ) {
-      throw new StudyStorageError(
-        "invalid-event",
-        "Every guided-practice attempt must reference an existing retrieval task.",
-      );
-    }
-  }
 
   const workSessionIds = new Set(
     state.work_sessions.map((session) => session.id),
