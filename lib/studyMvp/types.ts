@@ -313,6 +313,12 @@ export interface TaskEvent {
   expected_answer_criteria_snapshot?: string | null;
   response_text?: string | null;
 
+  /**
+   * Frozen question IDs selected for this guided-practice block.
+   * Optional for compatibility with older TaskEvents.
+   */
+  guided_practice_selected_task_ids_snapshot?: EntityId[] | null;
+
   critical_error_flag: boolean | null;
   defer_count_at_event: number | null;
 
