@@ -50,6 +50,7 @@ export function getGuidedPracticeQuestions(
       topic: StudyMvpState["topics"][number];
       courseName: string;
       unitName: string;
+      unitOrderIndex: number;
       questions: GuidedPracticeQuestion[];
     }
   >();
@@ -81,6 +82,7 @@ export function getGuidedPracticeQuestions(
       topic,
       courseName: course.name,
       unitName: unit.name,
+      unitOrderIndex: unit.order_index,
       questions: [],
     };
 
@@ -114,6 +116,7 @@ export function getGuidedPracticeQuestions(
       IMPORTANCE_ORDER[a.topic.topic_importance] -
         IMPORTANCE_ORDER[b.topic.topic_importance] ||
       a.courseName.localeCompare(b.courseName) ||
+      a.unitOrderIndex - b.unitOrderIndex ||
       a.unitName.localeCompare(b.unitName) ||
       a.topic.order_index - b.topic.order_index ||
       a.topic.topic_number - b.topic.topic_number ||
