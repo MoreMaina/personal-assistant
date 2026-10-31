@@ -1,7 +1,15 @@
+import {
+  defaultIdFactory,
+  localDateOfTimestamp,
+  type IdFactory,
+} from "./reviewEngine";
+
 import type {
+  AttemptResult,
   EntityId,
   RetrievalPurpose,
   StudyMvpState,
+  TaskEvent,
 } from "./types";
 
 export type GuidedPracticeKind = Extract<
@@ -155,4 +163,200 @@ export function getGuidedPracticeQuestions(
   }
 
   return result;
+}
+
+export interface GuidedPracticeAttemptInput {
+  purpose: GuidedPracticeKind;
+  subjectId: EntityId;
+  taskId: EntityId;
+  responseText: string;
+  result: AttemptResult;
+  loggedAt: string;
+  eventId?: EntityId;
+  idFactory?: IdFactory;
+}
+
+export interface GuidedPracticeAttemptResult {
+  state: StudyMvpState;
+  attemptEvent: TaskEvent;
+  outcome: "recorded" | "duplicate";
+}
+
+/**
+ * Records one immutable guided-practice answer.
+ *
+ * This is separate from review and gate attempts. It does not change
+ * review progression or record duration; aggregate time remains a
+ * separate WorkSession.
+ */
+export function applyGuidedPracticeAttempt(
+  state: StudyMvpState,
+  input: GuidedPracticeAttemptInput,
+): GuidedPracticeAttemptResult {
+  if (
+    !Number.isFinite(Date.parse(input.loggedAt)) ||
+    !/(?:Z|[+-]\d{2}:\d{2})$/i.test(input.loggedAt)
+  ) {
+    throw new Error(
+      "Guided-practice timestamp must include a timezone.",
+    );
+  }
+
+  const responseText = input.responseText.trim();
+
+  if (!responseText || responseText.length > 20_000) {
+    throw new Error(
+      "Enter a response between 1 and 20,000 characters.",
+    );
+  }
+
+  if (
+    input.result !== "green" &&
+    input.result !== "yellow" &&
+    input.result !== "red"
+  ) {
+    throw new Error("Choose a Green, Yellow, or Red result.");
+  }
+
+  const task = state.retrieval_tasks.find(
+    (item) => item.id === input.taskId,
+  );
+
+  if (
+    !task ||
+    !task.active ||
+    task.purpose !== input.purpose
+  ) {
+    throw new Error(
+      "This question is not an active question for the selected guided-practice activity.",
+    );
+  }
+
+  const topic = state.topics.find(
+    (item) => item.id === task.topic_id,
+  );
+
+  if (!topic || topic.status !== "active") {
+    throw new Error(
+      "The question's topic is no longer active.",
+    );
+  }
+
+  const unit = state.units.find(
+    (item) => item.id === topic.unit_id,
+  );
+
+  if (!unit) {
+    throw new Error(
+      "The question's unit could not be found.",
+    );
+  }
+
+  const course = state.courses.find(
+    (item) => item.id === unit.course_id,
+  );
+
+  if (!course || course.archived_at) {
+    throw new Error(
+      "The question's course is missing or archived.",
+    );
+  }
+
+  const subjectType =
+    input.purpose === "mixed"
+      ? "mixed_practice"
+      : "sampler";
+
+  const idFactory = input.idFactory ?? defaultIdFactory;
+
+  const attemptEvent: TaskEvent = {
+    id: input.eventId ?? idFactory("event"),
+    logged_at: input.loggedAt,
+    event_type: "guided_practice_attempt",
+    subject_type: subjectType,
+    subject_id: input.subjectId,
+    review_event_id: null,
+    retrieval_task_id: task.id,
+    gate_session_id: null,
+    gate_selected_task_ids_snapshot: null,
+    skill_demonstrated_without_hints: null,
+    work_session_id: null,
+    related_event_id: null,
+    estimated_duration_min_at_event:
+      task.estimated_duration_min,
+    task_type_at_event: task.task_type,
+    priority_at_event: null,
+    intended_due_date_at_event: null,
+    current_due_date_at_event: null,
+    actual_duration_min: null,
+    result: input.result,
+    yellow_gap_severity: null,
+    disposition: null,
+    reason: null,
+    prompt_snapshot: task.prompt,
+    expected_answer_criteria_snapshot:
+      task.expected_answer_criteria,
+    response_text: responseText,
+    critical_error_flag: null,
+    defer_count_at_event: null,
+    re_entry_condition: null,
+    old_priority: null,
+    new_priority: null,
+  };
+
+  const sameId = state.task_events.find(
+    (event) => event.id === attemptEvent.id,
+  );
+
+  if (sameId) {
+    if (
+      JSON.stringify(sameId) !==
+      JSON.stringify(attemptEvent)
+    ) {
+      throw new Error(
+        `TaskEvent ID "${attemptEvent.id}" is already used for different evidence.`,
+      );
+    }
+
+    return {
+      state,
+      attemptEvent: sameId,
+      outcome: "duplicate",
+    };
+  }
+
+  const attemptDate = localDateOfTimestamp(
+    input.loggedAt,
+    state.settings.timezone,
+  );
+
+  const alreadyAttempted = state.task_events.some(
+    (event) =>
+      event.event_type === "guided_practice_attempt" &&
+      event.subject_type === subjectType &&
+      event.subject_id === input.subjectId &&
+      event.retrieval_task_id === task.id &&
+      localDateOfTimestamp(
+        event.logged_at,
+        state.settings.timezone,
+      ) === attemptDate,
+  );
+
+  if (alreadyAttempted) {
+    throw new Error(
+      "This question already has a guided-practice attempt in this block today.",
+    );
+  }
+
+  return {
+    state: {
+      ...state,
+      task_events: [
+        ...state.task_events,
+        attemptEvent,
+      ],
+    },
+    attemptEvent,
+    outcome: "recorded",
+  };
 }
