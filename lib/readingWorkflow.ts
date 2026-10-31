@@ -107,6 +107,14 @@ export function getCurrentEssayWorkflowStep(
   const isComplete = (step: EssayWorkflowStep) =>
     completed.has(step);
 
+  // A completed final stage means all preceding stages are complete.
+  if (
+    isComplete("criticism") ||
+    Boolean(essay.criticismCompletedAt)
+  ) {
+    return null;
+  }
+
   // Later statuses and timestamps establish first-pass completion
   // for older essays.
   const firstPassComplete =
@@ -175,13 +183,5 @@ export function getCurrentEssayWorkflowStep(
     }
   }
 
-  const criticismComplete =
-    isComplete("criticism") ||
-    Boolean(essay.criticismCompletedAt);
-
-  if (!criticismComplete) {
-    return "criticism";
-  }
-
-  return null;
+  return "criticism";
 }
