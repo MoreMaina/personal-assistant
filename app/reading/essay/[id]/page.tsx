@@ -8,32 +8,44 @@ import {
   saveEssays,
   updateEssay,
   type Essay,
+  type EssayWorkflowStep,
 } from "@/lib/readingStorage";
 import { getCurrentEssayWorkflowStep } from "@/lib/readingWorkflow";
 import { ItemWorkTimer } from "@/app/components/ItemWorkTimer";
 
 const OBSERVATION_PROMPTS: {
   key: keyof Essay["marks"];
+  step: Extract<
+    EssayWorkflowStep,
+    | "second_pass_turns"
+    | "second_pass_rhythm"
+    | "second_pass_essential_sentences"
+    | "second_pass_ending"
+  >;
   title: string;
   hint: string;
 }[] = [
   {
     key: "turns",
+    step: "second_pass_turns",
     title: "Where does the essay turn?",
     hint: "Find the moment when its direction, perspective, or emotional movement changes.",
   },
   {
     key: "rhythm",
+    step: "second_pass_rhythm",
     title: "Where does it accelerate or pause?",
     hint: "Notice changes in pace, compression, silence, or the amount of attention a moment receives.",
   },
   {
     key: "essentialSentences",
+    step: "second_pass_essential_sentences",
     title: "Which sentences feel impossible to remove?",
     hint: "Choose sentences whose removal would change the force, meaning, or structure of the essay.",
   },
   {
     key: "ending",
+    step: "second_pass_ending",
     title: "What does the ending make you reinterpret?",
     hint: "Consider how the final line or paragraph changes your understanding of what came before.",
   },
@@ -41,26 +53,40 @@ const OBSERVATION_PROMPTS: {
 
 const RECONSTRUCTION_PROMPTS: {
   key: keyof Essay["reflection"];
+  step: Extract<
+    EssayWorkflowStep,
+    | "reflection_what_happened"
+    | "reflection_what_changed"
+    | "reflection_why_ending"
+  >;
   title: string;
   hint: string;
 }[] = [
   {
     key: "whatHappened",
+    step: "reflection_what_happened",
     title: "What happened?",
     hint: "Reconstruct the essay in your own words, without looking at it.",
   },
   {
     key: "whatChanged",
+    step: "reflection_what_changed",
     title: "What changed?",
     hint: "Describe the shift in understanding, perspective, or emotional force.",
   },
   {
     key: "whyEnding",
+    step: "reflection_why_ending",
     title: "Why did the ending have to come there?",
     hint: "How does its placement shape the meaning of what came before? Does the structure itself make the argument?",
   },
 ];
 
+function countWordsForStep(value: string): number {
+  return value.trim()
+    ? value.trim().split(/\s+/).length
+    : 0;
+}
 function formatDuration(totalSeconds: number) {
   const seconds = Math.max(0, Math.floor(totalSeconds));
   const minutes = Math.floor(seconds / 60);
@@ -177,42 +203,109 @@ function EssayDetailContent() {
     event.preventDefault();
     if (!essay) return;
 
-    try {
-      const updated: Essay = { ...essay, marks: { ...marksDraft } };
-      updateEssay(updated);
-      setEssay(updated);
-      setFeedback("Your four structural observations were saved.");
-    } catch {
-      setFeedback("Observations could not be saved. Please try again.");
-    }
-  }
+    const currentStep = getCurrentEssayWorkflowStep(essay);
+    const currentPrompt = OBSERVATION_PROMPTS.find(
+      (item) => item.step === currentStep,
+    );
 
-  function saveReconstruction(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!essay) return;
+    if (!currentPrompt) return;
 
-    if (
-      !reflectionDraft.whatHappened.trim() &&
-      !reflectionDraft.whatChanged.trim() &&
-      !reflectionDraft.whyEnding.trim()
-    ) {
-      setFeedback("Write at least one response before saving your reconstruction.");
+    const value = marksDraft[currentPrompt.key].trim();
+
+    if (!value) {
+      setFeedback("Write an observation before continuing.");
       return;
     }
 
     try {
+      const completedSteps = new Set(
+        essay.workflowCompletedSteps ?? [],
+      );
+      completedSteps.add(currentPrompt.step);
+
+      const isFinalObservation =
+        currentPrompt.step === "second_pass_ending";
+
+      const now = new Date().toISOString();
+
       const updated: Essay = {
         ...essay,
-        reflection: { ...reflectionDraft },
+        status: isFinalObservation ? "Reflection" : "Second pass",
+        secondPassCompletedAt: isFinalObservation
+          ? now
+          : essay.secondPassCompletedAt,
+        reflectionStartedAt: isFinalObservation
+          ? essay.reflectionStartedAt ?? now
+          : essay.reflectionStartedAt,
+        marks: {
+          ...essay.marks,
+          [currentPrompt.key]: value,
+        },
+        workflowCompletedSteps: Array.from(completedSteps),
       };
+
       updateEssay(updated);
       setEssay(updated);
-      setFeedback("Your reconstruction from memory was saved.");
+      setMarksDraft({ ...updated.marks });
+      setFeedback("Observation saved. The next prompt is unlocked.");
     } catch {
-      setFeedback("Your reconstruction could not be saved. Please try again.");
+      setFeedback("Observation could not be saved. Please try again.");
     }
   }
+  
+  function saveReconstruction(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!essay) return;
 
+    const currentStep = getCurrentEssayWorkflowStep(essay);
+    const currentPrompt = RECONSTRUCTION_PROMPTS.find(
+      (item) => item.step === currentStep,
+    );
+
+    if (!currentPrompt) return;
+
+    const value = reflectionDraft[currentPrompt.key].trim();
+
+    if (countWordsForStep(value) < 5) {
+      setFeedback("Write at least five words before continuing.");
+      return;
+    }
+
+    try {
+      const completedSteps = new Set(
+        essay.workflowCompletedSteps ?? [],
+      );
+      completedSteps.add(currentPrompt.step);
+
+      const isFinalReflection =
+        currentPrompt.step === "reflection_why_ending";
+
+      const now = new Date().toISOString();
+
+      const updated: Essay = {
+        ...essay,
+        status: "Reflection",
+        reflection: {
+          ...essay.reflection,
+          [currentPrompt.key]: value,
+        },
+        reflectionCompletedAt: isFinalReflection
+          ? now
+          : essay.reflectionCompletedAt,
+        criticismUnlockedAt: isFinalReflection
+          ? essay.criticismUnlockedAt ?? now
+          : essay.criticismUnlockedAt,
+        workflowCompletedSteps: Array.from(completedSteps),
+      };
+
+      updateEssay(updated);
+      setEssay(updated);
+      setReflectionDraft({ ...updated.reflection });
+      setFeedback("Memory reflection saved. The next prompt is unlocked.");
+    } catch {
+      setFeedback("Your reflection could not be saved. Please try again.");
+    }
+  }
   function downloadNotes() {
     if (!essay) return;
 
@@ -382,6 +475,15 @@ function EssayDetailContent() {
     currentWorkflowStep === "reflection_what_happened" ||
     currentWorkflowStep === "reflection_what_changed" ||
     currentWorkflowStep === "reflection_why_ending";
+
+  const currentObservation = OBSERVATION_PROMPTS.find(
+    (item) => item.step === currentWorkflowStep,
+  ) ?? null;
+
+  const currentReconstruction = RECONSTRUCTION_PROMPTS.find(
+    (item) => item.step === currentWorkflowStep,
+  ) ?? null;
+  
   return (
     <main className="reading-detail-page">
       <Link
@@ -509,33 +611,49 @@ function EssayDetailContent() {
           how the essay works.
         </p>
 
-        <form onSubmit={saveObservations} className="mt-4 space-y-4">
-          {OBSERVATION_PROMPTS.map((item, index) => (
-            <label key={item.key} className="block">
-              <span className="reading-detail-page__label mb-1 block">
-                {index + 1}. {item.title}
-              </span>
-              <span className="mb-2 block text-xs leading-5 text-[var(--muted)]">
-                {item.hint}
-              </span>
-              <textarea
-                rows={3}
-                value={marksDraft[item.key]}
-                onChange={(event) =>
-                  setMarksDraft((current) => ({
-                    ...current,
-                    [item.key]: event.target.value,
-                  }))
-                }
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-              />
-            </label>
-          ))}
+        {currentObservation && (
+          <>
+            <p className="mt-4 text-sm font-semibold text-[var(--ink-soft)]">
+              Observation{" "}
+              {OBSERVATION_PROMPTS.indexOf(currentObservation) + 1} of 4
+            </p>
 
-          <button type="submit" className="reading-detail-page__action">
-            Save observations
-          </button>
-        </form>
+            <ItemWorkTimer
+              itemId={`reading-essay-${essay.id}-${currentObservation.step}`}
+              itemName={`${currentObservation.title}: ${essay.title}`}
+              defaultMinutes={25}
+            />
+
+            <form onSubmit={saveObservations} className="mt-4 space-y-4">
+              <label className="block">
+                <span className="reading-detail-page__label mb-1 block">
+                  {currentObservation.title}
+                </span>
+
+                <span className="mb-2 block text-xs leading-5 text-[var(--muted)]">
+                  {currentObservation.hint}
+                </span>
+
+                <textarea
+                  required
+                  rows={4}
+                  value={marksDraft[currentObservation.key]}
+                  onChange={(event) =>
+                    setMarksDraft((current) => ({
+                      ...current,
+                      [currentObservation.key]: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                />
+              </label>
+
+              <button type="submit" className="reading-detail-page__action">
+                Save and continue
+              </button>
+            </form>
+          </>
+        )}
         </div>
       </details>
 
@@ -549,33 +667,54 @@ function EssayDetailContent() {
           to reconstruct the essay yourself.
         </p>
 
-        <form onSubmit={saveReconstruction} className="mt-4 space-y-4">
-          {RECONSTRUCTION_PROMPTS.map((item, index) => (
-            <label key={item.key} className="block">
-              <span className="reading-detail-page__label mb-1 block">
-                {index + 1}. {item.title}
-              </span>
-              <span className="mb-2 block text-xs leading-5 text-[var(--muted)]">
-                {item.hint}
-              </span>
-              <textarea
-                rows={3}
-                value={reflectionDraft[item.key]}
-                onChange={(event) =>
-                  setReflectionDraft((current) => ({
-                    ...current,
-                    [item.key]: event.target.value,
-                  }))
-                }
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-              />
-            </label>
-          ))}
+        {currentReconstruction && (
+          <>
+            <p className="mt-4 text-sm font-semibold text-[var(--ink-soft)]">
+              Memory reflection{" "}
+              {RECONSTRUCTION_PROMPTS.indexOf(currentReconstruction) + 1} of 3
+            </p>
 
-          <button type="submit" className="reading-detail-page__action">
-            Save reconstruction
-          </button>
-        </form>
+            <p className="mt-2 text-xs leading-5 text-[var(--muted)]">
+              Write at least five words for each response. Complete one
+              reflection before moving to the next.
+            </p>
+
+            <ItemWorkTimer
+              itemId={`reading-essay-${essay.id}-${currentReconstruction.step}`}
+              itemName={`${currentReconstruction.title}: ${essay.title}`}
+              defaultMinutes={25}
+            />
+
+            <form onSubmit={saveReconstruction} className="mt-4 space-y-4">
+              <label className="block">
+                <span className="reading-detail-page__label mb-1 block">
+                  {currentReconstruction.title}
+                </span>
+
+                <span className="mb-2 block text-xs leading-5 text-[var(--muted)]">
+                  {currentReconstruction.hint}
+                </span>
+
+                <textarea
+                  required
+                  rows={4}
+                  value={reflectionDraft[currentReconstruction.key]}
+                  onChange={(event) =>
+                    setReflectionDraft((current) => ({
+                      ...current,
+                      [currentReconstruction.key]: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                />
+              </label>
+
+              <button type="submit" className="reading-detail-page__action">
+                Save and continue
+              </button>
+            </form>
+          </>
+        )}
         </div>
       </details>
 
