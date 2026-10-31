@@ -398,7 +398,12 @@ function InitialLearningSection({
         title="Initial learning"
         detail="Start the planned topic, record the actual work you complete, and finish this section only after the required study time has been recorded. Saving a plan alone does not count as work."
       />
-
+            <ItemWorkTimer
+        itemId="study-section:initial-learning"
+        itemName="Initial learning"
+        defaultMinutes={25}
+      />
+      
       {!item || item.allocated_minutes <= 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
           This plan has no positive initial-learning allocation to work on.
@@ -759,6 +764,12 @@ function TopicConsolidationSection({
         title="Topic consolidation"
         detail="Record the actual work you complete for each planned topic. Only consolidation sessions recorded today count toward today's allocation; gate attempts and corrective work do not count."
       />
+
+      <ItemWorkTimer
+        itemId="study-section:topic-consolidation"
+        itemName="Topic consolidation"
+        defaultMinutes={25}
+      />      
 
       <div className="mb-5 rounded-2xl bg-white p-4">
         <h3 className="font-extrabold text-[#23412f]">
@@ -1172,6 +1183,12 @@ function AssignmentSection({
         detail="Record actual time spent on each planned assignment and update the estimate of work remaining. An assignment is marked complete only when you explicitly confirm it."
       />
 
+      <ItemWorkTimer
+        itemId="study-section:assignments"
+        itemName="Assignments"
+        defaultMinutes={25}
+      />
+      
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
           There are no positively allocated assignments in today's saved plan.
@@ -1576,6 +1593,12 @@ function CorrectiveSection({
         detail="Record the actual time spent addressing learning gaps. Only corrective-work sessions count toward these allocations. Logging time does not silently mark the underlying repair task as complete."
       />
 
+      <ItemWorkTimer
+        itemId="study-section:corrective"
+        itemName="Corrective work"
+        defaultMinutes={25}
+      />
+
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
           There are no positively allocated corrective-work items in today's saved plan.
@@ -1893,6 +1916,12 @@ function RecoverySection({
         detail="Record actual time spent recovering overdue or unfinished work. Recovery sessions are tracked separately from corrective work, while both remain subject to the planner's shared repair and recovery budget."
       />
 
+      <ItemWorkTimer
+        itemId="study-section:recovery"
+        itemName="Recovery work"
+        defaultMinutes={25}
+      />
+      
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
           There are no positively allocated recovery items in today's saved plan.
@@ -2194,6 +2223,12 @@ function MixedPracticeSection({
         detail="Practise across topics rather than focusing on a single topic. Record the actual work time for each planned block; only mixed-practice sessions count toward these allocations."
       />
 
+      <ItemWorkTimer
+        itemId="study-section:mixed-practice"
+        itemName="Mixed practice"
+        defaultMinutes={25}
+      />
+      
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
           There are no positively allocated mixed-practice blocks in today's saved plan.
@@ -2502,6 +2537,12 @@ function SamplerSection({
         detail="Record time spent on the sampler and its allocated analysis. Both count toward this section's planned time, and completion is recorded explicitly."
       />
 
+      <ItemWorkTimer
+        itemId="study-section:sampler"
+        itemName="Saturday sampler"
+        defaultMinutes={25}
+      />
+      
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
           There is no positively allocated Sampler work in today's saved plan.
@@ -5056,6 +5097,12 @@ function movePlanningItemTo(
           detail="Attempt selected questions closed-book. Every attempt is saved as immutable evidence. A topic activates only after the gate passes; a failed gate requires corrective work before a new session."
         />
 
+      <ItemWorkTimer
+        itemId="study-section:gate"
+        itemName="Topic gate"
+        defaultMinutes={25}
+      />
+      
         {gateTopics.length === 0 ? (
           <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-stone-600">
             There are no topics awaiting an initial gate right now. Topics
@@ -5455,6 +5502,12 @@ function movePlanningItemTo(
           detail="Attempt each selected question without looking at its expected-answer criteria. Red ends a review immediately. Incomplete work keeps the same review ID, stage, and selected questions."
         />
 
+      <ItemWorkTimer
+        itemId="study-section:reviews"
+        itemName="Due reviews"
+        defaultMinutes={25}
+      />
+            
         {dueReviews.length === 0 ? (
           <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-stone-600">
             No review is due today ({today}). A passed gate
