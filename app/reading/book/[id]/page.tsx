@@ -1013,7 +1013,94 @@ function BookDetailContent() {
             </button>
           </form>
 
-{secondPassSections.length > 0 ? (
+          {currentSecondPassSection ? (
+            <article
+              key={currentSecondPassSection.id}
+              className="reading-detail-page__note"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3>{currentSecondPassSection.section}</h3>
+                  {currentSecondPassSection.reason && (
+                    <p>{currentSecondPassSection.reason}</p>
+                  )}
+                </div>
+                <span className="text-xs font-semibold text-[var(--muted)]">
+                  Section{" "}
+                  {secondPassSections.filter((section) => section.completed).length + 1}{" "}
+                  of {secondPassSections.length}
+                </span>
+              </div>
+
+              <form
+                onSubmit={(event) =>
+                  saveSecondPassNotes(event, currentSecondPassSection.id)
+                }
+                className="mt-3 space-y-2"
+              >
+                <label className="block">
+                  <span className="reading-detail-page__label mb-1 block">
+                    Notes from revisiting
+                  </span>
+                  <textarea
+                    rows={3}
+                    value={
+                      secondPassNotesDraft[currentSecondPassSection.id] ??
+                      currentSecondPassSection.notes
+                    }
+                    onChange={(event) =>
+                      setSecondPassNotesDraft((current) => ({
+                        ...current,
+                        [currentSecondPassSection.id]: event.target.value,
+                      }))
+                    }
+                    placeholder="What became clearer? How does this part contribute to the whole?"
+                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                  />
+                </label>
+
+                <button type="submit" className="reading-detail-page__action">
+                  Save notes
+                </button>
+              </form>
+
+              <div className="mt-3 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleSecondPassSection(currentSecondPassSection.id)
+                  }
+                  className="reading-detail-page__action"
+                >
+                  Mark section examined
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    removeSecondPassSection(currentSecondPassSection.id)
+                  }
+                  className="text-xs text-[var(--muted)] underline"
+                >
+                  Remove section
+                </button>
+              </div>
+            </article>
+          ) : (
+            <div className="rounded-lg bg-[var(--surface-soft)] p-3">
+              <p className="text-sm text-[var(--ink-soft)]">
+                No sections have been selected for a second pass. You can skip
+                this optional stage and continue to your final decision.
+              </p>
+              <button
+                type="button"
+                onClick={skipSecondPass}
+                className="reading-detail-page__action mt-3"
+              >
+                Skip selective rereading
+              </button>
+            </div>
+          )}
         </div>
       </details>
 
