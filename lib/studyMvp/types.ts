@@ -132,7 +132,8 @@ export type TaskEventType =
   | "forced_disposition"
   | "priority_change"
   | "skip_resolution"
-  | "content_preparation";
+  | "content_preparation"
+  | "guided_practice_attempt";
 
 export type TaskEventSubjectType =
   | "review_event"
@@ -303,6 +304,14 @@ export interface TaskEvent {
 
   disposition: PlanningDisposition | ForcedDisposition | null;
   reason: string | null;
+
+  /**
+   * Immutable question and response evidence for guided practice.
+   * Optional so older TaskEvents remain compatible.
+   */
+  prompt_snapshot?: string | null;
+  expected_answer_criteria_snapshot?: string | null;
+  response_text?: string | null;
 
   critical_error_flag: boolean | null;
   defer_count_at_event: number | null;
