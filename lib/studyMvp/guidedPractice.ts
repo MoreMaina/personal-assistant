@@ -165,6 +165,116 @@ export function getGuidedPracticeQuestions(
   return result;
 }
 
+export interface GuidedPracticeSessionSelection {
+  selectedTaskIds: EntityId[];
+  questions: GuidedPracticeQuestion[];
+  missingTaskIds: EntityId[];
+  attemptedTaskIds: EntityId[];
+}
+
+/**
+ * Selects a question set that fits the planned practice allocation.
+ * Once the first answer is saved, its question-ID snapshot is reused
+ * so the session does not reshuffle after a refresh.
+ */
+export function getGuidedPracticeSessionSelection(
+  state: StudyMvpState,
+  purpose: GuidedPracticeKind,
+  subjectId: EntityId,
+  today: string,
+  plannedMinutes: number,
+): GuidedPracticeSessionSelection {
+  const subjectType =
+    purpose === "mixed" ? "mixed_practice" : "sampler";
+
+  const sessionEvents = state.task_events.filter(
+    (event) =>
+      event.event_type === "guided_practice_attempt" &&
+      event.subject_type === subjectType &&
+      event.subject_id === subjectId &&
+      localDateOfTimestamp(
+        event.logged_at,
+        state.settings.timezone,
+      ) === today,
+  );
+
+  const savedSnapshot = sessionEvents.find(
+    (event) =>
+      Array.isArray(
+        event.guided_practice_selected_task_ids_snapshot,
+      ),
+  )?.guided_practice_selected_task_ids_snapshot;
+
+  let selectedTaskIds: EntityId[];
+
+  if (savedSnapshot) {
+    selectedTaskIds = [...savedSnapshot];
+  } else {
+    const candidates = getGuidedPracticeQuestions(
+      state,
+      purpose,
+    );
+
+    const selected: GuidedPracticeQuestion[] = [];
+    let remainingMinutes =
+      Number.isSafeInteger(plannedMinutes) &&
+      plannedMinutes > 0
+        ? plannedMinutes
+        : 0;
+
+    for (const question of candidates) {
+      if (
+        question.estimatedDurationMin <=
+        remainingMinutes
+      ) {
+        selected.push(question);
+        remainingMinutes -= question.estimatedDurationMin;
+      }
+    }
+
+    const selectedTopicCount = new Set(
+      selected.map((question) => question.topicId),
+    ).size;
+
+    selectedTaskIds =
+      purpose === "mixed" && selectedTopicCount < 2
+        ? []
+        : selected.map((question) => question.taskId);
+  }
+
+  const availableById = new Map(
+    getGuidedPracticeQuestions(state, purpose).map(
+      (question) => [question.taskId, question],
+    ),
+  );
+
+  const questions = selectedTaskIds
+    .map((id) => availableById.get(id))
+    .filter(
+      (question): question is GuidedPracticeQuestion =>
+        question !== undefined,
+    );
+
+  const missingTaskIds = selectedTaskIds.filter(
+    (id) => !availableById.has(id),
+  );
+
+  const attemptedTaskIds = [
+    ...new Set(
+      sessionEvents
+        .map((event) => event.retrieval_task_id)
+        .filter((id): id is EntityId => id !== null),
+    ),
+  ];
+
+  return {
+    selectedTaskIds,
+    questions,
+    missingTaskIds,
+    attemptedTaskIds,
+  };
+}
+
 export interface GuidedPracticeAttemptInput {
   purpose: GuidedPracticeKind;
   subjectId: EntityId;
@@ -174,6 +284,7 @@ export interface GuidedPracticeAttemptInput {
   loggedAt: string;
   eventId?: EntityId;
   idFactory?: IdFactory;
+  selectedTaskIdsSnapshot: readonly EntityId[];
 }
 
 export interface GuidedPracticeAttemptResult {
@@ -267,6 +378,92 @@ export function applyGuidedPracticeAttempt(
       ? "mixed_practice"
       : "sampler";
 
+  if (!input.subjectId.trim()) {
+    throw new Error(
+      "A guided-practice block ID is required.",
+    );
+  }
+
+  const selectedTaskIdsSnapshot = [
+    ...input.selectedTaskIdsSnapshot,
+  ];
+
+  const minimumSelected =
+    input.purpose === "mixed" ? 2 : 1;
+
+  if (
+    selectedTaskIdsSnapshot.length < minimumSelected ||
+    new Set(selectedTaskIdsSnapshot).size !==
+      selectedTaskIdsSnapshot.length
+  ) {
+    throw new Error(
+      "The guided-practice question selection is invalid.",
+    );
+  }
+
+  const eligibleIds = new Set(
+    getGuidedPracticeQuestions(
+      state,
+      input.purpose,
+    ).map((question) => question.taskId),
+  );
+
+  if (
+    selectedTaskIdsSnapshot.some(
+      (id) => !eligibleIds.has(id),
+    ) ||
+    !selectedTaskIdsSnapshot.includes(task.id)
+  ) {
+    throw new Error(
+      "The selected question set contains a question that is no longer eligible.",
+    );
+  }
+
+  const selectedTopicCount = new Set(
+    selectedTaskIdsSnapshot.map((id) =>
+      state.retrieval_tasks.find(
+        (item) => item.id === id,
+      )!.topic_id,
+    ),
+  ).size;
+
+  if (
+    input.purpose === "mixed" &&
+    selectedTopicCount < 2
+  ) {
+    throw new Error(
+      "Mixed practice must include questions from at least two active topics.",
+    );
+  }
+
+  const attemptDate = localDateOfTimestamp(
+    input.loggedAt,
+    state.settings.timezone,
+  );
+
+  const sessionEvents = state.task_events.filter(
+    (event) =>
+      event.event_type === "guided_practice_attempt" &&
+      event.subject_type === subjectType &&
+      event.subject_id === input.subjectId &&
+      localDateOfTimestamp(
+        event.logged_at,
+        state.settings.timezone,
+      ) === attemptDate,
+  );
+
+  for (const previous of sessionEvents) {
+    if (
+      JSON.stringify(
+        previous.guided_practice_selected_task_ids_snapshot,
+      ) !== JSON.stringify(selectedTaskIdsSnapshot)
+    ) {
+      throw new Error(
+        "This guided-practice block already has a different saved question selection.",
+      );
+    }
+  }
+
   const idFactory = input.idFactory ?? defaultIdFactory;
 
   const attemptEvent: TaskEvent = {
@@ -297,6 +494,8 @@ export function applyGuidedPracticeAttempt(
     expected_answer_criteria_snapshot:
       task.expected_answer_criteria,
     response_text: responseText,
+    guided_practice_selected_task_ids_snapshot:
+      selectedTaskIdsSnapshot,
     critical_error_flag: null,
     defer_count_at_event: null,
     re_entry_condition: null,
@@ -325,10 +524,6 @@ export function applyGuidedPracticeAttempt(
     };
   }
 
-  const attemptDate = localDateOfTimestamp(
-    input.loggedAt,
-    state.settings.timezone,
-  );
 
   const alreadyAttempted = state.task_events.some(
     (event) =>
@@ -348,9 +543,14 @@ export function applyGuidedPracticeAttempt(
     );
   }
 
-  return {
     state: {
       ...state,
+      retrieval_tasks: state.retrieval_tasks.map(
+        (item) =>
+          item.id === task.id
+            ? { ...item, last_used_on: attemptDate }
+            : item,
+      ),
       task_events: [
         ...state.task_events,
         attemptEvent,
