@@ -743,13 +743,7 @@ function TopicConsolidationSection({
   }
 
   function finishSection() {
-    if (
-      !allAllocationsRecorded ||
-      !allGuidedQuestionsCompleted
-    ) {
-      return;
-    }
-
+    if (!allAllocationsRecorded) return;
     setError("");
 
     try {
@@ -996,21 +990,6 @@ function AssignmentSection({
       );
   }
 
-  const allAllocationsRecorded =
-    items.length > 0 &&
-    items.every((item) => {
-      const plannedAssignment = assignmentFor(item);
-
-      return Boolean(
-        plannedAssignment &&
-          (
-            plannedAssignment.status === "completed" ||
-            plannedAssignment.status === "cancelled" ||
-            loggedMinutesFor(plannedAssignment.id) >=
-              item.allocated_minutes
-          ),
-      );
-    });
 
   const defaultRemainingMinutes = assignment
     ? Math.max(
@@ -1912,12 +1891,7 @@ function RecoverySection({
   }
 
   function finishSection() {
-    if (
-      !allAllocationsRecorded ||
-      !allGuidedQuestionsCompleted
-    ) {
-      return;
-    }
+    if (!allAllocationsRecorded) return;
 
     setError("");
 
@@ -2224,7 +2198,12 @@ function MixedPracticeSection({
   }
 
   function finishSection() {
-    if (!allAllocationsRecorded) return;
+    if (
+      !allAllocationsRecorded ||
+      !allGuidedQuestionsCompleted
+    ) {
+      return;
+    }
 
     setError("");
 
@@ -2456,6 +2435,26 @@ function SamplerSection({
         loggedMinutesFor(item.subject_id) >=
         plannedMinutesFor(item),
     );
+
+  const allGuidedQuestionsCompleted =
+    items.length > 0 &&
+    items.every((item) => {
+      const selection = getGuidedPracticeSessionSelection(
+        state,
+        "mixed",
+        item.subject_id,
+        today,
+        item.allocated_minutes,
+      );
+
+      return (
+        selection.selectedTaskIds.length > 0 &&
+        selection.missingTaskIds.length === 0 &&
+        selection.selectedTaskIds.every((id) =>
+          selection.attemptedTaskIds.includes(id),
+        )
+      );
+    });
 
   const allGuidedQuestionsCompleted =
     items.length > 0 &&
