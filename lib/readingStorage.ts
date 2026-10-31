@@ -49,6 +49,24 @@ export type ReadingDecision =
   | "Stop — purpose fulfilled"
   | "Stop — not enough value";
 
+export type BookWorkflowStep =
+  | "purpose"
+  | "first_pass"
+  | "reconstruction"
+  | "second_pass"
+  | "application";
+
+export type EssayWorkflowStep =
+  | "first_pass"
+  | "second_pass_turns"
+  | "second_pass_rhythm"
+  | "second_pass_essential_sentences"
+  | "second_pass_ending"
+  | "reflection_what_happened"
+  | "reflection_what_changed"
+  | "reflection_why_ending"
+  | "criticism";
+
 export type Book = {
   id: number;
   title: string;
@@ -66,6 +84,10 @@ export type Book = {
   secondPassSections?: SecondPassSection[];
   readingApplication?: ReadingApplication;
   readingDecision?: ReadingDecision;
+
+  // Optional explicit workflow markers; older records remain compatible.
+  workflowCompletedSteps?: BookWorkflowStep[];
+  workflowSkippedSteps?: BookWorkflowStep[];
 };
 
 export type ReadingSession = {
@@ -122,6 +144,11 @@ export type Essay = {
   reflection: EssayReflection;
 
   criticismUnlockedAt?: string;
+
+  // Optional explicit step markers preserve sequential progress.
+  workflowCompletedSteps?: EssayWorkflowStep[];
+  criticismNotes?: string;
+  criticismCompletedAt?: string;
 };
 
 function isObjectRecord(
@@ -220,6 +247,8 @@ export function addBook(
     id: Date.now(),
     currentPage: 0,
     status: "Want to read",
+    workflowCompletedSteps: [],
+    workflowSkippedSteps: [],
   };
 
   saveBooks([...books, newBook]);
@@ -330,8 +359,9 @@ export function addEssay(
     },
 
     secondPassStep: 0,
+    workflowCompletedSteps: [],
   };
-
+  
   saveEssays([...essays, newEssay]);
 
   return newEssay;
