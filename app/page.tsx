@@ -397,8 +397,10 @@ export default function TodayPage() {
         String(tomorrowStart.getDate()).padStart(2, "0"),
       ].join("-");
 
-      const tomorrowData = getTodayData(tomorrowStart);
-
+      const tomorrowData = getTodayData(
+        tomorrowStart,
+        todayStudyState,
+      );
       const calendarItems = getCalendarItems();
       const calendarEvents = calendarItems.filter(
         (item): item is CalendarEvent => item.type === "event",
