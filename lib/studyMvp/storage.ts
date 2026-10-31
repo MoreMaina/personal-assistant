@@ -366,6 +366,27 @@ function validateTaskEventShape(
       );
     }
 
+    const selectedSnapshot =
+      event.guided_practice_selected_task_ids_snapshot;
+
+    const minimumSelected =
+      event.subject_type === "mixed_practice" ? 2 : 1;
+
+    if (
+      !isStringArray(selectedSnapshot) ||
+      selectedSnapshot.length < minimumSelected ||
+      new Set(selectedSnapshot).size !==
+        selectedSnapshot.length ||
+      !selectedSnapshot.includes(
+        String(event.retrieval_task_id),
+      )
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "A guided-practice attempt requires a valid frozen question selection.",
+      );
+    }
+
     if (
       event.actual_duration_min !== null ||
       event.yellow_gap_severity !== null ||
@@ -944,10 +965,87 @@ export function assertStudyStateIntegrity(
     validateTaskEventShape(event);
   }
 
-  const retrievalTaskIds = new Set(
-    state.retrieval_tasks.map((task) => task.id),
+  const retrievalTasksById = new Map(
+    state.retrieval_tasks.map((task) => [
+      task.id,
+      task,
+    ]),
   );
 
+  const guidedPracticeSnapshots = new Map<
+    string,
+    string
+  >();
+
+  for (const event of state.task_events) {
+    if (
+      event.event_type !== "guided_practice_attempt"
+    ) {
+      continue;
+    }
+
+    const task = event.retrieval_task_id
+      ? retrievalTasksById.get(event.retrieval_task_id)
+      : undefined;
+
+    const selectedIds =
+      event.guided_practice_selected_task_ids_snapshot ?? [];
+
+    if (
+      !task ||
+      selectedIds.some(
+        (id) => !retrievalTasksById.has(id),
+      )
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "Every guided-practice attempt and its frozen selection must reference existing retrieval tasks.",
+      );
+    }
+
+    const selectedTopicIds = new Set(
+      selectedIds.map(
+        (id) => retrievalTasksById.get(id)!.topic_id,
+      ),
+    );
+
+    if (
+      event.subject_type === "mixed_practice" &&
+      selectedTopicIds.size < 2
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "A mixed-practice selection must include at least two topics.",
+      );
+    }
+
+    const sessionDate = localDateOfTimestamp(
+      event.logged_at,
+      state.settings.timezone,
+    );
+
+    const sessionKey =
+      `${event.subject_type}:${event.subject_id}:${sessionDate}`;
+
+    const snapshotJson = JSON.stringify(selectedIds);
+    const previousSnapshot =
+      guidedPracticeSnapshots.get(sessionKey);
+
+    if (
+      previousSnapshot !== undefined &&
+      previousSnapshot !== snapshotJson
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "A guided-practice block cannot change its frozen question selection.",
+      );
+    }
+
+    guidedPracticeSnapshots.set(
+      sessionKey,
+      snapshotJson,
+    );
+  }
   for (const event of state.task_events) {
     if (
       event.event_type === "guided_practice_attempt" &&
