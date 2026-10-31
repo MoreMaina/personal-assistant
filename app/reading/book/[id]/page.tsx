@@ -15,6 +15,7 @@ import {
   type SecondPassSection,
   type WholeBookReconstruction,
 } from "@/lib/readingStorage";
+import { getCurrentBookWorkflowStep } from "@/lib/readingWorkflow";
 
 const ACTIVE_READING_TIMER_KEY = "personal-assistant-active-reading-timer";
 
@@ -205,6 +206,11 @@ function BookDetailContent() {
     event.preventDefault();
     if (!book) return;
 
+    if (!purposeDraft.trim()) {
+      setFeedback("Write a short purpose before moving to the first pass.");
+      return;
+    }
+
     persistBook(
       {
         ...book,
@@ -277,12 +283,12 @@ function BookDetailContent() {
     if (!book) return;
 
     if (
-      !reconstructionDraft.about.trim() &&
-      !reconstructionDraft.doing.trim() &&
-      !reconstructionDraft.development.trim() &&
+      !reconstructionDraft.about.trim() ||
+      !reconstructionDraft.doing.trim() ||
+      !reconstructionDraft.development.trim() ||
       !reconstructionDraft.changed.trim()
     ) {
-      setFeedback("Write at least one response before saving your reconstruction.");
+      setFeedback("Complete all four prompts before saving your reconstruction.");
       return;
     }
 
@@ -378,6 +384,21 @@ function BookDetailContent() {
     );
   }
 
+  function skipSecondPass() {
+    if (!book) return;
+
+    const skippedSteps = new Set(book.workflowSkippedSteps ?? []);
+    skippedSteps.add("second_pass");
+
+    persistBook(
+      {
+        ...book,
+        workflowSkippedSteps: Array.from(skippedSteps),
+      },
+      "Selective second pass skipped.",
+    );
+  }
+  
   function removeSecondPassSection(sectionId: string) {
     if (!book) return;
     if (!window.confirm("Remove this item from your second-pass list?")) return;
@@ -402,6 +423,11 @@ function BookDetailContent() {
   function saveApplicationAndDecision(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!book) return;
+
+    if (!decisionDraft) {
+      setFeedback("Choose a reading decision before completing this workflow.");
+      return;
+    }
 
     persistBook(
       {
@@ -571,6 +597,10 @@ function BookDetailContent() {
   const secondPassSections = book.secondPassSections ?? [];
   const reconstruction = book.wholeBookReconstruction ?? EMPTY_RECONSTRUCTION;
 
+  const currentWorkflowStep = getCurrentBookWorkflowStep(book);
+  const currentSecondPassSection =
+    secondPassSections.find((section) => !section.completed) ?? null;
+  
   return (
     <main className="reading-detail-page">
       <Link className="reading-detail-page__back" href="/reading">
@@ -630,7 +660,8 @@ function BookDetailContent() {
 
       <details
         className="reading-detail-page__panel"
-        open={book.status === "Want to read"}
+        hidden={currentWorkflowStep !== "purpose"}
+        open={currentWorkflowStep === "purpose"}
       >
         <summary className="cursor-pointer text-sm font-semibold">
           <span className="mr-2 text-[var(--primary-dark)]">1</span>
@@ -688,7 +719,8 @@ function BookDetailContent() {
 
       <details
         className="reading-detail-page__panel"
-        open={book.status === "Reading"}
+        hidden={currentWorkflowStep !== "first_pass"}
+        open={currentWorkflowStep === "first_pass"}
       >
         <summary className="cursor-pointer text-sm font-semibold">
           <span className="mr-2 text-[var(--primary-dark)]">2</span>
@@ -834,7 +866,8 @@ function BookDetailContent() {
 
       <details
         className="reading-detail-page__panel"
-        open={book.status === "Finished"}
+        hidden={currentWorkflowStep !== "reconstruction"}
+        open={currentWorkflowStep === "reconstruction"}
       >
         <summary className="cursor-pointer text-sm font-semibold">
           <span className="mr-2 text-[var(--primary-dark)]">3</span>
@@ -932,7 +965,11 @@ function BookDetailContent() {
         </form>
       </details>
 
-      <details className="reading-detail-page__panel">
+      <details
+        className="reading-detail-page__panel"
+        hidden={currentWorkflowStep !== "second_pass"}
+        open={currentWorkflowStep === "second_pass"}
+      >
         <summary className="cursor-pointer text-sm font-semibold">
           <span className="mr-2 text-[var(--primary-dark)]">4</span>
           Second pass: examine what matters
@@ -976,70 +1013,29 @@ function BookDetailContent() {
             </button>
           </form>
 
-          {secondPassSections.length > 0 ? (
-            <div className="space-y-3 border-t border-[var(--border)] pt-4">
-              {secondPassSections.map((section) => (
-                <article key={section.id} className="reading-detail-page__note">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3>{section.section}</h3>
-                      {section.reason && <p>{section.reason}</p>}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => toggleSecondPassSection(section.id)}
-                      className="text-xs font-semibold text-[var(--primary-dark)] underline"
-                    >
-                      {section.completed ? "Mark to revisit" : "Mark examined"}
-                    </button>
-                  </div>
-
-                  <form
-                    onSubmit={(event) => saveSecondPassNotes(event, section.id)}
-                    className="mt-3 space-y-2"
-                  >
-                    <label className="block">
-                      <span className="reading-detail-page__label mb-1 block">
-                        Notes from revisiting
-                      </span>
-                      <textarea
-                        rows={3}
-                        value={secondPassNotesDraft[section.id] ?? section.notes}
-                        onChange={(event) =>
-                          setSecondPassNotesDraft((current) => ({
-                            ...current,
-                            [section.id]: event.target.value,
-                          }))
-                        }
-                        placeholder="What became clearer? How does this part contribute to the whole?"
-                        className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                      />
-                    </label>
-                    <div className="flex flex-wrap gap-3">
-                      <button type="submit" className="reading-detail-page__action">
-                        Save notes
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeSecondPassSection(section.id)}
-                        className="text-xs text-[var(--muted)] underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </form>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-[var(--muted)]">
-              Nothing selected yet. Add only sections where a second look would be useful.
-            </p>
-          )}
+{secondPassSections.length > 0 ? (
         </div>
       </details>
 
-      <details className="reading-detail-page__panel">
+      {currentWorkflowStep === null && (
+        <section className="reading-detail-page__panel">
+          <h2 className="text-base font-bold">Reading workflow complete</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+            You have completed the reading process and recorded your decision.
+          </p>
+          {book.readingDecision && (
+            <p className="mt-2 text-sm">
+              Your decision: <strong>{book.readingDecision}</strong>
+            </p>
+          )}
+        </section>
+      )}
+      
+      <details
+        className="reading-detail-page__panel"
+        hidden={currentWorkflowStep !== "application"}
+        open={currentWorkflowStep === "application"}
+      >
         <summary className="cursor-pointer text-sm font-semibold">
           <span className="mr-2 text-[var(--primary-dark)]">5</span>
           Apply what matters—or decide to stop
