@@ -8,6 +8,7 @@ import {
 import {
   applyGuidedPracticeAttempt,
   getGuidedPracticeQuestions,
+  getGuidedPracticeSessionSelection,
 } from "./guidedPractice";
 
 import type {
@@ -177,6 +178,8 @@ describe("guided practice question selection", () => {
       taskType: "explanation",
       estimatedDurationMin: 5,
     });
+
+
   });
 
   it("returns an empty list when no eligible prepared questions exist", () => {
@@ -192,6 +195,83 @@ describe("guided practice question selection", () => {
       getGuidedPracticeQuestions(state, "sampler"),
     ).toEqual([]);
   });
+
+  it("selects only questions that fit the planned practice minutes", () => {
+    const selection = getGuidedPracticeSessionSelection(
+      fixtureState(),
+      "mixed",
+      "mixed-block-1",
+      "2026-10-31",
+      10,
+    );
+
+    expect(selection.selectedTaskIds).toEqual([
+      "mixed-a1",
+      "mixed-b1",
+    ]);
+
+    expect(
+      new Set(
+        selection.questions.map(
+          (question) => question.topicId,
+        ),
+      ).size,
+    ).toBe(2);
+  });
+
+  it("keeps the original question selection after the first answer is saved", () => {
+    const initial = fixtureState();
+
+    const firstSelection =
+      getGuidedPracticeSessionSelection(
+        initial,
+        "mixed",
+        "mixed-block-1",
+        "2026-10-31",
+        10,
+      );
+
+    const saved = applyGuidedPracticeAttempt(
+      initial,
+      {
+        purpose: "mixed",
+        subjectId: "mixed-block-1",
+        taskId: "mixed-a1",
+        responseText: "A written answer.",
+        result: "green",
+        loggedAt: NOW,
+        eventId: "snapshot-event-1",
+        selectedTaskIdsSnapshot:
+          firstSelection.selectedTaskIds,
+      },
+    );
+
+    saved.state.retrieval_tasks.push({
+      id: "mixed-b0",
+      topic_id: "topic-2",
+      prompt: "New prompt",
+      expected_answer_criteria: "New criteria",
+      task_type: "explanation",
+      purpose: "mixed",
+      estimated_duration_min: 5,
+      last_used_on: null,
+      active: true,
+    });
+
+    const resumed =
+      getGuidedPracticeSessionSelection(
+        saved.state,
+        "mixed",
+        "mixed-block-1",
+        "2026-10-31",
+        10,
+      );
+
+    expect(resumed.selectedTaskIds).toEqual(
+      firstSelection.selectedTaskIds,
+    );
+  });
+  
 });
 
 describe("guided practice attempt evidence", () => {
@@ -199,6 +279,11 @@ describe("guided practice attempt evidence", () => {
     purpose: "mixed" as const,
     subjectId: "mixed-block-1",
     taskId: "mixed-a1",
+    selectedTaskIdsSnapshot: [
+      "mixed-a1",
+      "mixed-b1",
+      "mixed-a2",
+    ],
     responseText:
       "I explained the concept and compared its main properties.",
     result: "green" as const,
@@ -248,6 +333,7 @@ describe("guided practice attempt evidence", () => {
         subjectId: "sampler-block-1",
         result: "yellow",
         eventId: "sampler-event-1",
+        selectedTaskIdsSnapshot: ["sampler-a"],
       },
     );
 
