@@ -193,8 +193,8 @@ export default function TodayPage() {
       setNow(current);
 
       const data = getTodayData(
-        current,
         todayStudyState,
+        current,
       );
 
       setFixedEvents(data.fixedEvents);
@@ -398,9 +398,9 @@ export default function TodayPage() {
       ].join("-");
 
       const tomorrowData = getTodayData(
-        tomorrowStart,
-        todayStudyState,
-      );
+  todayStudyState,
+  tomorrowStart,
+);
       const calendarItems = getCalendarItems();
       const calendarEvents = calendarItems.filter(
         (item): item is CalendarEvent => item.type === "event",
