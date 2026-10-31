@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { createEmptyStudyState } from "./storage";
-import { getGuidedPracticeQuestions } from "./guidedPractice";
+import {
+  assertStudyStateIntegrity,
+  createEmptyStudyState,
+} from "./storage";
+
+import {
+  applyGuidedPracticeAttempt,
+  getGuidedPracticeQuestions,
+} from "./guidedPractice";
 
 import type {
   RetrievalTask,
@@ -184,5 +191,161 @@ describe("guided practice question selection", () => {
     expect(
       getGuidedPracticeQuestions(state, "sampler"),
     ).toEqual([]);
+  });
+});
+
+describe("guided practice attempt evidence", () => {
+  const input = {
+    purpose: "mixed" as const,
+    subjectId: "mixed-block-1",
+    taskId: "mixed-a1",
+    responseText:
+      "I explained the concept and compared its main properties.",
+    result: "green" as const,
+    loggedAt: NOW,
+    eventId: "guided-event-1",
+  };
+
+  it("records a response, result and immutable question snapshots", () => {
+    const initial = fixtureState();
+
+    const recorded = applyGuidedPracticeAttempt(
+      initial,
+      input,
+    );
+
+    expect(recorded.outcome).toBe("recorded");
+    expect(recorded.state.task_events).toHaveLength(1);
+
+    expect(recorded.attemptEvent).toMatchObject({
+      id: "guided-event-1",
+      event_type: "guided_practice_attempt",
+      subject_type: "mixed_practice",
+      subject_id: "mixed-block-1",
+      retrieval_task_id: "mixed-a1",
+      task_type_at_event: "explanation",
+      estimated_duration_min_at_event: 5,
+      actual_duration_min: null,
+      result: "green",
+      prompt_snapshot: "Prompt mixed-a1",
+      expected_answer_criteria_snapshot:
+        "Criteria mixed-a1",
+      response_text: input.responseText,
+    });
+
+    expect(() =>
+      assertStudyStateIntegrity(recorded.state),
+    ).not.toThrow();
+  });
+
+  it("records sampler attempts under the sampler subject type", () => {
+    const recorded = applyGuidedPracticeAttempt(
+      fixtureState(),
+      {
+        ...input,
+        purpose: "sampler",
+        taskId: "sampler-a",
+        subjectId: "sampler-block-1",
+        result: "yellow",
+        eventId: "sampler-event-1",
+      },
+    );
+
+    expect(recorded.attemptEvent).toMatchObject({
+      event_type: "guided_practice_attempt",
+      subject_type: "sampler",
+      subject_id: "sampler-block-1",
+      retrieval_task_id: "sampler-a",
+      result: "yellow",
+    });
+
+    expect(() =>
+      assertStudyStateIntegrity(recorded.state),
+    ).not.toThrow();
+  });
+
+  it("treats an identical event ID and payload as an idempotent retry", () => {
+    const first = applyGuidedPracticeAttempt(
+      fixtureState(),
+      input,
+    );
+
+    const second = applyGuidedPracticeAttempt(
+      first.state,
+      input,
+    );
+
+    expect(second.outcome).toBe("duplicate");
+    expect(second.state).toBe(first.state);
+    expect(second.state.task_events).toHaveLength(1);
+  });
+
+  it("rejects a second attempt for the same task in the same block and day", () => {
+    const first = applyGuidedPracticeAttempt(
+      fixtureState(),
+      input,
+    );
+
+    expect(() =>
+      applyGuidedPracticeAttempt(first.state, {
+        ...input,
+        eventId: "guided-event-2",
+      }),
+    ).toThrow(/already has a guided-practice attempt/i);
+  });
+
+  it("rejects questions that are inactive, for another purpose, or archived", () => {
+    const wrongPurpose = fixtureState();
+
+    expect(() =>
+      applyGuidedPracticeAttempt(wrongPurpose, {
+        ...input,
+        purpose: "sampler",
+      }),
+    ).toThrow(/not an active question/i);
+
+    const inactive = fixtureState();
+    inactive.retrieval_tasks[0].active = false;
+
+    expect(() =>
+      applyGuidedPracticeAttempt(inactive, input),
+    ).toThrow(/not an active question/i);
+
+    const archived = fixtureState();
+    archived.courses[0].archived_at = NOW;
+
+    expect(() =>
+      applyGuidedPracticeAttempt(archived, input),
+    ).toThrow(/missing or archived/i);
+  });
+
+  it("rejects invalid response snapshots and missing task references", () => {
+    const recorded = applyGuidedPracticeAttempt(
+      fixtureState(),
+      input,
+    );
+
+    const invalidResponse = {
+      ...recorded.state,
+      task_events: recorded.state.task_events.map(
+        (event) => ({
+          ...event,
+          response_text: "   ",
+        }),
+      ),
+    };
+
+    expect(() =>
+      assertStudyStateIntegrity(invalidResponse),
+    ).toThrow(/question, criteria, and response snapshots/i);
+
+    const missingTask = {
+      ...recorded.state,
+      retrieval_tasks: [],
+    };
+
+    expect(() =>
+      assertStudyStateIntegrity(missingTask),
+    ).toThrow(/existing retrieval task/i);
   });
 });
