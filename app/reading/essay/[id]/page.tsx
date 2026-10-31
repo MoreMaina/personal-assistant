@@ -185,13 +185,36 @@ function EssayDetailContent() {
     }
   }
 
-  function finishFirstPass() {
+  function startFirstPass() {
     if (!essay) return;
 
     const updated: Essay = {
       ...essay,
       status: "First pass",
-      firstPassCompletedAt: new Date().toISOString(),
+      firstPassStartedAt:
+        essay.firstPassStartedAt ?? new Date().toISOString(),
+    };
+
+    try {
+      updateEssay(updated);
+      setEssay(updated);
+      setFeedback("First reading started.");
+    } catch {
+      setFeedback("First reading could not be started. Please try again.");
+    }
+  }
+
+  function finishFirstPass() {
+    if (!essay) return;
+
+    const now = new Date().toISOString();
+
+    const updated: Essay = {
+      ...essay,
+      status: "Second pass",
+      firstPassStartedAt: essay.firstPassStartedAt ?? now,
+      firstPassCompletedAt: now,
+      secondPassStartedAt: essay.secondPassStartedAt ?? now,
     };
 
     try {
@@ -580,15 +603,16 @@ function EssayDetailContent() {
             </p>
           </div>
 
-          {essay.status !== "Finished" && (
-            <Link
+          {currentWorkflowStep === "first_pass" && (
+            <button
+              type="button"
               className="reading-detail-page__action"
-              href={`/reading?essayId=${essay.id}`}
+              onClick={startFirstPass}
             >
-              {essay.status === "To read"
-                ? "Start first reading"
-                : "Continue essay practice"}
-            </Link>
+              {essay.firstPassStartedAt
+                ? "Continue first reading"
+                : "Start first reading"}
+            </button>
           )}
         </div>
 
@@ -639,69 +663,43 @@ function EssayDetailContent() {
         hidden={currentWorkflowStep !== "first_pass"}
         open={currentWorkflowStep === "first_pass"}
       >
+        <summary className="cursor-pointer text-sm font-semibold">
+          Stage 1 · Experience
+        </summary>
+
         <div className="mt-4 space-y-4">
           <h2 className="text-base font-semibold">
-            Consider what the structure means
+            Read the essay straight through
           </h2>
 
           <p className="text-sm leading-6 text-[var(--ink-soft)]">
-            Having made your own observations and reconstruction, consider
-            whether the structure itself produces the essay&apos;s meaning.
-            Does the narrative make an argument the author never states
-            directly? Does the ending transform an earlier detail? What
-            would be lost if the essay ended somewhere else?
-          </p>
-
-          <p className="text-sm leading-6 text-[var(--ink-soft)]">
-            Compare your understanding with the text. Identify what remains
-            uncertain and consult criticism when it can genuinely deepen
-            your reading.
+            Read once for the experience. Notice where your attention
+            changes, but resist the urge to stop and explain why.
+            Don't mark sentences or analyze the structure yet.
+            Experience the whole piece first.
           </p>
 
           <ItemWorkTimer
-            itemId={`reading-essay-${essay.id}-criticism`}
-            itemName={`Criticism: ${essay.title}`}
+            itemId={`reading-essay-${essay.id}-first-pass`}
+            itemName={`First reading: ${essay.title}`}
             defaultMinutes={25}
           />
 
-          <form onSubmit={saveCriticismNotes} className="space-y-3">
-            <label className="block">
-              <span className="reading-detail-page__label mb-1 block">
-                Your criticism and interpretation notes
-              </span>
-              <textarea
-                required
-                rows={6}
-                value={criticismNotesDraft}
-                onChange={(event) =>
-                  setCriticismNotesDraft(event.target.value)
-                }
-                placeholder="What does the structure reveal? What remains uncertain? What did comparing your interpretation with the text change?"
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-              />
-            </label>
-
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="submit"
-                className="reading-detail-page__back"
-              >
-                Save criticism notes
-              </button>
-
-              <button
-                type="button"
-                onClick={completeCriticism}
-                className="reading-detail-page__action"
-              >
-                Mark criticism complete
-              </button>
-            </div>
-          </form>
+          <button
+            type="button"
+            onClick={finishFirstPass}
+            className="reading-detail-page__action"
+          >
+            Mark first reading complete
+          </button>
         </div>
       </details>
 
-      <details className="reading-detail-page__panel" open={essay.status === "Second pass"}>
+      <details
+        className="reading-detail-page__panel"
+        hidden={!isObservationStep}
+        open={isObservationStep}
+      >
         <summary className="cursor-pointer text-sm font-semibold">Stage 2 · Examine</summary>
         <div className="mt-4">
         <h2 className="mt-1 text-base font-semibold">The second reading: four observations</h2>
@@ -757,7 +755,11 @@ function EssayDetailContent() {
         </div>
       </details>
 
-      <details className="reading-detail-page__panel" open={essay.status === "Reflection" || essay.status === "Finished"}>
+      <details
+        className="reading-detail-page__panel"
+        hidden={!isReflectionStep}
+        open={isReflectionStep}
+      >
         <summary className="cursor-pointer text-sm font-semibold">Stage 3 · Reconstruct</summary>
         <div className="mt-4">
         <h2 className="mt-1 text-base font-semibold">Close the essay and recall</h2>
@@ -818,107 +820,62 @@ function EssayDetailContent() {
         </div>
       </details>
 
-      <details className="reading-detail-page__panel" open={essay.status === "Finished"}>
+      <details
+        className="reading-detail-page__panel"
+        hidden={currentWorkflowStep !== "criticism"}
+        open={currentWorkflowStep === "criticism"}
+      >
         <summary className="cursor-pointer text-sm font-semibold">Stage 4 · Criticism</summary>
-        <div className="mt-4">
-        <h2 className="mt-1 text-base font-semibold">Consider what the structure means</h2>
-        <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
-          Having made your own observations and reconstruction, consider whether the
-          structure itself produces the essay&apos;s meaning. Does the narrative make an
-          argument the author never states directly? Does the ending transform an earlier
-          detail? What would be lost if the essay ended somewhere else?
-        </p>
-        <p className="mt-3 text-sm leading-6 text-[var(--ink-soft)]">
-          You don&apos;t need to force an interpretation. Compare your understanding with the
-          text, identify what remains uncertain, and consult criticism when it can genuinely
-          deepen your reading.
-        </p>
-        </div>
-      </details>
-
-      {currentWorkflowStep === null && (
-        <section className="reading-detail-page__panel">
-          <h2 className="text-base font-bold">Essay workflow complete</h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-            You have completed the essay experience, examination,
-            reconstruction and criticism stages.
-          </p>
-        </section>
-      )}
-      
-      <details className="reading-detail-page__panel">
-        <summary className="cursor-pointer text-sm font-semibold">
-          Manage essay details
-        </summary>
-
         <div className="mt-4 space-y-4">
-          <button
-            type="button"
-            className="reading-detail-page__back"
-            onClick={() => {
-              setEditing((current) => !current);
-              setFeedback("");
-            }}
-          >
-            {editing ? "Cancel editing" : "Edit title, author and source"}
-          </button>
+          <h2 className="text-base font-semibold">
+            Consider what the structure means
+          </h2>
 
-          {editing && (
-            <form onSubmit={saveDetails} className="space-y-3">
-              <label className="block">
-                <span className="reading-detail-page__label mb-1 block">Title</span>
-                <input
-                  required
-                  value={editTitle}
-                  onChange={(event) => setEditTitle(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="block">
-                <span className="reading-detail-page__label mb-1 block">Author</span>
-                <input
-                  value={editAuthor}
-                  onChange={(event) => setEditAuthor(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="block">
-                <span className="reading-detail-page__label mb-1 block">Source / URL</span>
-                <input
-                  value={editSource}
-                  onChange={(event) => setEditSource(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                />
-              </label>
-              <button type="submit" className="reading-detail-page__action">
-                Save essay details
+          <p className="text-sm leading-6 text-[var(--ink-soft)]">
+            Having made your own observations and reconstruction, consider
+            whether the structure itself produces the essay's meaning.
+          </p>
+
+          <ItemWorkTimer
+            itemId={`reading-essay-${essay.id}-criticism`}
+            itemName={`Criticism: ${essay.title}`}
+            defaultMinutes={25}
+          />
+
+          <form onSubmit={saveCriticismNotes} className="space-y-3">
+            <label className="block">
+              <span className="reading-detail-page__label mb-1 block">
+                Your criticism and interpretation notes
+              </span>
+              <textarea
+                required
+                rows={6}
+                value={criticismNotesDraft}
+                onChange={(event) =>
+                  setCriticismNotesDraft(event.target.value)
+                }
+                placeholder="Record your interpretation and what remains uncertain."
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="submit"
+                className="reading-detail-page__back"
+              >
+                Save criticism notes
               </button>
-            </form>
-          )}
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="reading-detail-page__action"
-              onClick={downloadNotes}
-            >
-              Download notes (.md)
-            </button>
-            <button
-              type="button"
-              className="reading-detail-page__back"
-              onClick={restartEssay}
-            >
-              Restart essay workflow
-            </button>
-            <button
-              type="button"
-              className="min-h-10 rounded-xl border border-red-300 bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-red-700"
-              onClick={deleteEssay}
-            >
-              Delete essay
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={completeCriticism}
+                className="reading-detail-page__action"
+              >
+                Mark criticism complete
+              </button>
+            </div>
+          </form>
         </div>
       </details>
 
