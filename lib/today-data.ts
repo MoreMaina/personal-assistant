@@ -285,11 +285,13 @@ export function getStudyMvpTasks(
 
     const unit = unitsById.get(topic.unit_id);
 
-    const course = unit
-      ? coursesById.get(unit.course_id)
-      : undefined;
+    if (!unit) {
+      return [];
+    }
 
-    if (course?.archived_at) {
+    const course = coursesById.get(unit.course_id);
+
+    if (!course || course.archived_at) {
       return [];
     }
     const selectedTasks = review.selected_task_ids.map(
