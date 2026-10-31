@@ -4,13 +4,6 @@ import {
 } from "./classStorage";
 
 import {
-  getCurrentSemester,
-  getCourses,
-  getDueLectures,
-  getUnits,
-} from "./studyStorage";
-
-import {
   getBooks,
   getEssays,
   getReadingSessions,
@@ -118,96 +111,6 @@ export function getTodayFixedEvents(
           classItem.end,
         ),
     }));
-}
-
-function getStudyDuration(
-  box: number,
-): number {
-  if (box <= 1) {
-    return 8;
-  }
-
-  if (box === 2) {
-    return 8;
-  }
-
-  if (box === 3) {
-    return 10;
-  }
-
-  if (box === 4) {
-    return 12;
-  }
-
-  return 15;
-}
-
-function getStudyTasks(): TodayTask[] {
-  const semester =
-    getCurrentSemester();
-
-  if (!semester) {
-    return [];
-  }
-
-  const courses =
-    getCourses().filter(
-      (course) =>
-        course.semesterId ===
-        semester.id,
-    );
-
-  const courseIds =
-    new Set(
-      courses.map(
-        (course) =>
-          course.id,
-      ),
-    );
-
-  const units =
-    getUnits().filter(
-      (unit) =>
-        courseIds.has(
-          unit.courseId,
-        ),
-    );
-
-  const unitById =
-    new Map(
-      units.map(
-        (unit) => [
-          unit.id,
-          unit,
-        ],
-      ),
-    );
-
-  return getDueLectures(
-    semester.id,
-  ).map((lecture) => {
-    const unit =
-      unitById.get(
-        lecture.unitId,
-      );
-
-    return {
-      id: `study-${lecture.id}`,
-      title: lecture.name,
-      unitName: unit?.name,
-      type: "study",
-      durationMinutes:
-        getStudyDuration(
-          lecture.box,
-        ),
-      priority:
-        (lecture.box >= 4
-          ? 5
-          : 4) as TaskPriority,
-      dueAt:
-        lecture.nextReviewAt,
-    };
-  });
 }
 
 
@@ -522,21 +425,19 @@ function getProjectTasks(): TodayTask[] {
 }
 
 export function getTodayTasks(
-  studyState?: StudyMvpState,
+  studyState: StudyMvpState,
   now = new Date(),
 ): TodayTask[] {
   return [
-    ...(studyState
-      ? getStudyMvpTasks(studyState, now)
-      : getStudyTasks()),
+    ...getStudyMvpTasks(studyState, now),
     ...getReadingTasks(),
     ...getProjectTasks(),
   ];
 }
 
 export function getTodayData(
+  studyState: StudyMvpState,
   now = new Date(),
-  studyState?: StudyMvpState,
 ) {
   return {
     fixedEvents:
