@@ -2471,15 +2471,6 @@ function SamplerSection({
         plannedMinutesFor(item),
     );
 
-      return (
-        selection.selectedTaskIds.length > 0 &&
-        selection.missingTaskIds.length === 0 &&
-        selection.selectedTaskIds.every((id) =>
-          selection.attemptedTaskIds.includes(id),
-        )
-      );
-    });
-
   const allGuidedQuestionsCompleted =
     items.length > 0 &&
     items.every((item) => {
