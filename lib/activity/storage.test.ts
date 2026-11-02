@@ -154,6 +154,17 @@ describe("shared activity storage", () => {
     expect(getActivitySessions()).toEqual([]);
   });
 
+  it("accepts stopwatch sessions as completed work records", () => {
+    makeStorage();
+
+    const session = makeSession({
+      source: "stopwatch",
+    });
+
+    expect(saveActivitySession(session)).toEqual(session);
+    expect(getActivitySessions()).toEqual([session]);
+  });
+
   it("upserts schedules by activity key while retaining other activities", () => {
     makeStorage();
 

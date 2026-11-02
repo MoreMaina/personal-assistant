@@ -56,6 +56,7 @@ export type ActivityPriority = 1 | 2 | 3 | 4 | 5;
 export type ActivitySessionSource =
   | "manual"
   | "item_timer"
+  | "stopwatch"
   | "pomodoro";
 
 export interface ActivitySession {

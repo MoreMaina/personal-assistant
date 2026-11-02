@@ -87,6 +87,7 @@ function isActivitySession(value: unknown): value is ActivitySession {
   const validSource =
     value.source === "manual" ||
     value.source === "item_timer" ||
+    value.source === "stopwatch" ||
     value.source === "pomodoro";
 
   const plannedDurationIsValid =
