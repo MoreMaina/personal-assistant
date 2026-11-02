@@ -19,12 +19,14 @@ import {
   Essay,
   getBooks,
   getEssays,
-  getReadingSessions,
   saveReadingSession,
   saveEssays,
   updateBook,
   updateEssay,
 } from "@/lib/readingStorage";
+import { getCombinedActivitySessions } from "@/lib/activity/queries";
+import { toReadingActivitySession } from "@/lib/activity/adapters/readingSession";
+import type { ActivitySession } from "@/lib/activity/types";
 import ProjectsPanel from "@/app/components/ProjectsPanel";
 
 type Tab = "books" | "essays" | "projects";
@@ -84,6 +86,14 @@ function formatDuration(
     .padStart(2, "0")}:${seconds
     .toString()
     .padStart(2, "0")}`;
+}
+
+const READING_BOOK_ACTIVITY_KEY_PREFIX = "pa:v1:reading:book:";
+
+function getReadingBookActivitySessions(): ActivitySession[] {
+  return getCombinedActivitySessions().filter((session) =>
+    session.activityKey.startsWith(READING_BOOK_ACTIVITY_KEY_PREFIX),
+  );
 }
 
 export default function ReadingPage() {
@@ -160,10 +170,7 @@ export default function ReadingPage() {
   const [clock, setClock] =
     useState(0);
 
-  const [sessions, setSessions] =
-    useState(
-      getReadingSessions(),
-    );
+  const [sessions, setSessions] = useState<ActivitySession[]>([]);
 
   const [launchHandled, setLaunchHandled] =
     useState(false);
@@ -205,6 +212,7 @@ export default function ReadingPage() {
     const loadedEssays = getEssays();
     setBooks(loadedBooks);
     setEssays(loadedEssays);
+    setSessions(getReadingBookActivitySessions());
     setCollapsedBookIds(new Set(loadedBooks.map((book) => book.id)));
     setCollapsedEssayIds(new Set(loadedEssays.map((essay) => essay.id)));
     setClock(Date.now());
@@ -356,7 +364,7 @@ export default function ReadingPage() {
         .reduce(
           (total, session) =>
             total +
-            session.minutes,
+            Math.max(1, Math.round(session.actualDurationSeconds / 60)),
           0,
         );
     }, [
@@ -751,7 +759,7 @@ export default function ReadingPage() {
 
     setSessions((current) => [
       ...current,
-      session,
+      toReadingActivitySession(session),
     ]);
 
     setActiveBookId(null);
