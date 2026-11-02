@@ -120,6 +120,7 @@ export default function ReadingPage() {
     content: string;
   } | null>(null);
   const [exportFeedback, setExportFeedback] = useState("");
+  const [deleteEssaysError, setDeleteEssaysError] = useState("");
   const [exportShowManualCopy, setExportShowManualCopy] = useState(false);
   const [exportCopyContent, setExportCopyContent] = useState("");
 
@@ -478,12 +479,14 @@ export default function ReadingPage() {
     );
     if (!confirmed) return;
 
+    setDeleteEssaysError("");
+
     try {
       saveEssays([]);
       setEssays([]);
       if (editingEssayId !== null) resetEssayForm();
     } catch {
-      window.alert(
+      setDeleteEssaysError(
         "The essays could not be deleted. Please check browser storage and try again.",
       );
     }
@@ -1376,6 +1379,15 @@ export default function ReadingPage() {
             </button>
           ))}
         </div>
+
+        {tab === "essays" && deleteEssaysError && (
+          <p
+            role="alert"
+            className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-900"
+          >
+            {deleteEssaysError}
+          </p>
+        )}
 
         {tab === "books" && (
           <>
