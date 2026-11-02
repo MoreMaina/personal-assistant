@@ -191,6 +191,12 @@ function pillClass(value: string): string {
   return "bg-stone-100 text-stone-700";
 }
 
+const STUDY_FORM_CONTROL_CLASS =
+  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500";
+
+const STUDY_FORM_CONTROL_COMPACT_CLASS =
+  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500";
+
 function SectionHeading({
   eyebrow,
   title,
@@ -481,7 +487,7 @@ function InitialLearningSection({
                     setActualDurationMin(Number(event.target.value))
                   }
                   disabled={requiredTimeRecorded}
-                  className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold disabled:opacity-50"
+                  className={STUDY_FORM_CONTROL_CLASS}
                 />
               </label>
 
@@ -495,7 +501,7 @@ function InitialLearningSection({
                   onChange={(event) => setNotes(event.target.value)}
                   disabled={requiredTimeRecorded}
                   placeholder="Record the material studied or work completed."
-                  className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                  className={STUDY_FORM_CONTROL_CLASS}
                 />
               </label>
 
@@ -835,7 +841,7 @@ function TopicConsolidationSection({
               <select
                 value={selectedItem?.id ?? ""}
                 onChange={(event) => setSelectedItemId(event.target.value)}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               >
                 {items.map((item) => {
                   const topic = topicFor(item);
@@ -865,7 +871,7 @@ function TopicConsolidationSection({
                       setActualDurationMin(Number(event.target.value))
                     }
                     disabled={selectedAllocationReached}
-                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold disabled:opacity-50"
+                    className={STUDY_FORM_CONTROL_CLASS}
                   />
                 </label>
 
@@ -879,7 +885,7 @@ function TopicConsolidationSection({
                     onChange={(event) => setNotes(event.target.value)}
                     disabled={selectedAllocationReached}
                     placeholder="Record the material reviewed or practice completed."
-                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                    className={STUDY_FORM_CONTROL_CLASS}
                   />
                 </label>
 
@@ -1263,7 +1269,7 @@ function AssignmentSection({
                   setMarkComplete(false);
                   setError("");
                 }}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               >
                 {items.map((item) => {
                   const plannedAssignment = assignmentFor(item);
@@ -1316,7 +1322,7 @@ function AssignmentSection({
                       loggedMinutesFor(assignment.id) >=
                       selectedItem!.allocated_minutes
                     }
-                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold disabled:opacity-50"
+                    className={STUDY_FORM_CONTROL_CLASS}
                   />
                 </label>
 
@@ -1334,7 +1340,7 @@ function AssignmentSection({
                       setRemainingAfterSession(Number(event.target.value))
                     }
                     disabled={markComplete}
-                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold disabled:opacity-50"
+                    className={STUDY_FORM_CONTROL_CLASS}
                   />
                   <span className="mt-1 block text-xs font-semibold text-stone-500">
                     Defaults to the current estimate minus this session's duration. Adjust it if your actual remaining workload is different.
@@ -1368,7 +1374,7 @@ function AssignmentSection({
                       selectedItem!.allocated_minutes
                     }
                     placeholder="Describe the work completed during this session."
-                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm disabled:opacity-50"
+                    className={STUDY_FORM_CONTROL_CLASS}
                   />
                 </label>
 
@@ -1662,7 +1668,7 @@ function CorrectiveSection({
                   setSelectedItemId(event.target.value);
                   setError("");
                 }}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               >
                 {items.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -1684,7 +1690,7 @@ function CorrectiveSection({
                 onChange={(event) =>
                   setActualDurationMin(Number(event.target.value))
                 }
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               />
             </label>
 
@@ -1696,7 +1702,7 @@ function CorrectiveSection({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                className={STUDY_FORM_CONTROL_CLASS}
                 placeholder="What did you practise or clarify?"
               />
             </label>
@@ -1985,7 +1991,7 @@ function RecoverySection({
                   setSelectedItemId(event.target.value);
                   setError("");
                 }}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               >
                 {items.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -2007,7 +2013,7 @@ function RecoverySection({
                 onChange={(event) =>
                   setActualDurationMin(Number(event.target.value))
                 }
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               />
             </label>
 
@@ -2019,7 +2025,7 @@ function RecoverySection({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                className={STUDY_FORM_CONTROL_CLASS}
                 placeholder="What did you catch up on?"
               />
             </label>
@@ -2317,7 +2323,7 @@ function MixedPracticeSection({
                   setSelectedItemId(event.target.value);
                   setError("");
                 }}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               >
                 {items.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -2339,7 +2345,7 @@ function MixedPracticeSection({
                 onChange={(event) =>
                   setActualDurationMin(Number(event.target.value))
                 }
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               />
             </label>
 
@@ -2351,7 +2357,7 @@ function MixedPracticeSection({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                className={STUDY_FORM_CONTROL_CLASS}
                 placeholder="Which topics or skills did you mix together?"
               />
             </label>
@@ -2675,7 +2681,7 @@ function SamplerSection({
                   setSelectedItemId(event.target.value);
                   setError("");
                 }}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               >
                 {items.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -2697,7 +2703,7 @@ function SamplerSection({
                 onChange={(event) =>
                   setActualDurationMin(Number(event.target.value))
                 }
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               />
             </label>
 
@@ -2709,7 +2715,7 @@ function SamplerSection({
                 value={notes}
                 onChange={(event) => setNotes(event.target.value)}
                 rows={3}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm"
+                className={STUDY_FORM_CONTROL_CLASS}
                 placeholder="Record your performance or what the analysis revealed."
               />
             </label>
@@ -4726,7 +4732,7 @@ function movePlanningItemTo(
                               [item.id]: "",
                             }));
                           }}
-                          className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm font-bold"
+                          className={STUDY_FORM_CONTROL_COMPACT_CLASS}
                         >
                           {forcedControl ? (
                             <>
@@ -4786,7 +4792,7 @@ function movePlanningItemTo(
                               }))
                             }
                             placeholder="Explain why this is the right action"
-                            className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm"
+                            className={STUDY_FORM_CONTROL_COMPACT_CLASS}
                           />
                         </label>
                       )}
@@ -4806,7 +4812,7 @@ function movePlanningItemTo(
                                   | "",
                               }))
                             }
-                            className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm font-bold"
+                            className={STUDY_FORM_CONTROL_COMPACT_CLASS}
                           >
                             <option value="">Select a condition…</option>
                             <option value="later_failure">
@@ -5297,7 +5303,7 @@ function movePlanningItemTo(
               <select
                 value={selectedGateTopic?.id ?? ""}
                 onChange={(event) => changeGateTopic(event.target.value)}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               >
                 {gateTopics.map((topic) => (
                   <option key={topic.id} value={topic.id}>
@@ -5485,7 +5491,7 @@ function movePlanningItemTo(
                       }
                       onChange={(event) => setGateTaskId(event.target.value)}
                       disabled={remainingGateTasks.length === 0}
-                      className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                      className={STUDY_FORM_CONTROL_CLASS}
                     >
                       {remainingGateTasks.map((task) => (
                         <option key={task.id} value={task.id}>
@@ -5504,7 +5510,7 @@ function movePlanningItemTo(
                       onChange={(event) =>
                         setGateResult(event.target.value as AttemptResult)
                       }
-                      className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                      className={STUDY_FORM_CONTROL_CLASS}
                     >
                       <option value="green">Green — secure</option>
                       <option value="yellow">Yellow — gap</option>
@@ -5524,7 +5530,7 @@ function movePlanningItemTo(
                       onChange={(event) =>
                         setGateDuration(Number(event.target.value))
                       }
-                      className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                      className={STUDY_FORM_CONTROL_CLASS}
                     />
                   </label>
 
@@ -5540,7 +5546,7 @@ function movePlanningItemTo(
                             event.target.value as YellowGapSeverity,
                           )
                         }
-                        className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                        className={STUDY_FORM_CONTROL_CLASS}
                       >
                         <option value="minor">Minor</option>
                         <option value="substantive">Substantive</option>
@@ -5622,7 +5628,7 @@ function movePlanningItemTo(
                     onChange={(event) =>
                       setNextReviewEstimate(Number(event.target.value))
                     }
-                    className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                    className={STUDY_FORM_CONTROL_CLASS}
                   />
                 </label>
 
@@ -5701,7 +5707,7 @@ function movePlanningItemTo(
               <select
                 value={selectedReview?.id ?? ""}
                 onChange={(event) => changeReview(event.target.value)}
-                className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                className={STUDY_FORM_CONTROL_CLASS}
               >
                 {dueReviews.map((review) => {
                   const topic = state.topics.find(
@@ -5808,7 +5814,7 @@ function movePlanningItemTo(
                               event.target.value as AttemptResult,
                             )
                           }
-                          className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                          className={STUDY_FORM_CONTROL_CLASS}
                         >
                           <option value="green">
                             Green — secure
@@ -5834,7 +5840,7 @@ function movePlanningItemTo(
                           onChange={(event) =>
                             setReviewDuration(Number(event.target.value))
                           }
-                          className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                          className={STUDY_FORM_CONTROL_CLASS}
                         />
                       </label>
 
@@ -5850,7 +5856,7 @@ function movePlanningItemTo(
                                 event.target.value as YellowGapSeverity,
                               )
                             }
-                            className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                            className={STUDY_FORM_CONTROL_CLASS}
                           >
                             <option value="minor">Minor</option>
                             <option value="substantive">Substantive</option>
@@ -5916,7 +5922,7 @@ function movePlanningItemTo(
                           onChange={(event) =>
                             setNextReviewEstimate(Number(event.target.value))
                           }
-                          className="w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-bold"
+                          className={STUDY_FORM_CONTROL_CLASS}
                         />
                       </label>
                     </fieldset>
