@@ -21,6 +21,7 @@ import type {
 } from "./today-engine";
 
 import type { StudyMvpState } from "./studyMvp/types";
+import { applyActivitySchedulesToTasks } from "./activity/scheduling";
 
 function getLocalDateKey(
   date: Date,
@@ -453,11 +454,11 @@ export function getTodayTasks(
   studyState: StudyMvpState,
   now = new Date(),
 ): TodayTask[] {
-  return [
+  return applyActivitySchedulesToTasks([
     ...getStudyMvpTasks(studyState, now),
     ...getReadingTasks(),
     ...getProjectTasks(),
-  ];
+  ]);
 }
 
 export function getTodayData(
