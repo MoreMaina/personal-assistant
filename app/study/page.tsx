@@ -5030,11 +5030,23 @@ function movePlanningItemTo(
         id="catalog"
         className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
       >
-        <SectionHeading
-          eyebrow="02 · Course data"
-          title="Import and export your catalog"
-          detail="Paste spreadsheet rows or choose a CSV/TSV file. Imports are validated before saving; conflicting catalog content is rejected instead of overwriting your existing data."
-        />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <SectionHeading
+              eyebrow="02 · Course data"
+              title="Import and export your catalog"
+              detail="Paste spreadsheet rows or choose a CSV/TSV file. Imports are validated before saving; conflicting catalog content is rejected instead of overwriting your existing data."
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsCatalogOpen(false)}
+            className="shrink-0 rounded-xl border border-[#d8ccb8] bg-white px-4 py-2.5 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
+          >
+            Cancel
+          </button>
+        </div>
 
         <div className="mb-5 flex flex-wrap gap-2">
           <button
