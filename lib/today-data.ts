@@ -99,6 +99,11 @@ export function getTodayFixedEvents(
     )
     .map((classItem) => ({
       id: classItem.id,
+      activityIdentity: {
+        domain: "personal",
+        kind: "class",
+        entityId: classItem.id,
+      },
       title: classItem.name,
       startAt:
         makeLocalDate(
@@ -234,6 +239,11 @@ export function getStudyMvpTasks(
     return [
       {
         id: `study-review-${review.id}`,
+        activityIdentity: {
+          domain: "study",
+          kind: "review",
+          entityId: review.id,
+        },
         title: `Review — ${topic.title}`,
         ...(unitName ? { unitName } : {}),
         type: "study",
@@ -291,6 +301,11 @@ function getReadingTasks(): TodayTask[] {
 
     tasks.push({
       id: `book-${book.id}`,
+      activityIdentity: {
+        domain: "reading",
+        kind: "book",
+        entityId: book.id,
+      },
       title: `Read — ${book.title}`,
       type: "reading",
       durationMinutes: 20,
@@ -347,6 +362,11 @@ function getReadingTasks(): TodayTask[] {
 
     tasks.push({
       id: `essay-${essay.id}`,
+      activityIdentity: {
+        domain: "reading",
+        kind: "essay",
+        entityId: essay.id,
+      },
       title: `Essay — ${essay.title} · ${essay.status}`,
       type: "reading",
       durationMinutes:
@@ -404,6 +424,11 @@ function getProjectTasks(): TodayTask[] {
     )
     .map((project) => ({
       id: `project-${project.id}`,
+      activityIdentity: {
+        domain: "project",
+        kind: "project",
+        entityId: project.id,
+      },
       title: `${project.name} — ${project.nextAction}`,
       type: "project",
       durationMinutes:

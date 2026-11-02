@@ -129,6 +129,11 @@ describe("Today Study MVP data adapter", () => {
     expect(tasks).toEqual([
       {
         id: "study-review-review-1",
+        activityIdentity: {
+          domain: "study",
+          kind: "review",
+          entityId: "review-1",
+        },
         title: "Review — Binary Trees",
         unitName: "Computer Science · Data Structures",
         type: "study",
