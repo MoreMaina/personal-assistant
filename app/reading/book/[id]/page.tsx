@@ -17,6 +17,7 @@ import {
 } from "@/lib/readingStorage";
 import { getCurrentBookWorkflowStep } from "@/lib/readingWorkflow";
 import { ItemWorkTimer } from "@/app/components/ItemWorkTimer";
+import CardMenu from "@/app/components/CardMenu";
 
 const ACTIVE_READING_TIMER_KEY = "personal-assistant-active-reading-timer";
 
@@ -453,10 +454,9 @@ function BookDetailContent() {
         setBook(updated);
       }
 
-      // The workflow only starts after this explicit user action.
-      router.push(`/reading?bookId=${book.id}`);
+      setFeedback("Book status set to Reading. Continue with the workflow below.");
     } catch {
-      setFeedback("The reading session could not be started. Please try again.");
+      setFeedback("The book status could not be updated. Please try again.");
     }
   }
 
@@ -608,13 +608,94 @@ function BookDetailContent() {
         ← Back to books
       </Link>
 
-      <header>
-        <p className="reading-detail-page__eyebrow">Your reading workspace</p>
-        <h1>{book.title}</h1>
-        <p className="reading-detail-page__subtitle">
-          {book.author || "Author not specified"} · {book.category}
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="reading-detail-page__eyebrow">Your reading workspace</p>
+          <h1>{book.title}</h1>
+          <p className="reading-detail-page__subtitle">
+            {book.author || "Author not specified"} · {book.category}
+          </p>
+        </div>
+        <CardMenu
+          title="Book actions"
+          actions={[
+            {
+              label: "Edit book details",
+              onSelect: () => {
+                setFeedback("");
+                setEditing(true);
+              },
+            },
+            ...(book.status !== "Finished"
+              ? [{ label: "Mark as finished", onSelect: markFinished }]
+              : []),
+            { label: "Restart from page zero", onSelect: restartBook },
+            { label: "Delete book", onSelect: deleteBook, destructive: true },
+          ]}
+        />
       </header>
+
+      {editing && (
+        <form
+          onSubmit={saveBookDetails}
+          className="reading-detail-page__panel space-y-3"
+        >
+          <label className="block">
+            <span className="reading-detail-page__label mb-1 block">Title</span>
+            <input
+              required
+              value={editTitle}
+              onChange={(event) => setEditTitle(event.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="reading-detail-page__label mb-1 block">Author</span>
+            <input
+              value={editAuthor}
+              onChange={(event) => setEditAuthor(event.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="reading-detail-page__label mb-1 block">Category</span>
+            <select
+              value={editCategory}
+              onChange={(event) =>
+                setEditCategory(event.target.value as Book["category"])
+              }
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            >
+              <option value="Pleasure">Pleasure</option>
+              <option value="Course">Course</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="reading-detail-page__label mb-1 block">Total pages</span>
+            <input
+              required
+              type="number"
+              min="0"
+              step="1"
+              value={editTotalPages}
+              onChange={(event) => setEditTotalPages(event.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className="reading-detail-page__action">
+              Save book details
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="reading-detail-page__back"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       <section className="reading-detail-page__panel">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1246,108 +1327,7 @@ function BookDetailContent() {
         </form>
       </details>
 
-      <details className="reading-detail-page__panel">
-        <summary className="cursor-pointer text-sm font-semibold">
-          Book details and management
-        </summary>
 
-        <div className="mt-4 space-y-4">
-          <button
-            type="button"
-            className="reading-detail-page__back"
-            onClick={() => {
-              setEditing((current) => !current);
-              setFeedback("");
-            }}
-          >
-            {editing ? "Cancel editing" : "Edit book details"}
-          </button>
-
-          {editing && (
-            <form onSubmit={saveBookDetails} className="space-y-3">
-              <label className="block">
-                <span className="reading-detail-page__label mb-1 block">Title</span>
-                <input
-                  required
-                  value={editTitle}
-                  onChange={(event) => setEditTitle(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                />
-              </label>
-
-              <label className="block">
-                <span className="reading-detail-page__label mb-1 block">Author</span>
-                <input
-                  value={editAuthor}
-                  onChange={(event) => setEditAuthor(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                />
-              </label>
-
-              <label className="block">
-                <span className="reading-detail-page__label mb-1 block">Category</span>
-                <select
-                  value={editCategory}
-                  onChange={(event) =>
-                    setEditCategory(event.target.value as Book["category"])
-                  }
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                >
-                  <option value="Pleasure">Pleasure</option>
-                  <option value="Course">Course</option>
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="reading-detail-page__label mb-1 block">
-                  Total pages
-                </span>
-                <input
-                  required
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={editTotalPages}
-                  onChange={(event) => setEditTotalPages(event.target.value)}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                />
-              </label>
-
-              <button type="submit" className="reading-detail-page__action">
-                Save book details
-              </button>
-            </form>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            {book.status !== "Finished" && (
-              <button
-                type="button"
-                onClick={markFinished}
-                className="reading-detail-page__action"
-              >
-                Mark first pass finished
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={restartBook}
-              className="reading-detail-page__back"
-            >
-              Restart from page zero
-            </button>
-
-            <button
-              type="button"
-              onClick={deleteBook}
-              className="min-h-10 rounded-xl border border-red-300 bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-red-700"
-            >
-              Delete book
-            </button>
-          </div>
-        </div>
-      </details>
 
       {feedback && (
         <p role="status" className="mt-3 text-xs text-[var(--ink-soft)]">

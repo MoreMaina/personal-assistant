@@ -341,98 +341,102 @@ export default function GeneralSettingsPage() {
       </header>
 
       <form onSubmit={handleSave} className="space-y-6">
-        <section className="space-y-4 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold">Academic details</h2>
-            <p className="text-sm leading-relaxed text-[var(--ink-soft)]">
-              Keep one program name and set the study year you are currently in.
-            </p>
+        <details open className="rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
+          <summary className="cursor-pointer text-xl font-bold">
+            Academic details
+          </summary>
+
+          <div className="mt-4 space-y-5">
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <h3 className="font-bold">Program and current study year</h3>
+                <p className="text-sm leading-relaxed text-[var(--ink-soft)]">
+                  Keep one program name and set the study year you are currently in.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="program-name" className="block text-sm font-extrabold">
+                  Program name
+                </label>
+                <input
+                  id="program-name"
+                  value={programName}
+                  onChange={(event) => {
+                    setProgramName(event.target.value);
+                    setSaved(false);
+                  }}
+                  disabled={!ready}
+                  required
+                  maxLength={120}
+                  placeholder="Enter your program name"
+                  className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="study-year" className="block text-sm font-extrabold">
+                  Current study year
+                </label>
+                <input
+                  id="study-year"
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  value={studyYear}
+                  onChange={(event) => {
+                    setStudyYear(event.target.value);
+                    setSaved(false);
+                  }}
+                  disabled={!ready}
+                  required
+                  className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base"
+                />
+                <p className="text-xs leading-relaxed text-[var(--muted)]">
+                  Enter any positive whole number, such as 1, 2, 3, or 4.
+                </p>
+              </div>
+            </section>
+
+            <section className="space-y-4 border-t border-[var(--border)] pt-4">
+              <div className="space-y-1">
+                <h3 className="font-bold">Current semester</h3>
+                <p className="text-sm leading-relaxed text-[var(--ink-soft)]">
+                  Choose one of the three semesters. New semester creation is not available here.
+                </p>
+              </div>
+              <label htmlFor="current-semester" className="block text-sm font-extrabold">
+                Semester
+              </label>
+              <select
+                id="current-semester"
+                value={selectedSemesterId}
+                onChange={(event) => {
+                  setSelectedSemesterId(event.target.value);
+                  setSaved(false);
+                }}
+                disabled={!ready || semesters.length === 0}
+                className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base"
+              >
+                <option value="">Select current semester</option>
+                {semesters.map((semester) => (
+                  <option key={semester.id} value={semester.id}>
+                    {semester.name}
+                  </option>
+                ))}
+              </select>
+              {ready && !selectedSemesterId && semesters.length > 0 && (
+                <p className="text-xs leading-relaxed text-[var(--muted)]">
+                  Choose a semester and save to make it current. Any older semester records are retained.
+                </p>
+              )}
+              {ready && semesters.length === 0 && (
+                <p className="text-xs leading-relaxed text-[var(--muted)]">
+                  Save your program details first to initialise the three semester choices.
+                </p>
+              )}
+            </section>
           </div>
-
-          <div className="space-y-2">
-            <label htmlFor="program-name" className="block text-sm font-extrabold">
-              Program name
-            </label>
-            <input
-              id="program-name"
-              value={programName}
-              onChange={(event) => {
-                setProgramName(event.target.value);
-                setSaved(false);
-              }}
-              disabled={!ready}
-              required
-              maxLength={120}
-              placeholder="Enter your program name"
-              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="study-year" className="block text-sm font-extrabold">
-              Current study year
-            </label>
-            <input
-              id="study-year"
-              type="number"
-              min="1"
-              step="1"
-              inputMode="numeric"
-              value={studyYear}
-              onChange={(event) => {
-                setStudyYear(event.target.value);
-                setSaved(false);
-              }}
-              disabled={!ready}
-              required
-              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base"
-            />
-            <p className="text-xs leading-relaxed text-[var(--muted)]">
-              Enter any positive whole number, such as 1, 2, 3, or 4.
-            </p>
-          </div>
-        </section>
-
-        <section className="space-y-4 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold">Current semester</h2>
-            <p className="text-sm leading-relaxed text-[var(--ink-soft)]">
-              Choose one of the three semesters. New semester creation is not available here.
-            </p>
-          </div>
-
-          <label htmlFor="current-semester" className="block text-sm font-extrabold">
-            Semester
-          </label>
-          <select
-            id="current-semester"
-            value={selectedSemesterId}
-            onChange={(event) => {
-              setSelectedSemesterId(event.target.value);
-              setSaved(false);
-            }}
-            disabled={!ready || semesters.length === 0}
-            className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base"
-          >
-            <option value="">Select current semester</option>
-            {semesters.map((semester) => (
-              <option key={semester.id} value={semester.id}>
-                {semester.name}
-              </option>
-            ))}
-          </select>
-
-          {ready && !selectedSemesterId && semesters.length > 0 && (
-            <p className="text-xs leading-relaxed text-[var(--muted)]">
-              Choose a semester and save to make it current. Any older semester records are retained.
-            </p>
-          )}
-          {ready && semesters.length === 0 && (
-            <p className="text-xs leading-relaxed text-[var(--muted)]">
-              Save your program details first to initialise the three semester choices.
-            </p>
-          )}
-        </section>
+        </details>
 
         {error && (
           <p role="alert" className="rounded-xl bg-[var(--accent-soft)] p-3 font-bold text-[var(--accent-dark)]">

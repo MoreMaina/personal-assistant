@@ -52,8 +52,6 @@ import {
   setCourseArchivedAt,
 } from "@/lib/studyMvp/storage";
 
-import { findStudyReferenceIssues } from "@/lib/studyMvp/integrityDiagnostics";
-
 import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
 import {
@@ -4212,12 +4210,9 @@ function movePlanningItemTo(
     );
   }
 
-  const currentOpenReviewCount = dueReviews.length;
   const importHasErrors = importDiagnostics.some(
     (diagnostic) => diagnostic.severity === "error",
   );
-  const referenceIssues =
-    findStudyReferenceIssues(state);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-12">
@@ -4243,11 +4238,6 @@ function movePlanningItemTo(
           Study with evidence, not guesswork.
         </h1>
 
-        <p className="mt-3 max-w-3xl text-sm font-semibold leading-7 text-white/80 sm:text-base">
-          Topic gates, spaced reviews, immutable retrieval history, and
-          a daily time budget. This is the primary Study workspace, with cloud sync and local recovery safeguards. Reading remains separate.
-        </p>
-
         <div className="mt-6 flex flex-wrap gap-3">
           <a
             href="#daily-plan"
@@ -4265,68 +4255,6 @@ function movePlanningItemTo(
         </div>
       </header>
 
-      <section
-        aria-labelledby="study-reference-check-heading"
-        className="rounded-2xl border border-[#d8ccb8] bg-white p-4"
-      >
-        <h2
-          id="study-reference-check-heading"
-          className="font-extrabold text-[#23412f]"
-        >
-          Read-only Study data check
-        </h2>
-
-        {referenceIssues.length === 0 ? (
-          <p
-            role="status"
-            className="mt-2 text-sm font-semibold text-stone-600"
-          >
-            No missing or mismatched course, unit, topic, lecture,
-            review, assignment or exam references were found.
-          </p>
-        ) : (
-          <>
-            <p
-              role="alert"
-              className="mt-2 text-sm font-semibold text-stone-700"
-            >
-              Found {referenceIssues.length} broken or mismatched
-              references. This check has not changed any data.
-              Download a full JSON backup before considering repairs.
-            </p>
-
-            <ul className="mt-3 space-y-2 text-sm text-stone-700">
-              {referenceIssues.slice(0, 8).map((issue) => (
-                <li
-                  key={[
-                    issue.collection,
-                    issue.recordId,
-                    issue.field,
-                    issue.referencedId,
-                  ].join("-")}
-                  className="rounded-lg bg-stone-50 p-3"
-                >
-                  <span className="font-bold">
-                    {issue.collection} · {issue.recordId}
-                  </span>
-                  {" — "}
-                  {issue.field} references {issue.referencedId}
-                  {issue.problem === "parent_mismatch"
-                    ? " under a different parent."
-                    : ", which is missing."}
-                </li>
-              ))}
-            </ul>
-
-            {referenceIssues.length > 8 && (
-              <p className="mt-2 text-xs font-semibold text-stone-500">
-                Showing the first 8 of {referenceIssues.length} issues.
-              </p>
-            )}
-          </>
-        )}
-      </section>
-      
       {notice && (
         <div
           role="status"
@@ -4344,46 +4272,6 @@ function movePlanningItemTo(
           {problem}
         </div>
       )}
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: "Courses",
-            value: state.courses.length,
-            detail: `${state.units.length} units`,
-          },
-          {
-            label: "Topics",
-            value: state.topics.length,
-            detail: `${state.retrieval_tasks.length} retrieval tasks`,
-          },
-          {
-            label: "Reviews due",
-            value: currentOpenReviewCount,
-            detail: "Due today in your Study timezone",
-          },
-          {
-            label: "TaskEvents",
-            value: state.task_events.length,
-            detail: "Append-only evidence history",
-          },
-        ].map((metric) => (
-          <div
-            key={metric.label}
-            className="rounded-2xl border border-[#d8ccb8] bg-[#fffaf1] p-5"
-          >
-            <p className="text-xs font-extrabold uppercase tracking-widest text-stone-500">
-              {metric.label}
-            </p>
-            <p className="mt-2 text-3xl font-extrabold text-[#23412f]">
-              {metric.value}
-            </p>
-            <p className="mt-1 text-xs font-bold text-stone-500">
-              {metric.detail}
-            </p>
-          </div>
-        ))}
-      </section>
 
       {state.courses.length === 0 && (
         <section className="rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-6 sm:p-8">

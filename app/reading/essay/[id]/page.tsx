@@ -12,6 +12,7 @@ import {
 } from "@/lib/readingStorage";
 import { getCurrentEssayWorkflowStep } from "@/lib/readingWorkflow";
 import { ItemWorkTimer } from "@/app/components/ItemWorkTimer";
+import CardMenu from "@/app/components/CardMenu";
 
 const OBSERVATION_PROMPTS: {
   key: keyof Essay["marks"];
@@ -95,20 +96,6 @@ function formatDuration(totalSeconds: number) {
   return minutes > 0
     ? `${minutes} min${remainder ? ` ${remainder}s` : ""}`
     : `${remainder}s`;
-}
-
-function stageNumber(status: Essay["status"]) {
-  switch (status) {
-    case "To read":
-    case "First pass":
-      return 1;
-    case "Second pass":
-      return 2;
-    case "Reflection":
-      return 3;
-    case "Finished":
-      return 4;
-  }
 }
 
 function EssayDetailContent() {
@@ -548,12 +535,6 @@ function EssayDetailContent() {
     );
   }
 
-  const totalSeconds =
-    (essay.firstPassSeconds ?? 0) +
-    (essay.secondPassSeconds ?? 0) +
-    (essay.reflectionSeconds ?? 0);
-
-  const currentStage = stageNumber(essay.status);
   const currentWorkflowStep = getCurrentEssayWorkflowStep(essay);
 
   const isObservationStep =
@@ -584,79 +565,76 @@ function EssayDetailContent() {
         ← Back to essays
       </Link>
 
-      <header>
-        <p className="reading-detail-page__eyebrow">Essay workspace</p>
-        <h1>{essay.title}</h1>
-        <p className="reading-detail-page__subtitle">
-          {essay.author || "Author not specified"}
-          {essay.source ? ` · ${essay.source}` : ""}
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="reading-detail-page__eyebrow">Essay workspace</p>
+          <h1>{essay.title}</h1>
+          <p className="reading-detail-page__subtitle">
+            {essay.author || "Author not specified"}
+            {essay.source ? ` · ${essay.source}` : ""}
+          </p>
+        </div>
+        <CardMenu
+          title="Essay actions"
+          actions={[
+            {
+              label: "Edit essay details",
+              onSelect: () => {
+                setFeedback("");
+                setEditing(true);
+              },
+            },
+            { label: "Export notes", onSelect: downloadNotes },
+            { label: "Restart essay", onSelect: restartEssay },
+            { label: "Delete essay", onSelect: deleteEssay, destructive: true },
+          ]}
+        />
       </header>
 
-      <section className="reading-detail-page__panel">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="reading-detail-page__label">Current stage</p>
-            <p className="reading-detail-page__value mt-1">{essay.status}</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              {formatDuration(totalSeconds)} recorded
-            </p>
-          </div>
-
-          {currentWorkflowStep === "first_pass" && (
+      {editing && (
+        <form
+          onSubmit={saveDetails}
+          className="reading-detail-page__panel space-y-3"
+        >
+          <label className="block">
+            <span className="reading-detail-page__label mb-1 block">Essay title</span>
+            <input
+              required
+              value={editTitle}
+              onChange={(event) => setEditTitle(event.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="reading-detail-page__label mb-1 block">Author</span>
+            <input
+              value={editAuthor}
+              onChange={(event) => setEditAuthor(event.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="reading-detail-page__label mb-1 block">Source</span>
+            <input
+              value={editSource}
+              onChange={(event) => setEditSource(event.target.value)}
+              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className="reading-detail-page__action">
+              Save essay details
+            </button>
             <button
               type="button"
-              className="reading-detail-page__action"
-              onClick={startFirstPass}
+              onClick={() => setEditing(false)}
+              className="reading-detail-page__back"
             >
-              {essay.firstPassStartedAt
-                ? "Continue first reading"
-                : "Start first reading"}
+              Cancel
             </button>
-          )}
-        </div>
-
-        <ol
-          className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4"
-          aria-label="Essay reading stages"
-        >
-          {[
-            "Experience",
-            "Examine",
-            "Reconstruct",
-            "Criticism",
-          ].map((label, index) => {
-            const number = index + 1;
-            const complete =
-              number === 1
-                ? Boolean(essay.firstPassCompletedAt)
-                : number === 2
-                  ? Boolean(essay.secondPassCompletedAt)
-                  : number === 3
-                    ? Boolean(essay.reflectionCompletedAt)
-                    : essay.status === "Finished";
-
-            return (
-              <li
-                key={label}
-                className="rounded-lg bg-[var(--surface-soft)] p-3"
-              >
-                <p className="text-xs text-[var(--muted)]">
-                  Stage {number}
-                </p>
-                <p className="mt-1 text-sm font-semibold">{label}</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  {complete
-                    ? "Complete"
-                    : number === currentStage
-                      ? "Current"
-                      : "Ahead"}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+          </div>
+        </form>
+      )}
 
       <details
         className="reading-detail-page__panel"
@@ -668,6 +646,16 @@ function EssayDetailContent() {
         </summary>
 
         <div className="mt-4 space-y-4">
+          {!essay.firstPassStartedAt && (
+            <button
+              type="button"
+              onClick={startFirstPass}
+              className="reading-detail-page__action"
+            >
+              Start first reading
+            </button>
+          )}
+
           <h2 className="text-base font-semibold">
             Read the essay straight through
           </h2>

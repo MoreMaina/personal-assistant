@@ -102,7 +102,7 @@ function getTaskHref(
           "",
         );
 
-      return `/reading?bookId=${bookId}`;
+      return `/reading/book/${bookId}`;
     }
 
     if (
@@ -116,7 +116,7 @@ function getTaskHref(
           "",
         );
 
-      return `/reading?essayId=${essayId}`;
+      return `/reading/essay/${essayId}`;
     }
 
     return "/reading";

@@ -203,34 +203,43 @@ const BOOKS_KEY = "personal-assistant-books";
 const SESSIONS_KEY = "personal-assistant-reading-sessions";
 const ESSAYS_KEY = "personal-assistant-essays";
 
-const defaultBooks: Book[] = [
-  {
-    id: 1,
-    title: "The Master and His Emissary",
-    author: "Iain McGilchrist",
-    category: "Pleasure",
-    totalPages: 608,
-    currentPage: 365,
-    status: "Reading",
-  },
-];
+function isBuiltInSampleBook(book: Book): boolean {
+  return (
+    book.id === 1 &&
+    book.title === "The Master and His Emissary" &&
+    book.author === "Iain McGilchrist" &&
+    book.category === "Pleasure" &&
+    book.totalPages === 608 &&
+    book.currentPage === 365 &&
+    book.status === "Reading" &&
+    !book.readingPurpose &&
+    !book.readingMethod &&
+    !book.chapterReflections?.length &&
+    !book.wholeBookReconstruction &&
+    !book.secondPassSections?.length &&
+    !book.readingApplication &&
+    !book.readingDecision &&
+    !book.workflowCompletedSteps?.length &&
+    !book.workflowSkippedSteps?.length
+  );
+}
 
 export function getBooks(): Book[] {
   if (typeof window === "undefined") {
-    return defaultBooks;
+    return [];
   }
 
   const saved = localStorage.getItem(BOOKS_KEY);
   if (!saved) {
-    return defaultBooks;
+    return [];
   }
 
   return readStoredJson<Book[]>(
     BOOKS_KEY,
     saved,
-    defaultBooks,
+    [],
     isBookArray,
-  );
+  ).filter((book) => !isBuiltInSampleBook(book));
 }
 
 export function saveBooks(books: Book[]) {
