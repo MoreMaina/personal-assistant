@@ -730,6 +730,7 @@ export function ItemWorkTimer({
   const [durationDraft, setDurationDraft] = useState(
     String(entry.durationMinutes),
   );
+  const [mode, setMode] = useState<"timer" | "stopwatch">("timer");
 
   useEffect(() => {
     setDurationDraft(String(entry.durationMinutes));
@@ -756,97 +757,111 @@ export function ItemWorkTimer({
   return (
     <div
       className="mt-3 rounded-xl border border-[#e4dac9] bg-[#fffaf1] p-3"
-      aria-label={`Timer for ${itemName}`}
+      aria-label={`Work tracker for ${itemName}`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
-            Item timer
+            Work tracker
           </p>
-          <p className="mt-1 text-2xl font-extrabold tabular-nums text-[#23412f]">
-            {hydrated ? timeLabel : "--:--"}
-          </p>
-          <p className="mt-1 text-xs font-bold text-stone-500">
-            {isRunning
-              ? "Running"
-              : remainingMs === 0 && entry.completedAtMs !== null
-                ? "Time complete"
-                : anotherTimerRunning
-                  ? "Paused · another item is running"
-                  : "Ready"}
+          <p className="mt-1 text-xs font-semibold text-stone-500">
+            Choose how you want to track this activity.
           </p>
         </div>
-
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-bold text-stone-500">
-              Minutes
-            </span>
-            <input
-              type="number"
-              min={MIN_DURATION_MINUTES}
-              max={MAX_DURATION_MINUTES}
-              step={1}
-              value={durationDraft}
-              disabled={!hydrated || isRunning}
-              onChange={(event) =>
-                setDurationDraft(event.target.value)
-              }
-              onBlur={saveDuration}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.currentTarget.blur();
-                }
-              }}
-              className="w-20 rounded-lg border border-[#d8ccb8] bg-white px-2 py-2 text-center text-sm font-extrabold disabled:opacity-50"
-            />
-          </label>
-
+        <div
+          className="inline-flex rounded-xl border border-[#d8ccb8] bg-white p-1"
+          role="group"
+          aria-label="Choose timer or stopwatch"
+        >
           <button
             type="button"
-            disabled={!hydrated}
-            onClick={toggleTimer}
-            className="rounded-lg bg-[#23412f] px-3 py-2 text-sm font-extrabold text-white hover:bg-[#183021] disabled:opacity-50"
+            aria-pressed={mode === "timer"}
+            onClick={() => setMode("timer")}
+            className={`item-work-tracker__mode ${mode === "timer" ? "item-work-tracker__mode--active" : ""}`}
           >
-            {isRunning ? "Pause" : "Start"}
+            Timer
           </button>
-
           <button
             type="button"
-            disabled={!hydrated}
-            onClick={() => reset(itemId, safeDefault)}
-            className="rounded-lg border border-[#d8ccb8] bg-white px-3 py-2 text-sm font-extrabold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+            aria-pressed={mode === "stopwatch"}
+            onClick={() => setMode("stopwatch")}
+            className={`item-work-tracker__mode ${mode === "stopwatch" ? "item-work-tracker__mode--active" : ""}`}
           >
-            Reset
+            Stopwatch
           </button>
         </div>
       </div>
 
-      <p className="mt-2 text-xs font-semibold leading-5 text-stone-500">
-        Each item keeps its own duration and remaining time. Starting
-        another item pauses the previous timer.
-      </p>
+      {mode === "timer" ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-2xl font-extrabold tabular-nums text-[#23412f]">
+                {hydrated ? timeLabel : "--:--"}
+              </p>
+              <p className="mt-1 text-xs font-bold text-stone-500">
+                {isRunning
+                  ? "Running"
+                  : remainingMs === 0 && entry.completedAtMs !== null
+                    ? "Time complete"
+                    : anotherTimerRunning
+                      ? "Paused · another item is running"
+                      : "Ready"}
+              </p>
+            </div>
 
-      {remainingMs === 0 && entry.completedAtMs !== null && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="mt-2 rounded-lg bg-emerald-50 p-2 text-xs font-extrabold text-emerald-900"
-        >
-          Timer complete. Record your actual work separately.
-        </p>
-      )}
-
-      <div
-        className="mt-3 rounded-xl border border-[#e4dac9] bg-white p-3"
-        aria-label={"Stopwatch for " + itemName}
-      >
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold text-stone-500">
+                  Minutes
+                </span>
+                <input
+                  type="number"
+                  min={MIN_DURATION_MINUTES}
+                  max={MAX_DURATION_MINUTES}
+                  step={1}
+                  value={durationDraft}
+                  disabled={!hydrated || isRunning}
+                  onChange={(event) => setDurationDraft(event.target.value)}
+                  onBlur={saveDuration}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") event.currentTarget.blur();
+                  }}
+                  className="w-20 rounded-lg border border-[#d8ccb8] bg-white px-2 py-2 text-center text-sm font-extrabold disabled:opacity-50"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={!hydrated}
+                onClick={toggleTimer}
+                className="rounded-lg bg-[#23412f] px-3 py-2 text-sm font-extrabold text-white hover:bg-[#183021] disabled:opacity-50"
+              >
+                {isRunning ? "Pause" : "Start"}
+              </button>
+              <button
+                type="button"
+                disabled={!hydrated}
+                onClick={() => reset(itemId, safeDefault)}
+                className="rounded-lg border border-[#d8ccb8] bg-white px-3 py-2 text-sm font-extrabold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+          {remainingMs === 0 && entry.completedAtMs !== null && (
+            <p
+              role="status"
+              aria-live="polite"
+              className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs font-extrabold text-emerald-900"
+            >
+              Timer complete. Record your actual work separately.
+            </p>
+          )}
+        </>
+      ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
-              Item stopwatch
-            </p>
-            <p className="mt-1 text-2xl font-extrabold tabular-nums text-[#23412f]">
+            <p className="text-2xl font-extrabold tabular-nums text-[#23412f]">
               {hydrated ? stopwatchTimeLabel : "--:--:--"}
             </p>
             <p className="mt-1 text-xs font-bold text-stone-500">
@@ -857,7 +872,6 @@ export function ItemWorkTimer({
                   : "Ready"}
             </p>
           </div>
-
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -881,11 +895,7 @@ export function ItemWorkTimer({
             </button>
           </div>
         </div>
-
-        <p className="mt-2 text-xs font-semibold leading-5 text-stone-500">
-          Use the stopwatch to track elapsed work. Starting it pauses any active countdown, and starting a countdown pauses the stopwatch.
-        </p>
-      </div>
+      )}
     </div>
   );
 }

@@ -107,6 +107,8 @@ function BookDetailContent() {
   const [book, setBook] = useState<Book | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
+  const [chapterNotesDraft, setChapterNotesDraft] = useState<Record<string, { centralPoint: string; development: string; questions: string }>>({});
 
   const [pageValue, setPageValue] = useState("");
   const [editing, setEditing] = useState(false);
@@ -173,8 +175,26 @@ function BookDetailContent() {
       ...found?.readingApplication,
     });
     setDecisionDraft(found?.readingDecision ?? "");
+    setChapterNotesDraft(
+      Object.fromEntries(
+        (found?.chapterReflections ?? []).map((reflection) => [
+          reflection.id,
+          {
+            centralPoint: reflection.centralPoint,
+            development: reflection.development,
+            questions: reflection.questions,
+          },
+        ]),
+      ),
+    );
     setLoaded(true);
   }, [params.id]);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const timeout = window.setTimeout(() => setFeedback(""), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
 
   function persistBook(updated: Book, message: string) {
     try {
@@ -444,6 +464,44 @@ function BookDetailContent() {
     );
   }
 
+  function saveAllNotes(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!book) return;
+
+    const chapterReflections = (book.chapterReflections ?? []).map((reflection) => ({
+      ...reflection,
+      ...(chapterNotesDraft[reflection.id] ?? {}),
+      updatedAt: new Date().toISOString(),
+    }));
+    const reconstructionHasContent = Object.values(reconstructionDraft).some(
+      (value) => typeof value === "string" && value.trim(),
+    );
+    const applicationHasContent = Object.values(applicationDraft).some(
+      (value) => typeof value === "string" && value.trim(),
+    );
+
+    persistBook(
+      {
+        ...book,
+        readingPurpose: purposeDraft.trim() || undefined,
+        readingMethod: methodDraft,
+        chapterReflections,
+        wholeBookReconstruction: reconstructionHasContent
+          ? { ...reconstructionDraft, updatedAt: new Date().toISOString() }
+          : undefined,
+        secondPassSections: (book.secondPassSections ?? []).map((section) => ({
+          ...section,
+          notes: secondPassNotesDraft[section.id] ?? section.notes,
+          updatedAt: new Date().toISOString(),
+        })),
+        readingApplication: applicationHasContent
+          ? { ...applicationDraft, updatedAt: new Date().toISOString() }
+          : undefined,
+      },
+      "Reading notes saved.",
+    );
+  }
+
   function startReading() {
     if (!book) return;
 
@@ -483,7 +541,7 @@ function BookDetailContent() {
     if (!book) return;
 
     const confirmed = window.confirm(
-      `Restart "${book.title}" from page zero? Your existing reading-session history will be kept.`,
+      `Restart "${book.title}" from page zero and clear its saved notes and workflow progress? Reading-session history will be kept. This cannot be undone.`,
     );
     if (!confirmed) return;
 
@@ -491,11 +549,28 @@ function BookDetailContent() {
       ...book,
       currentPage: 0,
       status: "Reading",
+      readingPurpose: undefined,
+      readingMethod: undefined,
+      chapterReflections: [],
+      wholeBookReconstruction: undefined,
+      secondPassSections: [],
+      readingApplication: undefined,
+      readingDecision: undefined,
+      workflowCompletedSteps: [],
+      workflowSkippedSteps: [],
     };
 
     clearActiveTimerForBook(book.id);
     setPageValue("0");
-    persistBook(updated, "First-pass progress reset. Previous reading sessions were kept.");
+    setPurposeDraft("");
+    setMethodDraft("Other");
+    setChapterNotesDraft({});
+    setReconstructionDraft(EMPTY_RECONSTRUCTION);
+    setSecondPassNotesDraft({});
+    setApplicationDraft(EMPTY_APPLICATION);
+    setDecisionDraft("");
+    setShowNotes(false);
+    persistBook(updated, "Book restarted. Saved notes and workflow progress were cleared; reading-session history was kept.");
   }
 
   function deleteBook() {
@@ -620,6 +695,13 @@ function BookDetailContent() {
           title="Book actions"
           actions={[
             {
+              label: "View / edit notes",
+              onSelect: () => {
+                setFeedback("");
+                setShowNotes((current) => !current);
+              },
+            },
+            {
               label: "Edit book details",
               onSelect: () => {
                 setFeedback("");
@@ -634,6 +716,89 @@ function BookDetailContent() {
           ]}
         />
       </header>
+
+      {showNotes && (
+        <section className="reading-detail-page__panel space-y-4" id="reading-notes">
+          <div>
+            <h2 className="text-lg font-bold">Saved notes</h2>
+            <p className="mt-1 text-sm text-[var(--ink-soft)]">Review and edit the notes saved across this book&apos;s reading stages.</p>
+          </div>
+          <form onSubmit={saveAllNotes} className="space-y-4">
+            <label className="block">
+              <span className="reading-detail-page__label mb-1 block">Reading purpose</span>
+              <textarea rows={2} value={purposeDraft} onChange={(event) => setPurposeDraft(event.target.value)} className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm" />
+            </label>
+
+            {chapterReflections.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-semibold">Chapter reflections</h3>
+                {chapterReflections.map((reflection) => {
+                  const draft = chapterNotesDraft[reflection.id] ?? reflection;
+                  return (
+                    <div key={reflection.id} className="reading-detail-page__note space-y-2">
+                      <h4 className="font-semibold">{reflection.section}</h4>
+                      <label className="block text-sm">Central point
+                        <textarea rows={2} value={draft.centralPoint} onChange={(event) => setChapterNotesDraft((current) => ({ ...current, [reflection.id]: { ...draft, centralPoint: event.target.value } }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+                      </label>
+                      <label className="block text-sm">Development
+                        <textarea rows={2} value={draft.development} onChange={(event) => setChapterNotesDraft((current) => ({ ...current, [reflection.id]: { ...draft, development: event.target.value } }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+                      </label>
+                      <label className="block text-sm">Questions
+                        <textarea rows={2} value={draft.questions} onChange={(event) => setChapterNotesDraft((current) => ({ ...current, [reflection.id]: { ...draft, questions: event.target.value } }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <h3 className="font-semibold">Whole-book reconstruction</h3>
+              <label className="block text-sm">What is the book about?
+                <textarea rows={2} value={reconstructionDraft.about} onChange={(event) => setReconstructionDraft((current) => ({ ...current, about: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+              </label>
+              <label className="block text-sm">What is the book doing?
+                <textarea rows={2} value={reconstructionDraft.doing} onChange={(event) => setReconstructionDraft((current) => ({ ...current, doing: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+              </label>
+              <label className="block text-sm">How does it develop?
+                <textarea rows={2} value={reconstructionDraft.development} onChange={(event) => setReconstructionDraft((current) => ({ ...current, development: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+              </label>
+              <label className="block text-sm">What do you understand differently now?
+                <textarea rows={2} value={reconstructionDraft.changed} onChange={(event) => setReconstructionDraft((current) => ({ ...current, changed: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+              </label>
+            </div>
+
+            {secondPassSections.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-semibold">Second-pass notes</h3>
+                {secondPassSections.map((section) => (
+                  <label key={section.id} className="block text-sm">{section.section}
+                    <textarea rows={3} value={secondPassNotesDraft[section.id] ?? section.notes} onChange={(event) => setSecondPassNotesDraft((current) => ({ ...current, [section.id]: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <h3 className="font-semibold">Application notes</h3>
+              <label className="block text-sm">Idea to apply
+                <textarea rows={2} value={applicationDraft.idea} onChange={(event) => setApplicationDraft((current) => ({ ...current, idea: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+              </label>
+              <label className="block text-sm">Experiment
+                <textarea rows={2} value={applicationDraft.experiment} onChange={(event) => setApplicationDraft((current) => ({ ...current, experiment: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+              </label>
+              <label className="block text-sm">Result
+                <textarea rows={2} value={applicationDraft.result} onChange={(event) => setApplicationDraft((current) => ({ ...current, result: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" className="reading-detail-page__action">Save notes</button>
+              <button type="button" onClick={() => setShowNotes(false)} className="reading-detail-page__back">Close notes</button>
+            </div>
+          </form>
+        </section>
+      )}
 
       {editing && (
         <form

@@ -106,6 +106,7 @@ function EssayDetailContent() {
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [showNotes, setShowNotes] = useState(false);
 
   const [editTitle, setEditTitle] = useState("");
   const [editAuthor, setEditAuthor] = useState("");
@@ -145,6 +146,12 @@ function EssayDetailContent() {
     }
     setLoaded(true);
   }, [params.id]);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const timeout = window.setTimeout(() => setFeedback(""), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
 
   function saveDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -341,6 +348,25 @@ function EssayDetailContent() {
       setFeedback("Criticism notes saved.");
     } catch {
       setFeedback("Criticism notes could not be saved. Please try again.");
+    }
+  }
+
+  function saveAllNotes(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!essay) return;
+
+    try {
+      const updated: Essay = {
+        ...essay,
+        marks: { ...marksDraft },
+        reflection: { ...reflectionDraft },
+        criticismNotes: criticismNotesDraft.trim(),
+      };
+      updateEssay(updated);
+      setEssay(updated);
+      setFeedback("Essay notes saved.");
+    } catch {
+      setFeedback("Essay notes could not be saved. Please try again.");
     }
   }
 
@@ -578,6 +604,13 @@ function EssayDetailContent() {
           title="Essay actions"
           actions={[
             {
+              label: "View / edit notes",
+              onSelect: () => {
+                setFeedback("");
+                setShowNotes((current) => !current);
+              },
+            },
+            {
               label: "Edit essay details",
               onSelect: () => {
                 setFeedback("");
@@ -590,6 +623,43 @@ function EssayDetailContent() {
           ]}
         />
       </header>
+
+      {showNotes && (
+        <section className="reading-detail-page__panel space-y-4" id="essay-notes">
+          <div>
+            <h2 className="text-lg font-bold">Saved notes</h2>
+            <p className="mt-1 text-sm text-[var(--ink-soft)]">Review and edit observations, reconstruction and criticism notes in one place.</p>
+          </div>
+          <form onSubmit={saveAllNotes} className="space-y-4">
+            <div className="space-y-3">
+              <h3 className="font-semibold">Second reading · Observations</h3>
+              {OBSERVATION_PROMPTS.map((prompt) => (
+                <label key={prompt.key} className="block text-sm">
+                  {prompt.title}
+                  <textarea rows={3} value={marksDraft[prompt.key]} onChange={(event) => setMarksDraft((current) => ({ ...current, [prompt.key]: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+                </label>
+              ))}
+            </div>
+            <div className="space-y-3">
+              <h3 className="font-semibold">Reconstruction · From memory</h3>
+              {RECONSTRUCTION_PROMPTS.map((prompt) => (
+                <label key={prompt.key} className="block text-sm">
+                  {prompt.title}
+                  <textarea rows={3} value={reflectionDraft[prompt.key]} onChange={(event) => setReflectionDraft((current) => ({ ...current, [prompt.key]: event.target.value }))} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+                </label>
+              ))}
+            </div>
+            <label className="block text-sm">
+              Criticism and interpretation
+              <textarea rows={5} value={criticismNotesDraft} onChange={(event) => setCriticismNotesDraft(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" className="reading-detail-page__action">Save notes</button>
+              <button type="button" onClick={() => setShowNotes(false)} className="reading-detail-page__back">Close notes</button>
+            </div>
+          </form>
+        </section>
+      )}
 
       {editing && (
         <form

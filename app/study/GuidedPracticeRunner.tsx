@@ -183,7 +183,7 @@ export default function GuidedPracticeRunner({
         <p className="mt-4 rounded-xl bg-[#f7f1e7] p-4 text-sm font-semibold text-stone-700">
           {purpose === "mixed"
             ? "No suitable mixed-practice question set fits this allocation. Prepare active mixed-practice questions across at least two active topics."
-            : "No eligible Sampler questions are prepared. Add or activate at least one retrieval question with purpose Sampler."}
+            : "No Sampler questions are ready yet. Add or activate a question with the Sampler purpose in Study management."}
         </p>
       )}
 

@@ -205,14 +205,16 @@ function SectionHeading({
   detail: string;
 }) {
   return (
-    <div className="mb-5">
+    <div className="mb-4">
       <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.15em] text-stone-500">
         {eyebrow}
       </p>
-      <h2 className="text-2xl font-bold">{title}</h2>
-      <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-stone-600">
-        {detail}
-      </p>
+      <h2 className="text-xl font-bold">{title}</h2>
+      {detail && (
+        <p className="mt-1 max-w-3xl text-sm font-semibold leading-5 text-stone-600">
+          {detail}
+        </p>
+      )}
     </div>
   );
 }
@@ -2625,7 +2627,7 @@ function SamplerSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Saturday Sampler"
-        detail="Work through the selected Sampler questions, write each answer before revealing the criteria, and assess your performance. Record Sampler and analysis time separately."
+        detail="Complete the selected questions, then record your Sampler and analysis time."
       />
 
       <ItemWorkTimer
@@ -4216,7 +4218,7 @@ function movePlanningItemTo(
 
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-12">
-      <header className="overflow-hidden rounded-3xl bg-[#23412f] p-6 text-white shadow-sm sm:p-9">
+      <header className="overflow-hidden rounded-2xl bg-[#23412f] p-4 text-white shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="rounded-full border border-white/25 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.15em]">
             Study System
@@ -4234,21 +4236,21 @@ function movePlanningItemTo(
           </span>
         </div>
 
-        <h1 className="mt-5 text-3xl font-bold text-white sm:text-4xl">
+        <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">
           Study with evidence, not guesswork.
         </h1>
 
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-3 flex flex-wrap gap-2">
           <a
             href="#daily-plan"
-            className="rounded-xl bg-[#fffaf1] px-4 py-2.5 text-sm font-extrabold text-[#23412f] transition hover:bg-white"
+            className="rounded-lg bg-[#fffaf1] px-3 py-2 text-xs font-extrabold text-[#23412f] transition hover:bg-white"
           >
             View daily plan
           </a>
           <button
   type="button"
   onClick={openCatalogTools}
-  className="rounded-xl border border-white/30 px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-white/10"
+  className="rounded-lg border border-white/30 px-3 py-2 text-xs font-extrabold text-white transition hover:bg-white/10"
 >
   Import topic catalog
 </button>
@@ -4323,7 +4325,7 @@ function movePlanningItemTo(
           detail={
             planningMode
               ? "Build today's plan from due reviews, unfinished consolidation, assignments, and mixed practice. Saving creates a durable snapshot for this Study day."
-              : `Your saved plan for ${today}. The latest version stays in place during the day; replan explicitly if priorities change.`
+              : ""
           }
         />
 
@@ -4501,7 +4503,7 @@ function movePlanningItemTo(
                         <h3 className="break-words font-extrabold text-[#23412f]">
                           {presentation.title}
                         </h3>
-                        <p className="mt-1 text-xs font-semibold text-stone-500">
+                        <p className="mt-1 line-clamp-1 text-xs font-semibold text-stone-500">
                           {presentation.subtitle}
                         </p>
 
@@ -4583,18 +4585,8 @@ function movePlanningItemTo(
                         </span>
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm font-bold text-stone-600">
-                      <span>
-                        Allocated: {item.allocated_minutes} min
-                      </span>
-                      <span>
-                        Estimated remaining: {item.remaining_minutes} min
-                      </span>
-                      {item.allocated_question_ids.length > 0 && (
-                        <span>
-                          Questions today: {item.allocated_question_ids.length}
-                        </span>
-                      )}
+                    <div className="mt-2 text-xs font-bold text-stone-600">
+                      {item.allocated_minutes} min allocated
                     </div>
 
 
@@ -4721,15 +4713,7 @@ function movePlanningItemTo(
                     </div>
                     )}
 
-                    {!planningMode && (
-                      <p className="mt-4 text-sm font-semibold text-stone-600">
-                        {item.disposition
-                          ? `Saved planning decision: ${item.disposition}.`
-                          : "Saved allocation: planned work, not completion evidence."}
-                      </p>
-                    )}
-
-                    {item.reason && (
+                    {planningMode && item.reason && (
                       <p className="mt-2 text-xs font-semibold text-stone-500">
                         {item.reason}
                       </p>
@@ -4804,37 +4788,23 @@ function movePlanningItemTo(
                 </p>
               </>
             ) : (
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#d8ccb8] bg-white p-4">
-                <div>
-                  <p className="font-extrabold text-[#23412f]">
-                    Saved plan version {latestTodaysPlan?.version}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-stone-500">
-                    Saved at {latestTodaysPlan?.saved_at}.{" "}
-                    {Math.max(0, todaysPlanSnapshots.length - 1)} previous
-                    version(s) are preserved today. Planned allocations do not
-                    count as completed work.
-                  </p>
-                </div>
-                {hasRecordedTodaysWork ? (
-  <p className="max-w-md text-sm font-semibold leading-6 text-stone-600">
-    Today's plan is locked because work or a section completion has
-    already been recorded. Your saved plan and history are preserved.
-  </p>
-) : (
-  <button
-    type="button"
-    onClick={() => {
-      setPlanningChoices({});
-      setPlanningReasons({});
-      setPlanningReentries({});
-      setIsReplanning(true);
-    }}
-    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021]"
-  >
-    Replan today
-  </button>
-)}
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                {!hasRecordedTodaysWork ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlanningChoices({});
+                      setPlanningReasons({});
+                      setPlanningReentries({});
+                      setIsReplanning(true);
+                    }}
+                    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021]"
+                  >
+                    Replan today
+                  </button>
+                ) : (
+                  <span className="text-xs font-semibold text-stone-500">Saved worklist · {today}</span>
+                )}
               </div>
             )}
           </>
@@ -5841,11 +5811,11 @@ function movePlanningItemTo(
           </div>
         )}
                     <div className="mt-6 border-t border-[#e4dac9] pt-5">
-          <p className="text-sm font-semibold text-stone-600">
-            {reviewSectionReadyToComplete
-              ? "All allocated reviews have been completed today."
-              : "Complete every allocated review today before continuing."}
-          </p>
+          {!reviewSectionReadyToComplete && (
+            <p className="text-sm font-semibold text-stone-600">
+              Complete every allocated review today before continuing.
+            </p>
+          )}
           <button
             type="button"
             disabled={!reviewSectionReadyToComplete}

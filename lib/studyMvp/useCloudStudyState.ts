@@ -57,6 +57,18 @@ export function useCloudStudyState() {
   const [syncConflict, setSyncConflict] =
     useState<StudySyncConflict | null>(null);
 
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  useEffect(() => {
+    if (!problem) return;
+    const timeout = window.setTimeout(() => setProblem(""), 8000);
+    return () => window.clearTimeout(timeout);
+  }, [problem]);
+
   const statusRef = useRef<CloudSyncStatus>("loading");
   const revisionRef = useRef<number | null>(null);
   const currentStateRef = useRef<StudyMvpState | null>(null);

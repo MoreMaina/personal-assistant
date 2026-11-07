@@ -2091,3 +2091,71 @@ div[data-smart-menu-panel] button {
   font-size: 0.75rem;
   font-weight: 600;
 }
+
+
+/* Shared tactile interaction for prominent actions across the app. */
+.app-content .reading-detail-page__action,
+.app-content .btn--primary,
+.app-content .btn-primary,
+.app-content .right-now-start-button,
+.app-content .plan-generate-button,
+.app-content .project-work-action,
+.app-content button[class*="bg-[#23412f]"],
+.app-content button[class*="bg-emerald-700"] {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .reading-detail-page__action:hover:not(:disabled),
+.app-content button[class*="bg-[#23412f]"]:hover:not(:disabled),
+.app-content button[class*="bg-emerald-700"]:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #4e765a !important;
+}
+.app-content .reading-detail-page__action:active:not(:disabled),
+.app-content button[class*="bg-[#23412f]"]:active:not(:disabled),
+.app-content button[class*="bg-emerald-700"]:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .btn--primary:hover:not(:disabled),
+.app-content .btn-primary:hover:not(:disabled),
+.app-content .right-now-start-button:hover:not(:disabled),
+.app-content .project-work-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark) !important;
+}
+.app-content .btn--primary:active:not(:disabled),
+.app-content .btn-primary:active:not(:disabled),
+.app-content .right-now-start-button:active:not(:disabled),
+.app-content .project-work-action:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .plan-generate-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--primary-dark) !important;
+}
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .item-work-tracker__mode {
+  min-height: 34px !important;
+  padding: 6px 12px;
+  border: 0 !important;
+  border-radius: 9px;
+  background: transparent;
+  color: #57534e;
+  box-shadow: none !important;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background 120ms ease, color 120ms ease;
+}
+.app-content .item-work-tracker__mode:hover,
+.app-content .item-work-tracker__mode:active {
+  transform: none !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-tracker__mode--active {
+  background: #23412f !important;
+  color: #fffaf1 !important;
+}
