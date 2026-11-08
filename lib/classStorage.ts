@@ -112,6 +112,22 @@ export function updateClassStudyUnit(
   return next;
 }
 
+/** Remove only stale Study Unit links after a course is permanently deleted. */
+export function unlinkClassesFromStudyUnits(unitIds: readonly string[]): void {
+  if (typeof window === "undefined" || unitIds.length === 0) return;
+  const deletedIds = new Set(unitIds);
+  const current = getClasses();
+  let changed = false;
+  const next = current.map((item) => {
+    if (!item.studyUnitId || !deletedIds.has(item.studyUnitId)) return item;
+    changed = true;
+    const updated = { ...item };
+    delete updated.studyUnitId;
+    return updated;
+  });
+  if (changed) saveClasses(next);
+}
+
 function getCancelledSessions(): Record<string, number[]> {
   if (typeof window === "undefined") {
     return {};

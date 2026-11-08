@@ -1358,7 +1358,7 @@ export default function AssistantPage() {
                   <button
                     key={suggestion}
                     type="button"
-                    className="ai-copilot__suggestion"
+                    className="ai-copilot__suggestion action-primary--blue"
                     onClick={() => setDraft(suggestion)}
                     disabled={sending}
                   >
@@ -1576,7 +1576,7 @@ export default function AssistantPage() {
                     setCopilotActionsMenuOpen((open) => !open)
                   }
                   aria-expanded={copilotActionsMenuOpen}
-                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--ink)]"
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] ai-copilot__action-menu-trigger"
                   aria-label="More Copilot actions"
                   title="More Copilot actions"
                 >
@@ -1623,7 +1623,7 @@ export default function AssistantPage() {
               </div>
 
               <button
-                className="ai-copilot__send"
+                className="ai-copilot__send action-primary--forest"
                 type="submit"
                 disabled={sending || listening || !draft.trim()}
               >

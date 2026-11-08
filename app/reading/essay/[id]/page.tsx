@@ -654,7 +654,7 @@ function EssayDetailContent() {
               <textarea rows={5} value={criticismNotesDraft} onChange={(event) => setCriticismNotesDraft(event.target.value)} className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2" />
             </label>
             <div className="flex flex-wrap gap-2">
-              <button type="submit" className="reading-detail-page__action">Save notes</button>
+              <button type="submit" className="reading-detail-page__action action-primary--forest">Save notes</button>
               <button type="button" onClick={() => setShowNotes(false)} className="reading-detail-page__back">Close notes</button>
             </div>
           </form>
@@ -692,7 +692,7 @@ function EssayDetailContent() {
             />
           </label>
           <div className="flex flex-wrap gap-2">
-            <button type="submit" className="reading-detail-page__action">
+            <button type="submit" className="reading-detail-page__action action-primary--forest">
               Save essay details
             </button>
             <button
@@ -720,7 +720,7 @@ function EssayDetailContent() {
             <button
               type="button"
               onClick={startFirstPass}
-              className="reading-detail-page__action"
+              className="reading-detail-page__action action-primary--terracotta"
             >
               Start first reading
             </button>
@@ -733,7 +733,7 @@ function EssayDetailContent() {
           <p className="text-sm leading-6 text-[var(--ink-soft)]">
             Read once for the experience. Notice where your attention
             changes, but resist the urge to stop and explain why.
-            Don't mark sentences or analyze the structure yet.
+            Don&apos;t mark sentences or analyze the structure yet.
             Experience the whole piece first.
           </p>
 
@@ -804,7 +804,7 @@ function EssayDetailContent() {
                 />
               </label>
 
-              <button type="submit" className="reading-detail-page__action">
+              <button type="submit" className="reading-detail-page__action action-primary--forest">
                 Save and continue
               </button>
             </form>
@@ -869,7 +869,7 @@ function EssayDetailContent() {
                 />
               </label>
 
-              <button type="submit" className="reading-detail-page__action">
+              <button type="submit" className="reading-detail-page__action action-primary--forest">
                 Save and continue
               </button>
             </form>
@@ -891,7 +891,7 @@ function EssayDetailContent() {
 
           <p className="text-sm leading-6 text-[var(--ink-soft)]">
             Having made your own observations and reconstruction, consider
-            whether the structure itself produces the essay's meaning.
+            whether the structure itself produces the essay&apos;s meaning.
           </p>
 
           <ItemWorkTimer
@@ -920,7 +920,7 @@ function EssayDetailContent() {
             <div className="flex flex-wrap gap-3">
               <button
                 type="submit"
-                className="reading-detail-page__back"
+                className="reading-detail-page__back action-primary--forest"
               >
                 Save criticism notes
               </button>

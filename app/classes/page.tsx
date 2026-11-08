@@ -1071,7 +1071,7 @@ export default function ClassesPage() {
                     setNotice("");
                     setShowClassForm(true);
                   }}
-                >
+                 className="action-primary--forest">
                   + Add class
                 </Button>
               )}
@@ -1224,7 +1224,7 @@ export default function ClassesPage() {
           )}
 
           <div className="flex justify-end border-t border-[var(--border)] pt-5">
-            <Button variant="primary" type="submit" className="w-full sm:w-auto">
+            <Button variant="primary" type="submit" className="w-full sm:w-auto action-primary--forest">
               Save class
             </Button>
           </div>
@@ -1426,7 +1426,7 @@ export default function ClassesPage() {
               Appointments, exams, meetings and other things you need to show up for.
             </p>
           </div>
-          <Button variant="primary" onClick={() => openPlannerForm("event")}>
+          <Button variant="primary" onClick={() => openPlannerForm("event")} className="action-primary--forest">
             + Add event
           </Button>
         </div>
@@ -1619,7 +1619,7 @@ export default function ClassesPage() {
             )}
 
             <div className="flex justify-end border-t border-[var(--border)] pt-4">
-              <Button variant="primary" type="submit">
+              <Button variant="primary" type="submit" className="action-primary--forest">
                 {editingId ? "Save changes" : "Save event"}
               </Button>
             </div>
@@ -1726,7 +1726,7 @@ export default function ClassesPage() {
             <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">Tasks & to-dos</h2>
             <p className="mt-1 text-sm text-[var(--ink-soft)]">Flexible deadlines.</p>
           </div>
-          <Button variant="primary" onClick={() => openPlannerForm("task")}>
+          <Button variant="primary" onClick={() => openPlannerForm("task")} className="action-primary--forest">
             Add task
           </Button>
         </div>
@@ -1949,7 +1949,7 @@ export default function ClassesPage() {
             )}
 
             <div className="flex justify-end border-t border-[var(--border)] pt-4">
-              <Button variant="primary" type="submit">
+              <Button variant="primary" type="submit" className="action-primary--forest">
                 {editingId ? "Save changes" : "Save task"}
               </Button>
             </div>

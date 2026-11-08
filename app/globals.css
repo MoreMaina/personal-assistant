@@ -2293,3 +2293,278 @@ div[data-smart-menu-panel] button {
   transform: translateY(3px);
   box-shadow: 0 0 0 transparent !important;
 }
+
+
+/* Coordinated primary actions: role-based colours, no black borders. */
+.app-content button.action-primary--terracotta,
+.app-content button.action-primary--forest,
+.app-content button.action-primary--sage,
+.app-content button.action-primary--blue {
+  min-height: 44px !important;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent !important;
+  border-radius: 15px !important;
+  padding: 9px 16px !important;
+  font-weight: 900 !important;
+  letter-spacing: .02em;
+  text-decoration: none;
+  box-shadow: 0 4px 0 transparent !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, border-color 120ms ease !important;
+}
+.app-content button.action-primary--terracotta {
+  border-color: var(--accent-dark) !important;
+  background: var(--accent) !important;
+  color: #fff !important;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 var(--accent-dark) !important;
+}
+.app-content button.action-primary--forest {
+  border-color: #23412f !important;
+  background: #31573f !important;
+  color: #fff !important;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 #23412f !important;
+}
+.app-content button.action-primary--sage {
+  border-color: #557c61 !important;
+  background: #dce8d8 !important;
+  color: #23412f !important;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 #557c61 !important;
+}
+.app-content button.action-primary--blue {
+  min-height: 42px !important;
+  justify-content: flex-start;
+  border-color: #718ba2 !important;
+  background: #e3eaf0 !important;
+  color: #263746 !important;
+  text-align: left;
+  text-transform: none;
+  box-shadow: 0 3px 0 #718ba2 !important;
+}
+.app-content button.action-primary--terracotta:hover:not(:disabled),
+.app-content button.action-primary--forest:hover:not(:disabled),
+.app-content button.action-primary--sage:hover:not(:disabled),
+.app-content button.action-primary--blue:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+}
+.app-content button.action-primary--terracotta:hover:not(:disabled) {
+  background: #e07855 !important;
+  box-shadow: 0 6px 0 var(--accent-dark) !important;
+}
+.app-content button.action-primary--forest:hover:not(:disabled) {
+  background: #3b684b !important;
+  box-shadow: 0 6px 0 #23412f !important;
+}
+.app-content button.action-primary--sage:hover:not(:disabled) {
+  background: #e4eee0 !important;
+  box-shadow: 0 6px 0 #557c61 !important;
+}
+.app-content button.action-primary--blue:hover:not(:disabled) {
+  background: #edf2f6 !important;
+  box-shadow: 0 5px 0 #718ba2 !important;
+}
+.app-content button.action-primary--terracotta:active:not(:disabled),
+.app-content button.action-primary--forest:active:not(:disabled),
+.app-content button.action-primary--sage:active:not(:disabled),
+.app-content button.action-primary--blue:active:not(:disabled) {
+  transform: translateY(4px) !important;
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content button.action-primary--terracotta:disabled,
+.app-content button.action-primary--forest:disabled,
+.app-content button.action-primary--sage:disabled,
+.app-content button.action-primary--blue:disabled {
+  cursor: not-allowed !important;
+  opacity: .55;
+  transform: none !important;
+}
+
+/* Workspace-style secondary action menus across contextual menu surfaces. */
+.app-content button.card-menu__trigger,
+.app-content details[data-smart-menu] > summary,
+.app-content .ai-copilot__action-menu-trigger {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  background: var(--surface) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: none !important;
+  transition: background-color 120ms ease, border-color 120ms ease !important;
+}
+.app-content button.card-menu__trigger:hover,
+.app-content button.card-menu__trigger:active,
+.app-content details[data-smart-menu] > summary:hover,
+.app-content details[data-smart-menu] > summary:active,
+.app-content .ai-copilot__action-menu-trigger:hover,
+.app-content .ai-copilot__action-menu-trigger:active {
+  transform: none !important;
+  background: var(--surface-soft) !important;
+  box-shadow: none !important;
+}
+.card-menu__panel,
+.app-content div[data-smart-menu-panel],
+.app-content .ai-copilot__action-menu,
+.app-utilities__panel {
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  background: var(--surface) !important;
+  padding: 8px !important;
+  box-shadow: 0 8px 24px rgba(26, 46, 36, .16) !important;
+}
+.card-menu__heading,
+.app-utilities__heading {
+  margin: 2px 7px 6px !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase;
+}
+.app-content button.card-menu__action,
+.app-content button.card-menu__cancel,
+.app-content div[data-smart-menu-panel] button,
+.app-content .ai-copilot__action-menu button,
+.app-utilities__action {
+  display: flex;
+  width: 100%;
+  min-height: 38px !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--primary-dark) !important;
+  padding: 8px 9px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: none !important;
+}
+.app-content button.card-menu__action:hover,
+.app-content div[data-smart-menu-panel] button:hover,
+.app-content .ai-copilot__action-menu button:hover,
+.app-content .app-utilities__action:hover {
+  transform: none !important;
+  border-color: transparent !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: none !important;
+}
+.app-content button.card-menu__action--destructive,
+.app-content div[data-smart-menu-panel] button[class*="text-[var(--accent-dark)]"],
+.app-utilities__signout {
+  color: #b42318 !important;
+}
+.app-utilities__signout:hover {
+  background: #fae8e5 !important;
+  color: #b42318 !important;
+}
+.app-content button.card-menu__action--destructive:hover,
+.app-content div[data-smart-menu-panel] button[class*="text-[var(--accent-dark)]"]:hover {
+  background: #fae8e5 !important;
+  color: #b42318 !important;
+}
+.app-content button.card-menu__cancel {
+  justify-content: center;
+  margin-top: 6px;
+  border: 1px solid var(--border) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink-soft) !important;
+  box-shadow: none !important;
+}
+.app-content .ai-copilot__action-menu button {
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .card-menu__panel {
+    position: fixed !important;
+    top: var(--card-menu-top, 12px) !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: var(--card-menu-left, 12px) !important;
+    width: 210px !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: min(70dvh, 340px) !important;
+    overflow-y: auto !important;
+  }
+  .app-content div[data-smart-menu-panel] {
+    max-width: calc(100vw - 24px);
+    max-height: min(70dvh, 340px);
+    overflow-y: auto;
+  }
+}
+
+/* Calendar highlight rules: pale green marks one selected/default day;
+   the dark date circle is reserved for today and never follows selection. */
+.app-content .calendar-overview .grid > button[aria-pressed="true"] {
+  border-color: var(--primary-soft) !important;
+  background: var(--primary-soft) !important;
+  box-shadow: none !important;
+}
+.app-content .calendar-overview button.calendar-today-button,
+.app-content .calendar-overview button.calendar-day-action--toggle {
+  min-height: 36px !important;
+  padding: 6px 12px !important;
+  font-size: 11px !important;
+  border: 2px solid #557c61 !important;
+  border-radius: 12px !important;
+  background: #dce8d8 !important;
+  color: #23412f !important;
+  box-shadow: 0 4px 0 #557c61 !important;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+}
+.app-content .calendar-overview button.calendar-today-button:hover:not(:disabled),
+.app-content .calendar-overview button.calendar-day-action--toggle:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  background: #e4eee0 !important;
+  box-shadow: 0 6px 0 #557c61 !important;
+}
+.app-content .calendar-overview button.calendar-today-button:active:not(:disabled),
+.app-content .calendar-overview button.calendar-day-action--toggle:active:not(:disabled) {
+  transform: translateY(4px) !important;
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Course management actions: safe reversible/archive actions and explicit red deletion. */
+.course-management__archive,
+.course-management__restore,
+.course-management__delete {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.course-management__archive {
+  border: 1px solid #557c61;
+  background: #dce8d8;
+  color: #23412f;
+}
+.course-management__archive:hover:not(:disabled) { background: #e4eee0; }
+.course-management__restore {
+  border: 1px solid #23412f;
+  background: #31573f;
+  color: #fff;
+}
+.course-management__restore:hover:not(:disabled) { background: #3b684b; }
+.course-management__delete {
+  border: 1px solid #b42318;
+  background: #fff;
+  color: #b42318;
+}
+.course-management__delete:hover:not(:disabled) { background: #fae8e5; }
+.course-management__archive:disabled,
+.course-management__restore:disabled,
+.course-management__delete:disabled { cursor: not-allowed; opacity: .5; }

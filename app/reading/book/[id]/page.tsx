@@ -793,7 +793,7 @@ function BookDetailContent() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <button type="submit" className="reading-detail-page__action">Save notes</button>
+              <button type="submit" className="reading-detail-page__action action-primary--forest">Save notes</button>
               <button type="button" onClick={() => setShowNotes(false)} className="reading-detail-page__back">Close notes</button>
             </div>
           </form>
@@ -848,7 +848,7 @@ function BookDetailContent() {
             />
           </label>
           <div className="flex flex-wrap gap-2">
-            <button type="submit" className="reading-detail-page__action">
+            <button type="submit" className="reading-detail-page__action action-primary--forest">
               Save book details
             </button>
             <button
@@ -874,7 +874,7 @@ function BookDetailContent() {
           {book.status !== "Finished" && (
             <button
               type="button"
-              className="reading-detail-page__action"
+              className="reading-detail-page__action action-primary--terracotta"
               onClick={startReading}
             >
               {book.status === "Want to read" ? "Start reading" : "Continue reading"}
@@ -958,7 +958,7 @@ function BookDetailContent() {
             Keep your purpose brief. You can change your method as you learn more about the book.
           </p>
 
-          <button type="submit" className="reading-detail-page__action">
+          <button type="submit" className="reading-detail-page__action action-primary--forest">
             Save purpose and method
           </button>
         </form>
@@ -1002,7 +1002,7 @@ function BookDetailContent() {
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
               />
             </label>
-            <button type="submit" className="reading-detail-page__action">
+            <button type="submit" className="reading-detail-page__action action-primary--forest">
               Save progress
             </button>
           </form>
@@ -1062,7 +1062,7 @@ function BookDetailContent() {
                 />
               </label>
 
-              <button type="submit" className="reading-detail-page__action">
+              <button type="submit" className="reading-detail-page__action action-primary--forest">
                 Save reflection
               </button>
             </form>
@@ -1212,7 +1212,7 @@ function BookDetailContent() {
             />
           </label>
 
-          <button type="submit" className="reading-detail-page__action">
+          <button type="submit" className="reading-detail-page__action action-primary--forest">
             Save reconstruction
           </button>
 
@@ -1324,7 +1324,7 @@ function BookDetailContent() {
                   />
                 </label>
 
-                <button type="submit" className="reading-detail-page__action">
+                <button type="submit" className="reading-detail-page__action action-primary--forest">
                   Save notes
                 </button>
               </form>
@@ -1480,7 +1480,7 @@ function BookDetailContent() {
             </select>
           </label>
 
-          <button type="submit" className="reading-detail-page__action">
+          <button type="submit" className="reading-detail-page__action action-primary--forest">
             Save application and decision
           </button>
 

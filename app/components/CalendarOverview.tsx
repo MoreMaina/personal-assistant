@@ -181,7 +181,9 @@ export default function CalendarOverview({
 }: CalendarOverviewProps) {
   const [view, setView] = useState<CalendarView>("week");
   // Use deterministic initial values during prerendering.
+  const [viewDate, setViewDate] = useState("2000-01-01");
   const [selectedDate, setSelectedDate] = useState("2000-01-01");
+  const [hasExplicitDateSelection, setHasExplicitDateSelection] = useState(false);
   const [today, setToday] = useState("2000-01-01");
   const [dateReady, setDateReady] = useState(false);
   const [cancelledByDate, setCancelledByDate] = useState<
@@ -206,7 +208,9 @@ export default function CalendarOverview({
 
   useEffect(() => {
     const currentDate = localTodayKey();
+    setViewDate(currentDate);
     setSelectedDate(currentDate);
+    setHasExplicitDateSelection(false);
     setToday(currentDate);
     setDateReady(true);
   }, []);
@@ -231,9 +235,9 @@ export default function CalendarOverview({
   const visibleDates = useMemo(
     () =>
       view === "week"
-        ? getWeekDates(selectedDate)
-        : getMonthGridDates(selectedDate),
-    [view, selectedDate],
+        ? getWeekDates(viewDate)
+        : getMonthGridDates(viewDate),
+    [view, viewDate],
   );
 
   const visibleDatesKey = visibleDates.join("|");
@@ -507,10 +511,10 @@ export default function CalendarOverview({
     (entry) => entry.date === selectedDate,
   );
 
-  const selectedMonthKey = selectedDate.slice(0, 7);
+  const selectedMonthKey = viewDate.slice(0, 7);
   const heading =
     view === "month"
-      ? dateFromKey(selectedDate).toLocaleDateString("en-GB", {
+      ? dateFromKey(viewDate).toLocaleDateString("en-GB", {
           month: "long",
           year: "numeric",
         })
@@ -524,11 +528,11 @@ export default function CalendarOverview({
 
   function movePeriod(direction: number) {
     if (view === "week") {
-      setSelectedDate(addDays(selectedDate, direction * 7));
+      setViewDate(addDays(viewDate, direction * 7));
       return;
     }
 
-    const current = dateFromKey(selectedDate);
+    const current = dateFromKey(viewDate);
     const originalDay = current.getDate();
     const targetMonth = new Date(
       current.getFullYear(),
@@ -544,7 +548,7 @@ export default function CalendarOverview({
     ).getDate();
 
     targetMonth.setDate(Math.min(originalDay, lastDay));
-    setSelectedDate(dateKey(targetMonth));
+    setViewDate(dateKey(targetMonth));
   }
 
   function renderDateCell(
@@ -553,8 +557,9 @@ export default function CalendarOverview({
     monthCell: boolean,
   ) {
     const dayEntries = visibleEntries.filter((entry) => entry.date === date);
-    const isSelected = date === selectedDate;
+    const isSelected = hasExplicitDateSelection && date === selectedDate;
     const isToday = date === today;
+    const isHighlighted = hasExplicitDateSelection ? isSelected : isToday;
     const isCurrentMonth = date.slice(0, 7) === selectedMonthKey;
 
     // Keep weekday alignment without displaying dates outside this month.
@@ -576,6 +581,7 @@ export default function CalendarOverview({
         aria-label={`${formatLongDate(date)}, ${dayEntries.length} calendar items`}
         onClick={() => {
           setSelectedDate(date);
+          setHasExplicitDateSelection(true);
           if (isMobile && isExpanded) setIsAgendaOpen(true);
         }}
         className={`relative flex min-w-0 flex-col overflow-hidden text-left transition ${
@@ -585,11 +591,9 @@ export default function CalendarOverview({
               : "h-16 rounded-lg border p-1 sm:h-28 sm:rounded-xl sm:border-2 sm:p-2"
             : "min-h-36 rounded-xl border-2 p-1.5 sm:p-2"
         } ${
-          isSelected
-            ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] shadow-[0_3px_0_var(--primary-dark)]"
-            : isToday
-              ? "border-[var(--primary)] bg-[var(--surface)]"
-              : "border-[var(--border)] bg-[var(--surface)]"
+          isHighlighted
+            ? "border-[var(--primary-soft)] bg-[var(--primary-soft)] shadow-none"
+            : "border-[var(--border)] bg-[var(--surface)]"
         } ${
           monthCell && !isCurrentMonth ? "opacity-50" : ""
         }`}
@@ -606,15 +610,15 @@ export default function CalendarOverview({
             <span
               className={`inline-flex items-center justify-center rounded-full font-extrabold transition ${
                   monthCell
-                    ? `h-5 min-w-0 border-0 px-0 text-xs sm:h-9 sm:min-w-9 sm:border-2 sm:px-1 sm:text-base ${
-                        isToday || isSelected
-                          ? "text-[var(--primary-dark)] sm:border-[var(--primary-dark)] sm:bg-[var(--primary)] sm:text-white sm:shadow-sm"
-                          : "text-[var(--ink)] sm:border-[var(--border)] sm:bg-[var(--surface-soft)] sm:text-[var(--ink)]"
+                    ? `h-5 min-w-5 border-0 px-0 text-xs sm:h-9 sm:min-w-9 sm:border-2 sm:px-1 sm:text-base ${
+                        isToday
+                          ? "border-[var(--primary-dark)] bg-[var(--primary)] text-white shadow-sm"
+                          : "border-transparent bg-transparent text-[var(--ink)] sm:border-transparent sm:bg-transparent sm:text-[var(--ink)]"
                       }`
                     : `h-6 min-w-6 border-2 px-1 text-xs sm:h-7 sm:min-w-7 sm:text-sm ${
-                        isToday || isSelected
-                          ? "bg-[var(--primary)] text-white"
-                          : "text-[var(--ink)]"
+                        isToday
+                          ? "border-[var(--primary-dark)] bg-[var(--primary)] text-white"
+                          : "border-transparent bg-transparent text-[var(--ink)]"
                       }`
                 }`}
             >
@@ -828,7 +832,7 @@ export default function CalendarOverview({
                 setIsAgendaOpen(false);
               }
             }}
-            className="calendar-day-action calendar-day-action--toggle rounded-lg px-3 py-2 text-xs font-extrabold"
+            className="calendar-day-action calendar-day-action--toggle rounded-lg px-3 py-2 text-xs font-extrabold action-primary--sage"
           >
             {isCalendarCollapsed ? "Expand" : "Collapse"}
           </button>
@@ -932,8 +936,12 @@ export default function CalendarOverview({
           </button>
           <button
             type="button"
-            onClick={() => setSelectedDate(today)}
-            className="calendar-today-button flex h-7 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] px-2 text-[10px] font-semibold text-white"
+            onClick={() => {
+              setViewDate(today);
+              setSelectedDate(today);
+              setHasExplicitDateSelection(false);
+            }}
+            className="calendar-today-button action-primary--sage flex h-7 shrink-0 items-center justify-center rounded-lg px-2 text-[10px] font-semibold"
           >
             Today
           </button>
@@ -981,8 +989,9 @@ export default function CalendarOverview({
             {/* Compact seven-day strip for phones. */}
             <div className="grid grid-cols-7 gap-1 md:hidden">
               {visibleDates.map((date, index) => {
-                const isSelected = date === selectedDate;
+                const isSelected = hasExplicitDateSelection && date === selectedDate;
                 const isToday = date === today;
+                const isHighlighted = hasExplicitDateSelection ? isSelected : isToday;
                 const dayKinds = Array.from(new Set(
                   visibleEntries
                     .filter((entry) => entry.date === date)
@@ -995,10 +1004,13 @@ export default function CalendarOverview({
                     type="button"
                     aria-pressed={isSelected}
                     aria-label={formatLongDate(date)}
-                    onClick={() => setSelectedDate(date)}
+                    onClick={() => {
+                      setSelectedDate(date);
+                      setHasExplicitDateSelection(true);
+                    }}
                     className={`min-w-0 rounded-xl border-2 px-0.5 py-2 ${
-                      isSelected
-                        ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] shadow-[0_2px_0_var(--primary-dark)]"
+                      isHighlighted
+                        ? "border-[var(--primary-soft)] bg-[var(--primary-soft)] shadow-none"
                         : "border-[var(--border)] bg-[var(--surface)]"
                     }`}
                   >
@@ -1007,9 +1019,9 @@ export default function CalendarOverview({
                     </span>
                     <span
                       className={`mx-auto mt-1 flex h-7 w-7 items-center justify-center rounded-full text-sm font-extrabold ${
-                        isToday || isSelected
+                        isToday
                           ? "bg-[var(--primary)] text-white"
-                          : "text-[var(--ink)]"
+                          : "bg-transparent text-[var(--ink)]"
                       }`}
                     >
                       {dateFromKey(date).getDate()}

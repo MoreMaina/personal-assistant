@@ -1385,7 +1385,7 @@ export default function ReadingPage() {
                     true,
                   )
                 }
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--forest"
               >
                 + Add book
               </button>
@@ -1500,7 +1500,7 @@ export default function ReadingPage() {
 
                   <button
                     type="submit"
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--forest"
                   >
                     {editingBookId === null ? "Add book" : "Save changes"}
                   </button>
@@ -1727,7 +1727,7 @@ export default function ReadingPage() {
                                     book.id,
                                   )
                                 }
-                                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--terracotta"
                               >
                                 Start reading
                               </button>
@@ -1826,7 +1826,7 @@ export default function ReadingPage() {
                                 current.map((item) => item.id === book.id ? updated : item),
                               );
                             }}
-                            className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                            className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--terracotta"
                           >
                             Start
                           </button>
@@ -1965,7 +1965,7 @@ export default function ReadingPage() {
                   <button
                     type="button"
                     onClick={() => setShowEssayForm(true)}
-                    className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[var(--primary-dark)] bg-[var(--primary)] px-2.5 py-1 text-xs font-semibold text-white shadow-[0_2px_0_var(--primary-dark)]"
+                    className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[var(--primary-dark)] bg-[var(--primary)] px-2.5 py-1 text-xs font-semibold text-white shadow-[0_2px_0_var(--primary-dark)] action-primary--forest"
                   >
                     Add essay
                   </button>
@@ -2051,7 +2051,7 @@ export default function ReadingPage() {
 
                   <button
                     type="submit"
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--forest"
                   >
                     {editingEssayId === null ? "Add essay" : "Save changes"}
                   </button>
@@ -2352,7 +2352,7 @@ export default function ReadingPage() {
                                     essay,
                                   )
                                 }
-                                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--terracotta"
                               >
                                 Start first
                                 pass
@@ -2397,7 +2397,7 @@ export default function ReadingPage() {
                                       essay,
                                     )
                                   }
-                                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--terracotta"
                                 >
                                   Start
                                   second
@@ -2411,7 +2411,7 @@ export default function ReadingPage() {
                                       essay,
                                     )
                                   }
-                                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--forest"
                                 >
                                   Finish
                                   first
@@ -2514,7 +2514,7 @@ export default function ReadingPage() {
                                     disabled={
                                       !currentPromptValue.trim()
                                     }
-                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] disabled:opacity-40"
+                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] disabled:opacity-40 action-primary--forest"
                                   >
                                     {step ===
                                     3

@@ -319,7 +319,7 @@ export default function GuidedPracticeRunner({
                 <button
                   type="submit"
                   disabled={!responseText.trim()}
-                  className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40 action-primary--forest"
                 >
                   Save answer and continue
                 </button>

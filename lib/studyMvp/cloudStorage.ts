@@ -90,6 +90,40 @@ export async function loadStudyMvpCloudState(): Promise<StudyMvpCloudRecord | nu
  * cloud state exists. Otherwise pass the revision returned by the last
  * successful load or save.
  */
+/**
+ * Permanently deletes one course through the dedicated database operation.
+ * The database takes its own pre-change recovery snapshot and checks the
+ * caller's expected revision before allowing course-history removal.
+ */
+export async function deleteStudyMvpCloudCourse(
+  state: StudyMvpState,
+  courseId: string,
+  expectedRevision: number,
+): Promise<number> {
+  if (!courseId.trim()) throw new Error("A course ID is required for permanent deletion.");
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+    throw new Error("The expected Study revision is invalid for course deletion.");
+  }
+  assertStudyStateIntegrity(state);
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("delete_user_study_mvp_course", {
+    p_course_id: courseId,
+    p_state: state,
+    p_expected_revision: expectedRevision,
+  });
+  if (error) {
+    if (error.code === "40001" || /revision conflict/i.test(error.message)) {
+      throw new StudyMvpCloudConflictError(error.message);
+    }
+    throw new Error(`Could not permanently delete the course from cloud Study data: ${error.message}`);
+  }
+  const revision = Number(data);
+  if (!Number.isSafeInteger(revision) || revision < 1) {
+    throw new Error("Supabase returned an invalid revision after deleting the course.");
+  }
+  return revision;
+}
+
 export async function saveStudyMvpCloudState(
   state: StudyMvpState,
   expectedRevision: number,

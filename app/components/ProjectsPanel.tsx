@@ -439,7 +439,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
               setNotice("");
               setShowForm(true);
             }}
-          >
+           className="action-primary--forest">
             + Add project
           </Button>
         </div>
@@ -616,7 +616,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
               <Button
                 variant="primary"
                 type="submit"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto action-primary--forest"
               >
                 {editingProjectId === null ? "Save project" : "Save changes"}
               </Button>
@@ -640,7 +640,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
               {!showForm && (
                 <Button
                   variant="primary"
-                  className="mt-5"
+                  className="mt-5 action-primary--forest"
                   onClick={() => setShowForm(true)}
                 >
                   {pausedProjects.length > 0
@@ -744,7 +744,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                   <div className="mt-3 flex">
                     <Button
                       variant="primary"
-                      className="project-work-action w-full min-w-0 px-3 text-xs leading-tight sm:w-auto"
+                      className="project-work-action w-full min-w-0 px-3 text-xs leading-tight sm:w-auto action-primary--forest"
                       onClick={() => markWorkedOn(project)}
                     >
                       I worked on this

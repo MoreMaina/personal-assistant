@@ -11,6 +11,7 @@ import {
 import {
   loadStudyMvpCloudState,
   saveStudyMvpCloudState,
+  deleteStudyMvpCloudCourse,
   StudyMvpCloudConflictError,
   type StudyMvpCloudRecord,
 } from "./cloudStorage";
@@ -348,6 +349,86 @@ export function useCloudStudyState() {
     }
   }, [markStatus, showConflict]);
 
+  const persistCourseDeletion = useCallback(async (
+    next: StudyMvpState,
+    courseId: string,
+    successMessage = "Course and its history were permanently deleted.",
+  ): Promise<boolean> => {
+    if (statusRef.current === "migration") {
+      setProblem("Approve migration of the existing browser state before deleting a course.");
+      return false;
+    }
+    if (statusRef.current === "conflict") {
+      setProblem("Resolve the browser/cloud conflict before deleting a course.");
+      return false;
+    }
+    if (revisionRef.current === null) {
+      setProblem("Cloud storage is not ready. No course data were deleted.");
+      return false;
+    }
+
+    const operation = queueRef.current
+      .catch(() => undefined)
+      .then(async (): Promise<boolean> => {
+        if (statusRef.current === "conflict") {
+          setProblem("Resolve the browser/cloud conflict before deleting a course.");
+          return false;
+        }
+        const expectedRevision = revisionRef.current;
+        if (expectedRevision === null) {
+          markStatus("error");
+          setProblem("The cloud revision is unknown. No course data were deleted.");
+          return false;
+        }
+
+        markStatus("syncing");
+        try {
+          const revision = await deleteStudyMvpCloudCourse(next, courseId, expectedRevision);
+          revisionRef.current = revision;
+          currentStateRef.current = next;
+          setState(next);
+          setLoadingError("");
+          setNotice(successMessage);
+          setProblem("");
+
+          try {
+            // This explicit helper preserves the previous browser document
+            // before replacing it; ordinary saves still enforce immutability.
+            replaceStudyMvpStateWithRecovery(next);
+            markStatus("synced");
+          } catch (error) {
+            markStatus("error");
+            setProblem(
+              "The course was deleted from cloud Study data, but the browser copy could not be updated. " +
+              "The cloud recovery snapshot is preserved. Refresh after checking your connection. " +
+              (error instanceof Error ? error.message : "Browser storage failed."),
+            );
+          }
+          return true;
+        } catch (error) {
+          if (error instanceof StudyMvpCloudConflictError) {
+            try {
+              const latest = await loadStudyMvpCloudState();
+              if (latest) showConflict(currentStateRef.current ?? next, latest);
+              else markStatus("conflict");
+            } catch {
+              markStatus("conflict");
+            }
+          } else {
+            markStatus("error");
+            setProblem(
+              "Course deletion did not complete. The course remains in cloud Study data. " +
+              (error instanceof Error ? error.message : "Check your connection and try again."),
+            );
+          }
+          return false;
+        }
+      });
+
+    queueRef.current = operation.then(() => undefined, () => undefined);
+    return operation;
+  }, [markStatus, showConflict]);
+
   const migrateLocalToCloud = useCallback(async () => {
     const localState = currentStateRef.current;
 
@@ -493,6 +574,7 @@ export function useCloudStudyState() {
     cloudSyncStatus,
     syncConflict,
     persist,
+    persistCourseDeletion,
     migrateLocalToCloud,
     chooseCloudVersion,
     chooseBrowserVersion,

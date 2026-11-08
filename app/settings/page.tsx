@@ -8,6 +8,7 @@ import {
 } from "react";
 import Link from "next/link";
 import GoogleCalendarSettings from "@/app/components/GoogleCalendarSettings";
+import CourseManagementPanel from "@/app/components/CourseManagementPanel";
 
 import {
   ensureFixedSemesters,
@@ -40,7 +41,9 @@ export default function GeneralSettingsPage() {
     state: studyState,
     loadingError: studyLoadingError,
     syncConflict: studySyncConflict,
+    problem: studyProblem,
     persist: persistStudyState,
+    persistCourseDeletion: persistStudyCourseDeletion,
   } = useCloudStudyState();
 
   const [catalogImportText, setCatalogImportText] = useState("");
@@ -447,6 +450,15 @@ export default function GeneralSettingsPage() {
                 </p>
               )}
             </section>
+
+            <CourseManagementPanel
+              state={studyState}
+              loadingError={studyLoadingError || undefined}
+              syncConflict={Boolean(studySyncConflict)}
+              problem={studyProblem || undefined}
+              persist={persistStudyState}
+              persistCourseDeletion={persistStudyCourseDeletion}
+            />
           </div>
         </details>
 

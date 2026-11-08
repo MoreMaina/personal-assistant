@@ -49,7 +49,6 @@ import {
 import {
   createDefaultCourseScaffold,
   exportStudyMvpJSON,
-  setCourseArchivedAt,
 } from "@/lib/studyMvp/storage";
 
 import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
@@ -420,11 +419,11 @@ function InitialLearningSection({
       {!item || item.allocated_minutes <= 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
           This plan has no positive initial-learning allocation to work on.
-          Review or replan today's worklist before continuing.
+          Review or replan today&apos;s worklist before continuing.
         </p>
       ) : !topic ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-rose-800">
-          The planned topic could not be found. Replan today's worklist before continuing.
+          The planned topic could not be found. Replan today&apos;s worklist before continuing.
         </p>
       ) : (
         <>
@@ -805,7 +804,7 @@ function TopicConsolidationSection({
 
       <div className="mb-5 rounded-2xl bg-white p-4">
         <h3 className="font-extrabold text-[#23412f]">
-          Today's consolidation allocations
+          Today&apos;s consolidation allocations
         </h3>
         <ul className="mt-3 space-y-2">
           {items.map((item) => {
@@ -899,7 +898,7 @@ function TopicConsolidationSection({
               </>
             ) : (
               <p className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-900">
-                This topic is unavailable for consolidation in its current state. Review today's plan before continuing.
+                This topic is unavailable for consolidation in its current state. Review today&apos;s plan before continuing.
               </p>
             )}
           </form>
@@ -1223,13 +1222,13 @@ function AssignmentSection({
       
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
-          There are no positively allocated assignments in today's saved plan.
+          There are no positively allocated assignments in today&apos;s saved plan.
         </p>
       ) : (
         <>
           <div className="mb-5 rounded-2xl bg-white p-4">
             <h3 className="font-extrabold text-[#23412f]">
-              Today's assignment allocations
+              Today&apos;s assignment allocations
             </h3>
             <ul className="mt-3 space-y-2">
               {items.map((item) => {
@@ -1287,12 +1286,12 @@ function AssignmentSection({
 
             {!assignment ? (
               <p className="rounded-xl bg-rose-50 p-4 text-sm font-semibold text-rose-800">
-                The planned assignment could not be found. Review today's plan.
+                The planned assignment could not be found. Review today&apos;s plan.
               </p>
             ) : assignment.status === "completed" ||
               assignment.status === "cancelled" ? (
               <p className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-900">
-                This assignment is {assignment.status}. Select another active assignment or review today's plan.
+                This assignment is {assignment.status}. Select another active assignment or review today&apos;s plan.
               </p>
             ) : (
               <>
@@ -1343,7 +1342,7 @@ function AssignmentSection({
                     className={STUDY_FORM_CONTROL_CLASS}
                   />
                   <span className="mt-1 block text-xs font-semibold text-stone-500">
-                    Defaults to the current estimate minus this session's duration. Adjust it if your actual remaining workload is different.
+                    Defaults to the current estimate minus this session&apos;s duration. Adjust it if your actual remaining workload is different.
                   </span>
                 </label>
 
@@ -1633,13 +1632,13 @@ function CorrectiveSection({
 
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
-          There are no positively allocated corrective-work items in today's saved plan.
+          There are no positively allocated corrective-work items in today&apos;s saved plan.
         </p>
       ) : (
         <>
           <div className="mb-5 rounded-2xl bg-white p-4">
             <h3 className="font-extrabold text-[#23412f]">
-              Today's corrective-work allocations
+              Today&apos;s corrective-work allocations
             </h3>
             <ul className="mt-3 space-y-2">
               {items.map((item) => (
@@ -1956,13 +1955,13 @@ function RecoverySection({
       
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
-          There are no positively allocated recovery items in today's saved plan.
+          There are no positively allocated recovery items in today&apos;s saved plan.
         </p>
       ) : (
         <>
           <div className="mb-5 rounded-2xl bg-white p-4">
             <h3 className="font-extrabold text-[#23412f]">
-              Today's recovery allocations
+              Today&apos;s recovery allocations
             </h3>
             <ul className="mt-3 space-y-2">
               {items.map((item) => (
@@ -2288,13 +2287,13 @@ function MixedPracticeSection({
       
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
-          There are no positively allocated mixed-practice blocks in today's saved plan.
+          There are no positively allocated mixed-practice blocks in today&apos;s saved plan.
         </p>
       ) : (
         <>
           <div className="mb-5 rounded-2xl bg-white p-4">
             <h3 className="font-extrabold text-[#23412f]">
-              Today's mixed-practice allocations
+              Today&apos;s mixed-practice allocations
             </h3>
             <ul className="mt-3 space-y-2">
               {items.map((item) => (
@@ -2638,13 +2637,13 @@ function SamplerSection({
       
       {items.length === 0 ? (
         <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
-          There is no positively allocated Sampler work in today's saved plan.
+          There is no positively allocated Sampler work in today&apos;s saved plan.
         </p>
       ) : (
         <>
           <div className="mb-5 rounded-2xl bg-white p-4">
             <h3 className="font-extrabold text-[#23412f]">
-              Today's Sampler allocation
+              Today&apos;s Sampler allocation
             </h3>
             <ul className="mt-3 space-y-2">
               {items.map((item) => {
@@ -3946,49 +3945,6 @@ function movePlanningItemTo(
     }
   }
 
-  function updateCourseArchiveStatus(
-    courseId: EntityId,
-    courseName: string,
-    isArchived: boolean,
-  ): void {
-    if (!state) return;
-
-    const actionLabel = isArchived ? "Restore" : "Archive";
-
-    const effect = isArchived
-      ? "This course will become eligible for future Study plans and Today lists."
-      : "This course will be excluded from future Study plans and Today lists.";
-
-    if (
-      !window.confirm(
-        `${actionLabel} "${courseName}"?\n\n${effect}\n\nAll associated units, topics, reviews, assignments, and historical evidence will remain saved. Existing saved daily plan snapshots will not be rewritten.\n\nContinue?`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const next = setCourseArchivedAt(
-        state,
-        courseId,
-        isArchived ? null : new Date().toISOString(),
-      );
-
-      persist(
-        next,
-        isArchived
-          ? `Restored "${courseName}".`
-          : `Archived "${courseName}". Its associated records were retained.`,
-      );
-    } catch (error) {
-      setProblem(
-        error instanceof Error
-          ? error.message
-          : `Could not ${isArchived ? "restore" : "archive"} this course.`,
-      );
-    }
-  }
-  
   function exportCatalog() {
     if (!state) return;
 
@@ -4749,7 +4705,7 @@ function movePlanningItemTo(
                       !plan.can_finalize ||
                       hasIncompletePlanningChoice
                     }
-                    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500"
+                    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 action-primary--forest"
                   >
                     Save today&apos;s plan
                   </button>
@@ -4798,7 +4754,7 @@ function movePlanningItemTo(
                       setPlanningReentries({});
                       setIsReplanning(true);
                     }}
-                    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021]"
+                    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] action-primary--terracotta"
                   >
                     Replan today
                   </button>
@@ -4929,71 +4885,6 @@ function movePlanningItemTo(
           </button>
         </div>
 
-        {state && (
-          <div className="mb-8 rounded-2xl border border-[#d8ccb8] bg-white p-4 sm:p-5">
-            <div>
-              <h3 className="font-extrabold text-[#23412f]">
-                Course archive
-              </h3>
-              <p className="mt-2 text-sm font-semibold leading-6 text-stone-600">
-                Archive courses you are no longer actively studying. Their
-                records and history remain saved, and you can restore them
-                at any time. Existing saved daily plans are not rewritten.
-              </p>
-            </div>
-
-            {state.courses.length === 0 ? (
-              <p className="mt-4 rounded-xl bg-stone-50 p-4 text-sm font-semibold text-stone-600">
-                There are no courses to archive or restore.
-              </p>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {state.courses.map((course) => {
-                  const isArchived = Boolean(course.archived_at);
-
-                  return (
-                    <div
-                      key={course.id}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e4dac9] p-3"
-                    >
-                      <div>
-                        <p className="font-extrabold text-stone-800">
-                          {course.name}
-                          {course.code ? ` (${course.code})` : ""}
-                        </p>
-                        <p className="mt-1 text-xs font-bold text-stone-500">
-                          {isArchived ? "Archived" : "Active"}
-                          {isArchived && course.archived_at
-                            ? ` · ${new Date(course.archived_at).toLocaleString()}`
-                            : ""}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateCourseArchiveStatus(
-                            course.id,
-                            course.name,
-                            isArchived,
-                          )
-                        }
-                        className={
-                          isArchived
-                            ? "rounded-xl bg-[#23412f] px-4 py-2.5 text-sm font-extrabold text-white hover:bg-[#1a2e24]"
-                            : "rounded-xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm font-extrabold text-amber-900 hover:bg-amber-100"
-                        }
-                      >
-                        {isArchived ? "Restore course" : "Archive course"}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-        
         <form onSubmit={importCatalog} className="space-y-4">
           <label className="block">
             <span className="mb-2 block text-sm font-extrabold text-stone-700">
@@ -5523,7 +5414,7 @@ function movePlanningItemTo(
             type="button"
             disabled={!gateSectionReadyToComplete}
             onClick={finishTopicGateSection}
-            className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40 action-primary--forest"
           >
             Complete Topic Gate section
           </button>
@@ -5820,7 +5711,7 @@ function movePlanningItemTo(
             type="button"
             disabled={!reviewSectionReadyToComplete}
             onClick={finishReviewSection}
-            className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40 action-primary--forest"
           >
             Complete Due Reviews section
           </button>

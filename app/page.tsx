@@ -879,7 +879,7 @@ export default function TodayPage() {
             type="button"
             disabled={isPlanning}
             onClick={() => void handleGenerateDailyPlan()}
-            className="plan-generate-button inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-5 py-3 font-black text-[var(--primary-dark)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
+            className="plan-generate-button inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-5 py-3 font-black text-[var(--primary-dark)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 action-primary--terracotta"
           >
             {isPlanning
               ? "Planning your day..."
