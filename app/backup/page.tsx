@@ -211,6 +211,18 @@ export default function BackupRecoveryPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (!message) return;
+    const timeout = window.setTimeout(() => setMessage(""), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [message]);
+
+  useEffect(() => {
+    if (!studyExportMessage) return;
+    const timeout = window.setTimeout(() => setStudyExportMessage(null), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [studyExportMessage]);
+
   const refreshBackups = useCallback(async () => {
     setLoading(true);
     setError("");

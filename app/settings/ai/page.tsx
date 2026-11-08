@@ -77,6 +77,12 @@ export default function AISettingsPage() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [voices, setVoices] = useState<Voice[]>([]);
+
+  useEffect(() => {
+    if (!status) return;
+    const timeout = window.setTimeout(() => setStatus(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [status]);
   const [loadingVoices, setLoadingVoices] = useState(false);
   const [voiceError, setVoiceError] = useState("");
   const [formOpen, setFormOpen] = useState(false);

@@ -34,6 +34,12 @@ export default function GoogleCalendarSettings() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
   const refreshConnection = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError("");

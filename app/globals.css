@@ -2159,3 +2159,137 @@ div[data-smart-menu-panel] button {
   background: #23412f !important;
   color: #fffaf1 !important;
 }
+
+
+/* Calendar and detail-page polish: keep action borders tied to their own palette. */
+.app-content button.btn--primary {
+  min-height: 44px;
+  padding: 9px 16px;
+  border: 0 !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 0 var(--accent-dark) !important;
+  font-weight: 800;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content button.btn--primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark) !important;
+}
+.app-content button.btn--primary:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Google uses its own muted violet, alongside the class/event/task filters. */
+.app-content .calendar-overview button[aria-label="Show google"] {
+  min-height: 21px !important;
+  padding: 2px 5px !important;
+  border: 1px solid #6842a6 !important;
+  border-radius: 999px !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+.app-content .calendar-overview button[aria-label="Show google"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 #6842a6 !important;
+}
+.app-content .calendar-overview button[aria-label="Show google"]:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Collapse / Expand is a compact forest-green raised action like the day actions. */
+.app-content .calendar-overview button.calendar-day-action--toggle {
+  min-height: 34px !important;
+  padding: 6px 12px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: 0 3px 0 #4e765a !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.app-content .calendar-overview button.calendar-day-action--toggle:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #e4eee0 !important;
+  box-shadow: 0 5px 0 #4e765a !important;
+}
+.app-content .calendar-overview button.calendar-day-action--toggle:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Keep both reading-detail form actions the same height and baseline. */
+.app-content .reading-detail-page button.reading-detail-page__action {
+  min-height: 44px !important;
+  margin: 0;
+  padding: 10px 16px;
+  border: 0 !important;
+  border-radius: 10px;
+  line-height: 1.2;
+  box-shadow: 0 4px 0 #4e765a !important;
+}
+.app-content .reading-detail-page button.reading-detail-page__action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #4e765a !important;
+}
+.app-content .reading-detail-page button.reading-detail-page__action:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .reading-detail-page button.reading-detail-page__back {
+  display: inline-flex;
+  min-height: 44px !important;
+  align-items: center;
+  justify-content: center;
+  margin: 0 !important;
+  padding: 10px 16px;
+  border: 1px solid #d5e0d1 !important;
+  border-radius: 10px;
+  background: #f1f5ee !important;
+  color: #35513a !important;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: 0 3px 0 #d5e0d1 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.app-content .reading-detail-page button.reading-detail-page__back:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #e8f0e4 !important;
+  box-shadow: 0 5px 0 #c5d5bf !important;
+  text-decoration: none;
+}
+.app-content .reading-detail-page button.reading-detail-page__back:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Calendar quick actions use their category-coloured depth, not the global dark outline. */
+.app-content .calendar-overview button.calendar-day-action--event,
+.app-content .calendar-overview button.calendar-day-action--task {
+  border: 0 !important;
+}
+
+/* AI prompt suggestions: warm paper surface, fine sage outline, soft green depth. */
+.app-content .ai-copilot__suggestion {
+  border: 1px solid #b8c9b5 !important;
+  border-radius: 12px;
+  background: #fffaf1 !important;
+  color: #23412f;
+  box-shadow: 0 3px 0 #4e765a !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.app-content .ai-copilot__suggestion:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #f4f7ef !important;
+  box-shadow: 0 5px 0 #4e765a !important;
+}
+.app-content .ai-copilot__suggestion:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 transparent !important;
+}

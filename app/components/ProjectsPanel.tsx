@@ -60,6 +60,12 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
   const [notice, setNotice] = useState("");
   const [projectActionError, setProjectActionError] = useState("");
 
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
   const [projectToDelete, setProjectToDelete] =
     useState<Project | null>(null);
 

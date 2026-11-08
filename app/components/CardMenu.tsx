@@ -202,6 +202,24 @@ export default function CardMenu({
                       </svg>
                     )}
 
+                  {!action.destructive && /^view \/ edit notes$/i.test(action.label) && (
+                    <svg
+                      width="19"
+                      height="19"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M5 4.75A1.75 1.75 0 0 1 6.75 3H19v16H7a2 2 0 0 0-2 2V4.75Z" />
+                      <path d="M5 18.5A2.5 2.5 0 0 1 7.5 16H19" />
+                      <path d="M9 7h6M9 10.5h6M9 14h4" />
+                    </svg>
+                  )}
+
                   {!action.destructive && /^edit\b/i.test(action.label) && (
                     <svg
                       width="19"

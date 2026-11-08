@@ -607,12 +607,12 @@ export default function CalendarOverview({
               className={`inline-flex items-center justify-center rounded-full font-extrabold transition ${
                   monthCell
                     ? `h-5 min-w-0 border-0 px-0 text-xs sm:h-9 sm:min-w-9 sm:border-2 sm:px-1 sm:text-base ${
-                        isToday
+                        isToday || isSelected
                           ? "text-[var(--primary-dark)] sm:border-[var(--primary-dark)] sm:bg-[var(--primary)] sm:text-white sm:shadow-sm"
-                          : "text-[var(--ink)] sm:border-[var(--primary-soft)] sm:bg-[var(--primary-soft)] sm:text-[var(--primary-dark)]"
+                          : "text-[var(--ink)] sm:border-[var(--border)] sm:bg-[var(--surface-soft)] sm:text-[var(--ink)]"
                       }`
                     : `h-6 min-w-6 border-2 px-1 text-xs sm:h-7 sm:min-w-7 sm:text-sm ${
-                        isToday
+                        isToday || isSelected
                           ? "bg-[var(--primary)] text-white"
                           : "text-[var(--ink)]"
                       }`
@@ -788,52 +788,52 @@ export default function CalendarOverview({
           : "calendar-overview card mb-8 bg-[var(--surface)] p-3 sm:p-4"
       }
     >
-      <div className={isMobile && isExpanded && !isCalendarCollapsed ? "hidden" : "mb-3 flex items-center justify-between gap-3"}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-[var(--ink)]">Calendar</h2>
-        <button
-          type="button"
-          aria-expanded={!isCalendarCollapsed}
-          onClick={() => {
-            setIsCalendarCollapsed((current) => !current);
-            if (isExpanded) {
-              setIsExpanded(false);
-              setIsAgendaOpen(false);
-            }
-          }}
-          className="rounded-lg px-2 py-1.5 text-xs font-semibold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
-        >
-          {isCalendarCollapsed ? "Expand" : "Collapse"}
-        </button>
-      </div>
-      {!isAgendaOpen && !isCalendarCollapsed && (
-        <div className="flex shrink-0 justify-center py-1">
-          <div
-            role="group"
-            aria-label="Calendar view"
-            className="inline-flex items-center gap-0.5 rounded-full bg-[var(--surface-soft)] p-0.5"
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {!isCalendarCollapsed && (
+            <div
+              role="group"
+              aria-label="Calendar view"
+              className="inline-flex items-center gap-0.5 rounded-full bg-[var(--surface-soft)] p-0.5"
+            >
+              {(["week", "month"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={view === option}
+                  onClick={() => {
+                    setView(option);
+                    if (isMobile) setIsExpanded(option === "month");
+                    setIsAgendaOpen(false);
+                  }}
+                  className={`min-h-6 rounded-full px-3 py-1 text-[10px] font-semibold capitalize ${
+                    view === option
+                      ? "bg-[var(--primary)] text-white"
+                      : "text-[var(--ink-soft)]"
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            aria-expanded={!isCalendarCollapsed}
+            onClick={() => {
+              setIsCalendarCollapsed((current) => !current);
+              if (isExpanded) {
+                setIsExpanded(false);
+                setIsAgendaOpen(false);
+              }
+            }}
+            className="calendar-day-action calendar-day-action--toggle rounded-lg px-3 py-2 text-xs font-extrabold"
           >
-            {(["week", "month"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={view === option}
-                onClick={() => {
-                  setView(option);
-                  if (isMobile && option === "month") setIsExpanded(true);
-                  setIsAgendaOpen(false);
-                }}
-                className={`min-h-6 rounded-full px-3 py-1 text-[10px] font-semibold capitalize ${
-                  view === option
-                    ? "bg-[var(--primary)] text-white"
-                    : "text-[var(--ink-soft)]"
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+            {isCalendarCollapsed ? "Expand" : "Collapse"}
+          </button>
         </div>
-      )}
+      </div>
       <div
         className={
           isCalendarCollapsed
@@ -1007,7 +1007,7 @@ export default function CalendarOverview({
                     </span>
                     <span
                       className={`mx-auto mt-1 flex h-7 w-7 items-center justify-center rounded-full text-sm font-extrabold ${
-                        isToday
+                        isToday || isSelected
                           ? "bg-[var(--primary)] text-white"
                           : "text-[var(--ink)]"
                       }`}

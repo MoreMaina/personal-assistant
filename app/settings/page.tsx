@@ -54,6 +54,18 @@ export default function GeneralSettingsPage() {
   const [catalogImportError, setCatalogImportError] = useState("");
 
   useEffect(() => {
+    if (!saved) return;
+    const timeout = window.setTimeout(() => setSaved(false), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [saved]);
+
+  useEffect(() => {
+    if (!catalogImportMessage) return;
+    const timeout = window.setTimeout(() => setCatalogImportMessage(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [catalogImportMessage]);
+
+  useEffect(() => {
     const program = getGlobalProgram();
     setProgramName(program?.name ?? "");
     setStudyYear(String(getAcademicSettings().studyYear));

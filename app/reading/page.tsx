@@ -130,6 +130,12 @@ export default function ReadingPage() {
   } | null>(null);
   const [exportFeedback, setExportFeedback] = useState("");
   const [deleteEssaysError, setDeleteEssaysError] = useState("");
+
+  useEffect(() => {
+    if (!exportFeedback) return;
+    const timeout = window.setTimeout(() => setExportFeedback(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [exportFeedback]);
   const [exportShowManualCopy, setExportShowManualCopy] = useState(false);
   const [exportCopyContent, setExportCopyContent] = useState("");
 

@@ -200,6 +200,12 @@ export default function ClassesPage() {
   const [studyLinkError, setStudyLinkError] = useState("");
   const [notice, setNotice] = useState("");
 
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
   // Calendar events and tasks
   const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
   const [showPlannerForm, setShowPlannerForm] = useState(false);
@@ -317,20 +323,6 @@ export default function ClassesPage() {
   }, [classList]);
 
 
-
-  const activeDays = new Set(classList.map((item) => item.day)).size;
-
-  const weeklyMinutes = classList.reduce((total, item) => {
-    const [startHour, startMinute] = item.start.split(":").map(Number);
-    const [endHour, endMinute] = item.end.split(":").map(Number);
-
-    const duration =
-      endHour * 60 +
-      endMinute -
-      (startHour * 60 + startMinute);
-
-    return total + Math.max(0, duration);
-  }, 0);
 
 
   useEffect(() => {
@@ -1013,39 +1005,6 @@ export default function ClassesPage() {
           {notice}
         </div>
       )}
-
-      {/* Weekly class summary */}
-      <section className="mb-6 grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-3 shadow-[0_3px_0_var(--primary-dark)] sm:p-4">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
-            Classes
-          </p>
-          <p className="mt-2 font-[var(--font-heading)] text-2xl font-bold text-[var(--primary)] sm:text-3xl">
-            {classList.length}
-          </p>
-          <p className="text-xs font-bold text-[var(--ink-soft)]">per week</p>
-        </div>
-
-        <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)] sm:p-4">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary)]">
-            Busy days
-          </p>
-          <p className="mt-2 font-[var(--font-heading)] text-2xl font-bold text-[var(--primary)] sm:text-3xl">
-            {activeDays}
-          </p>
-          <p className="text-xs font-bold text-[var(--ink-soft)]">out of 7</p>
-        </div>
-
-        <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)] sm:p-4">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary-dark)]">
-            Time
-          </p>
-          <p className="mt-2 whitespace-nowrap font-[var(--font-heading)] text-[11px] font-bold leading-tight tracking-tight text-[var(--primary-dark)] sm:text-2xl">
-            {formatDuration(weeklyMinutes)}
-          </p>
-          <p className="text-xs font-bold text-[var(--ink-soft)]">per week</p>
-        </div>
-      </section>
 
       {studyLinkError && (
         <p
