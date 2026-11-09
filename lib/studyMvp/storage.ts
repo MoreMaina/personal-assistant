@@ -8,7 +8,6 @@ import {
 } from "./reviewEngine";
 
 import type {
-  Course,
   EngineChangeRecord,
   EntityId,
   ISODate,
@@ -18,7 +17,6 @@ import type {
   StudyMvpState,
   StudySettings,
   TaskEvent,
-  Unit,
   WeekMetrics,
   WorkSession,
   StudySessionSectionId,
@@ -1320,62 +1318,60 @@ export function createEmptyStudyState(
   };
 }
 
+
 /**
- * Create the default four-course, twelve-unit scaffold.
- * This is an explicit onboarding action, not a side effect of loading.
+ * Remove only the untouched demo scaffold created by the former onboarding
+ * action. Any edited catalogue or associated learning history is preserved.
  */
-export function createDefaultCourseScaffold(options: {
-  now?: ISODateTime;
-  idFactory?: (prefix: string) => EntityId;
-} = {}): Pick<StudyMvpState, "courses" | "units"> {
-  const now = options.now ?? new Date().toISOString();
-  const idFactory = options.idFactory ?? defaultIdFactory;
-
-  if (!hasTimezone(now)) {
-    throw new StudyStorageError(
-      "invalid-shape",
-      "Scaffold creation requires an ISO 8601 timestamp.",
-    );
-  }
-
-  const courses: Course[] = [];
-  const units: Unit[] = [];
-
-  const roman = ["I", "II", "III", "IV"];
-  const colors = [
-    "#557C8A",
-    "#A46D51",
-    "#71845C",
-    "#8173A5",
+export function removeUnusedStarterScaffold(
+  state: StudyMvpState,
+): StudyMvpState {
+  const expectedCourses = [
+    { name: "Course I", code: "C1", color: "#557C8A" },
+    { name: "Course II", code: "C2", color: "#A46D51" },
+    { name: "Course III", code: "C3", color: "#71845C" },
+    { name: "Course IV", code: "C4", color: "#8173A5" },
   ];
-
   const letters = "abcdefghijkl";
 
-  for (let courseIndex = 0; courseIndex < 4; courseIndex += 1) {
-    const courseId = idFactory("course");
-
-    courses.push({
-      id: courseId,
-      name: `Course ${roman[courseIndex]}`,
-      code: `C${courseIndex + 1}`,
-      color: colors[courseIndex],
-      created_at: now,
+  const exactCourses = state.courses.length === expectedCourses.length &&
+    expectedCourses.every((expected, index) => {
+      const course = state.courses[index];
+      return course.name === expected.name &&
+        course.code === expected.code &&
+        course.color === expected.color;
     });
 
-    for (let offset = 0; offset < 3; offset += 1) {
-      const unitIndex = courseIndex * 3 + offset;
+  const exactUnits = state.units.length === 12 &&
+    state.courses.every((course, courseIndex) =>
+      state.units
+        .filter((unit) => unit.course_id === course.id)
+        .every((unit, offset) => {
+          const letterIndex = courseIndex * 3 + offset;
+          return unit.code === letters[letterIndex] &&
+            unit.name === `Unit ${letters[letterIndex]}` &&
+            unit.order_index === offset + 1;
+        }) &&
+      state.units.filter((unit) => unit.course_id === course.id).length === 3,
+    );
 
-      units.push({
-        id: idFactory("unit"),
-        course_id: courseId,
-        code: letters[unitIndex],
-        name: `Unit ${letters[unitIndex]}`,
-        order_index: offset + 1,
-      });
-    }
-  }
+  const hasLearningRecords =
+    state.topics.length > 0 ||
+    state.lectures.length > 0 ||
+    state.retrieval_tasks.length > 0 ||
+    state.review_events.length > 0 ||
+    state.task_events.length > 0 ||
+    state.work_sessions.length > 0 ||
+    state.assignments.length > 0 ||
+    state.exams.length > 0 ||
+    state.weekly_metrics.length > 0 ||
+    state.settings_change_history.length > 0 ||
+    (state.settings.engine_change_history?.length ?? 0) > 0 ||
+    (state.daily_plan_history?.length ?? 0) > 0 ||
+    (state.daily_plan_executions?.length ?? 0) > 0;
 
-  return { courses, units };
+  if (!exactCourses || !exactUnits || hasLearningRecords) return state;
+  return { ...state, courses: [], units: [] };
 }
 
 export function loadStudyMvpState(

@@ -84,6 +84,57 @@ export function addClass(
   return createdClass;
 }
 
+/** Update the editable details of an existing weekly class. */
+export function updateClass(
+  classId: number,
+  updates: Omit<ClassItem, "id">,
+): ClassItem[] {
+  const current = getClasses();
+  let found = false;
+
+  const next = current.map((item) => {
+    if (item.id !== classId) return item;
+    found = true;
+    const updated = { ...item, ...updates, id: classId };
+    if (!updates.studyUnitId) delete updated.studyUnitId;
+    return updated;
+  });
+
+  if (!found) throw new Error(`Class "${classId}" was not found.`);
+
+  saveClasses(next);
+  return next;
+}
+
+/** Delete a weekly class and remove its cancelled-session references. */
+export function deleteClass(classId: number): ClassItem[] {
+  const current = getClasses();
+  const next = current.filter((item) => item.id !== classId);
+
+  if (next.length === current.length) {
+    throw new Error(`Class "${classId}" was not found.`);
+  }
+
+  saveClasses(next);
+
+  const sessions = getCancelledSessions();
+  let sessionsChanged = false;
+
+  for (const [date, ids] of Object.entries(sessions)) {
+    const remaining = ids.filter((id) => id !== classId);
+    if (remaining.length === ids.length) continue;
+    sessionsChanged = true;
+    if (remaining.length > 0) sessions[date] = remaining;
+    else delete sessions[date];
+  }
+
+  if (sessionsChanged) {
+    localStorage.setItem(CANCELLED_KEY, JSON.stringify(sessions));
+  }
+
+  return next;
+}
+
 
 /** Link or unlink a class using a stable Study Unit ID. */
 export function updateClassStudyUnit(

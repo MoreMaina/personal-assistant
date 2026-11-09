@@ -12,7 +12,7 @@ import {
 
 import Button from "@/app/components/Button";
 import CalendarOverview from "@/app/components/CalendarOverview";
-import { addClass, getClasses, updateClassStudyUnit } from "@/lib/classStorage";
+import { addClass, deleteClass, getClasses, updateClass } from "@/lib/classStorage";
 import type { ClassItem } from "@/lib/classes";
 import {
   addCalendarEvent,
@@ -169,26 +169,12 @@ export default function ClassesPage() {
           ? "No Study Units are available yet. Create or import Units on the Study page, or leave classes unlinked."
           : "";
 
-  function getStudyUnitLabel(studyUnitId?: string): string {
-    if (!studyUnitId) return "No Study Unit linked";
 
-    if (!studyState || !studyLinksReady) {
-      return `Saved Study Unit link (${studyUnitId}); catalog not ready`;
-    }
-
-    const unit = studyState.units.find((item) => item.id === studyUnitId);
-    if (!unit) return `Unavailable Study Unit (${studyUnitId})`;
-
-    const course = studyState.courses.find(
-      (item) => item.id === unit.course_id,
-    );
-
-    return `${course?.code ?? course?.name ?? "Course"} · ${unit.code} — ${unit.name}`;
-  }
 
   const [classList, setClassList] = useState(getClasses);
   const [selectedClassOverviewDay, setSelectedClassOverviewDay] = useState("Monday");
   const [showClassForm, setShowClassForm] = useState(false);
+  const [editingClassId, setEditingClassId] = useState<number | null>(null);
 
   const [name, setName] = useState("");
   const [type, setType] = useState("Lecture");
@@ -464,104 +450,22 @@ export default function ClassesPage() {
     setStudyUnitId("");
     setClassError("");
     setStudyLinkError("");
+    setEditingClassId(null);
     setShowClassForm(false);
   }, []);
 
-  function handleClassStudyUnitChange(
-    classId: number,
-    selectedUnitId: string,
-  ) {
-    setStudyLinkError("");
+  function openClassForm(item?: ClassItem) {
+    setEditingClassId(item?.id ?? null);
+    setName(item?.name ?? "");
+    setType(item?.type ?? "Lecture");
+    setDay(item?.day ?? "Monday");
+    setStart(item?.start ?? "");
+    setEnd(item?.end ?? "");
+    setStudyUnitId(item?.studyUnitId ?? "");
     setClassError("");
+    setStudyLinkError("");
     setNotice("");
-
-    if (!studyLinksReady || !studyState) {
-      setStudyLinkError(
-        studyLinkBlockReason ||
-          "Study is not ready. No class link was changed.",
-      );
-      return;
-    }
-
-    if (
-      selectedUnitId &&
-      !studyState.units.some((unit) => unit.id === selectedUnitId)
-    ) {
-      setStudyLinkError(
-        "That Study Unit is no longer available. Refresh Study and choose an available Unit.",
-      );
-      return;
-    }
-
-    try {
-      const updatedClasses = updateClassStudyUnit(
-        classId,
-        selectedUnitId || undefined,
-      );
-      setClassList(updatedClasses);
-
-      const updatedClass = updatedClasses.find(
-        (item) => item.id === classId,
-      );
-
-      const selectedUnit = studyState.units.find(
-        (unit) => unit.id === selectedUnitId,
-      );
-
-      setNotice(
-        selectedUnit
-          ? `Linked ${updatedClass?.name ?? "class"} to ${selectedUnit.name}.`
-          : `Removed the Study Unit link from ${updatedClass?.name ?? "class"}.`,
-      );
-    } catch (error) {
-      setStudyLinkError(
-        error instanceof Error
-          ? error.message
-          : "Could not update the class link.",
-      );
-    }
-  }
-
-  function renderStudyUnitLinkSelect(item: ClassItem) {
-    return (
-      <div className="mt-2 min-w-0 space-y-1">
-        {item.studyUnitId && (
-          <p className="break-words text-[10px] font-semibold text-[var(--primary-dark)]">
-            {getStudyUnitLabel(item.studyUnitId)}
-          </p>
-        )}
-        <label className="block">
-          <span className="sr-only">Study Unit link for {item.name}</span>
-          <select
-            aria-label={`Study Unit link for ${item.name}`}
-            value={item.studyUnitId ?? ""}
-            disabled={!studyLinksReady}
-            onChange={(event) =>
-              handleClassStudyUnitChange(item.id, event.target.value)
-            }
-            className="w-full min-w-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-1 py-1 text-[10px] font-semibold"
-          >
-            <option value="">No Study Unit linked</option>
-            {item.studyUnitId &&
-              !studyUnits.some((unit) => unit.id === item.studyUnitId) && (
-                <option value={item.studyUnitId}>
-                  Saved Unit ID — {item.studyUnitId} (unavailable)
-                </option>
-              )}
-            {studyUnits.map((unit) => {
-              const course = studyState?.courses.find(
-                (candidate) => candidate.id === unit.course_id,
-              );
-              return (
-                <option key={unit.id} value={unit.id}>
-                  {course?.code ?? course?.name ?? "Course"} · {unit.code} — {unit.name}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-      </div>
-    );
+    setShowClassForm(true);
   }
 
   function handleClassSubmit(event: FormEvent<HTMLFormElement>) {
@@ -584,8 +488,16 @@ export default function ClassesPage() {
       return;
     }
 
+    const existingClass = editingClassId === null
+      ? undefined
+      : classList.find((item) => item.id === editingClassId);
+    const keepingSavedUnitLink = Boolean(
+      existingClass && existingClass.studyUnitId === studyUnitId,
+    );
+
     if (
       studyUnitId &&
+      !keepingSavedUnitLink &&
       (
         !studyLinksReady ||
         !studyState ||
@@ -600,22 +512,82 @@ export default function ClassesPage() {
     }
 
     try {
-      const createdClass = addClass({
+      const details = {
         name: name.trim(),
         type,
         day,
         start,
         end,
         studyUnitId: studyUnitId || undefined,
-      });
+      };
 
-      setClassList((current) => [...current, createdClass]);
-      setNotice(`${createdClass.name} has been added to your timetable.`);
+      if (editingClassId !== null) {
+        const updatedClasses = updateClass(editingClassId, details);
+        setClassList(updatedClasses);
+        setNotice(`${details.name} has been updated in your timetable.`);
+      } else {
+        const createdClass = addClass(details);
+        setClassList((current) => [...current, createdClass]);
+        setNotice(`${createdClass.name} has been added to your timetable.`);
+      }
+
       resetClassForm();
     } catch (caughtError) {
       console.error("Could not save class:", caughtError);
       setClassError("The class could not be saved. Please try again.");
     }
+  }
+
+
+  function handleClassDelete(item: ClassItem) {
+    const confirmed = window.confirm(
+      `Delete ${item.name} from your weekly class schedule?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const updatedClasses = deleteClass(item.id);
+      setClassList(updatedClasses);
+      if (editingClassId === item.id) resetClassForm();
+      if (searchHighlightClassId === item.id) setSearchHighlightClassId(null);
+      setNotice(`${item.name} has been deleted from your timetable.`);
+    } catch (caughtError) {
+      console.error("Could not delete class:", caughtError);
+      setNotice(`Could not delete ${item.name}. Please try again.`);
+    }
+  }
+
+  function renderClassActions(item: ClassItem) {
+    return (
+      <details data-smart-menu className="relative shrink-0">
+        <summary
+          aria-label={`More actions for ${item.name}`}
+          title={`More actions for ${item.name}`}
+          className="calendar-class-menu__trigger flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border"
+        >
+          <span aria-hidden="true">⋯</span>
+        </summary>
+        <div
+          data-smart-menu-panel
+          className="calendar-class-menu__panel absolute right-0 top-full z-30 mt-1 min-w-40 rounded-xl border p-1.5"
+        >
+          <button
+            type="button"
+            onClick={() => openClassForm(item)}
+            className="w-full rounded-lg px-3 py-2.5 text-left text-sm"
+          >
+            Edit class
+          </button>
+          <button
+            type="button"
+            onClick={() => handleClassDelete(item)}
+            className="w-full rounded-lg px-3 py-2.5 text-left text-sm"
+          >
+            Delete class
+          </button>
+        </div>
+      </details>
+    );
   }
 
   const resetPlannerForm = useCallback(() => {
@@ -1017,7 +989,6 @@ export default function ClassesPage() {
 
       <CalendarOverview
         classes={classList}
-        getStudyUnitLabel={getStudyUnitLabel}
         events={calendarEvents}
         tasks={calendarTasks}
         onAddEvent={(date) => {
@@ -1066,11 +1037,7 @@ export default function ClassesPage() {
               {!showClassForm && (
                 <Button
                   variant="primary"
-                  onClick={() => {
-                    setClassError("");
-                    setNotice("");
-                    setShowClassForm(true);
-                  }}
+                  onClick={() => openClassForm()}
                  className="action-primary--forest">
                   + Add class
                 </Button>
@@ -1085,9 +1052,11 @@ export default function ClassesPage() {
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-2xl">Add a class</h2>
+              <h2 className="text-2xl">{editingClassId === null ? "Add a class" : "Edit class"}</h2>
               <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                Add one of your recurring weekly classes.
+                {editingClassId === null
+                  ? "Add one of your recurring weekly classes."
+                  : "Update this class and its optional Study Unit link."}
               </p>
             </div>
 
@@ -1131,7 +1100,7 @@ export default function ClassesPage() {
                 {studyUnitId &&
                   !studyUnits.some((unit) => unit.id === studyUnitId) && (
                     <option value={studyUnitId}>
-                      Saved Unit ID — ${studyUnitId} (unavailable)
+                      Saved Study Unit — {studyUnitId} (unavailable)
                     </option>
                   )}
                 {studyUnits.map((unit) => {
@@ -1225,7 +1194,7 @@ export default function ClassesPage() {
 
           <div className="flex justify-end border-t border-[var(--border)] pt-5">
             <Button variant="primary" type="submit" className="w-full sm:w-auto action-primary--forest">
-              Save class
+              {editingClassId === null ? "Save class" : "Save changes"}
             </Button>
           </div>
         </form>
@@ -1264,22 +1233,26 @@ export default function ClassesPage() {
                           <article
                             key={item.id}
                             id={`class-record-${item.id}`}
-                            className={`rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-2 ${
+                            className={`calendar-class-record rounded-xl border p-2 ${
                               searchHighlightClassId === item.id
                                 ? "ring-2 ring-[var(--accent)]"
                                 : ""
                             }`}
                           >
-                            <p className="text-xs font-extrabold text-[var(--primary-dark)]">
-                              {item.start}–{item.end}
-                            </p>
-                            <p className="mt-1 break-words text-xs font-extrabold text-[var(--ink)]">
-                              {item.name}
-                            </p>
-                            <p className="mt-1 text-xs font-bold text-[var(--muted)]">
-                              {item.type}
-                            </p>
-                            {renderStudyUnitLinkSelect(item)}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-[var(--primary-dark)]">
+                                  {item.start}–{item.end}
+                                </p>
+                                <p className="mt-1 break-words text-sm font-semibold text-[var(--ink)]">
+                                  {item.name}
+                                </p>
+                                <p className="mt-1 text-xs text-[var(--muted)]">
+                                  {item.type}
+                                </p>
+                              </div>
+                              {renderClassActions(item)}
+                            </div>
                           </article>
                         ))}
                         {dayClasses.length === 0 && (
@@ -1339,7 +1312,7 @@ export default function ClassesPage() {
                           <div
                             key={item.id}
                             id={`class-record-mobile-${item.id}`}
-                            className={`flex items-center gap-3 border-b border-[var(--border)] py-2 ${
+                            className={`calendar-class-record flex items-center gap-3 border-b border-[var(--border)] py-2 ${
                               searchHighlightClassId === item.id
                                 ? "rounded-lg bg-[var(--primary-soft)] px-2 ring-2 ring-[var(--accent)]"
                                 : ""
@@ -1349,14 +1322,14 @@ export default function ClassesPage() {
                               {item.start}–{item.end}
                             </p>
                             <div className="min-w-0 flex-1">
-                              <p className="break-words text-sm font-medium text-[var(--ink)]">
+                              <p className="break-words text-sm font-semibold text-[var(--ink)]">
                                 {item.name}
                               </p>
                               <p className="mt-0.5 text-xs text-[var(--muted)]">
                                 {item.type}
                               </p>
-                              {renderStudyUnitLinkSelect(item)}
                             </div>
+                            {renderClassActions(item)}
                           </div>
                         ))}
                     </div>

@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type FormEvent,
 } from "react";
 import Link from "next/link";
@@ -47,9 +48,10 @@ import {
 } from "@/lib/studyMvp/workflow";
 
 import {
-  createDefaultCourseScaffold,
   exportStudyMvpJSON,
+  removeUnusedStarterScaffold,
 } from "@/lib/studyMvp/storage";
+import { unlinkClassesFromStudyUnits } from "@/lib/classStorage";
 
 import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
@@ -2791,6 +2793,33 @@ export default function StudyMvpPage() {
   } = useCloudStudyState();
 
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const starterScaffoldCleanupAttempted = useRef(false);
+
+  useEffect(() => {
+    if (starterScaffoldCleanupAttempted.current || !state) return;
+    if (cloudSyncStatus !== "ready" && cloudSyncStatus !== "synced") return;
+
+    const cleanedState = removeUnusedStarterScaffold(state);
+    if (cleanedState === state) {
+      starterScaffoldCleanupAttempted.current = true;
+      return;
+    }
+
+    // This cleanup is restricted to the exact untouched scaffold. If the
+    // catalogue was edited or any learning history exists, it is preserved.
+    starterScaffoldCleanupAttempted.current = true;
+    const removedUnitIds = state.units.map((unit) => unit.id);
+    if (
+      persist(
+        cleanedState,
+        "Removed the unused starter examples. Your Study catalogue is now ready for your real courses.",
+      )
+    ) {
+      unlinkClassesFromStudyUnits(removedUnitIds);
+    } else {
+      starterScaffoldCleanupAttempted.current = false;
+    }
+  }, [state, cloudSyncStatus, persist]);
 
 useEffect(() => {
   if (!isCatalogOpen) return;
@@ -3432,34 +3461,6 @@ function movePlanningItemTo(
       return current.includes(id) ? current : [...current, id];
     }
     return current.filter((value) => value !== id);
-  }
-
-  function startTrialWithScaffold() {
-    if (!state || state.courses.length > 0) return;
-
-    const currentDate = today;
-    const scaffold = createDefaultCourseScaffold({
-      now: new Date().toISOString(),
-      idFactory: defaultIdFactory,
-    });
-
-    const next: StudyMvpState = {
-      ...state,
-      courses: scaffold.courses,
-      units: scaffold.units,
-      settings: {
-        ...state.settings,
-        trial_start_date: currentDate,
-        trial_end_date: addCalendarDays(currentDate, 27),
-        week4_evaluation_start: addCalendarDays(currentDate, 21),
-        week4_evaluation_end: addCalendarDays(currentDate, 27),
-      },
-    };
-
-    persist(
-      next,
-      "Starter scaffold created. Your four-week engine trial has started.",
-    );
   }
 
   function startTrial() {
@@ -4173,7 +4174,7 @@ function movePlanningItemTo(
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 pb-12">
+    <div className="study-page mx-auto max-w-6xl space-y-8 pb-12">
       <header className="overflow-hidden rounded-2xl bg-[#23412f] p-4 text-white shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="rounded-full border border-white/25 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.15em]">
@@ -4236,18 +4237,15 @@ function movePlanningItemTo(
           <SectionHeading
             eyebrow="First steps"
             title="Set up your study workspace"
-            detail="Start with a blank catalog and import your real course content, or create the four-course, twelve-unit starter scaffold. Creating the scaffold also starts the four-week engine trial."
+            detail="Your catalogue starts empty. Import your actual courses, units and topics to build a workspace around your programme. No sample courses or placeholder units are inserted."
           />
           <button
             type="button"
-            onClick={startTrialWithScaffold}
+            onClick={openCatalogTools}
             className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#1a2e24]"
           >
-            Create starter scaffold and start trial
+            Import your course catalogue
           </button>
-          <p className="mt-3 text-xs font-semibold text-stone-500">
-            You can import a catalog without creating the scaffold first.
-          </p>
         </section>
       )}
 
@@ -4913,10 +4911,7 @@ function movePlanningItemTo(
                 setProblem("");
                 setNotice("");
               }}
-              placeholder={[
-                "course_code,course_name,unit_code,unit_name,topic_number,topic_title,learning_objective,objective_type",
-                'CS101,Computer Science,a,Unit a,1,Variables,Explain variable scope,explain',
-              ].join("\n")}
+              placeholder="course_code,course_name,unit_code,unit_name,topic_number,topic_title,learning_objective,objective_type"
               className="w-full rounded-2xl border border-[#d8ccb8] bg-white p-3 font-mono text-xs font-medium leading-6 text-stone-700 outline-none focus:border-[#557c61] focus:ring-2 focus:ring-[#dce8d8]"
             />
           </label>

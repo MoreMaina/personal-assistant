@@ -1045,14 +1045,9 @@ export default function TodayPage() {
                   className="card flex items-center justify-between gap-4 bg-[var(--surface)] p-4 sm:p-5 transition hover:-translate-y-1"
                 >
                   <div className="min-w-0">
-                    <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
-                      {getTypeLabel(
-                        task.type,
-                      )}{" "}
-                      ·{" "}
-                      {formatDuration(
-                        task.durationMinutes,
-                      )}
+                    <div className="up-next__metadata text-xs text-[var(--muted)]">
+                      <span className="up-next__type">{getTypeLabel(task.type)}</span>
+                      <span className="font-normal"> · {formatDuration(task.durationMinutes)}</span>
                     </div>
 
                     <h3 className="mt-1 break-words text-lg sm:text-xl">

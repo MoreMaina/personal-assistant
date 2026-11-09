@@ -6,7 +6,7 @@ import {
   appendTaskEvents,
   appendWeeklyMetricsSnapshot,
   changeStudySettings,
-  createDefaultCourseScaffold,
+  removeUnusedStarterScaffold,
   createEmptyStudyState,
   exportStudyMvpJSON,
   getLastFinalExamDate,
@@ -137,32 +137,93 @@ describe("Study MVP initial state", () => {
     expect(state.settings.defer_limit).toBe(3);
   });
 
-  it("creates exactly four courses and twelve units for explicit onboarding", () => {
-    const result = createDefaultCourseScaffold({
+  it("clears only an untouched legacy starter scaffold", () => {
+    const state = createEmptyStudyState({
       now: NOW,
-      idFactory: (prefix) => `${prefix}-${Math.random()}`,
+      timezone: "Africa/Nairobi",
     });
+    const courseRows = [
+      { id: "course-1", name: "Course I", code: "C1", color: "#557C8A" },
+      { id: "course-2", name: "Course II", code: "C2", color: "#A46D51" },
+      { id: "course-3", name: "Course III", code: "C3", color: "#71845C" },
+      { id: "course-4", name: "Course IV", code: "C4", color: "#8173A5" },
+    ];
+    state.courses = courseRows.map((course) => ({
+      ...course,
+      created_at: NOW,
+    }));
+    state.units = [..."abcdefghijkl"].map((letter, index) => ({
+      id: `unit-${letter}`,
+      course_id: courseRows[Math.floor(index / 3)].id,
+      code: letter,
+      name: `Unit ${letter}`,
+      order_index: (index % 3) + 1,
+    }));
 
-    expect(result.courses).toHaveLength(4);
-    expect(result.units).toHaveLength(12);
-    expect(result.courses.map((course) => course.name)).toEqual([
-      "Course I",
-      "Course II",
-      "Course III",
-      "Course IV",
-    ]);
+    const cleaned = removeUnusedStarterScaffold(state);
 
-    expect(result.units.map((unit) => unit.code)).toEqual(
-      [..."abcdefghijkl"],
+    expect(cleaned.courses).toEqual([]);
+    expect(cleaned.units).toEqual([]);
+    expect(state.courses).toHaveLength(4);
+    expect(state.units).toHaveLength(12);
+  });
+
+  it("preserves the starter-shaped catalogue when study history exists", () => {
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "Africa/Nairobi",
+    });
+    const courseRows = [
+      { id: "course-1", name: "Course I", code: "C1", color: "#557C8A" },
+      { id: "course-2", name: "Course II", code: "C2", color: "#A46D51" },
+      { id: "course-3", name: "Course III", code: "C3", color: "#71845C" },
+      { id: "course-4", name: "Course IV", code: "C4", color: "#8173A5" },
+    ];
+    state.courses = courseRows.map((course) => ({
+      ...course,
+      created_at: NOW,
+    }));
+    state.units = [..."abcdefghijkl"].map((letter, index) => ({
+      id: `unit-${letter}`,
+      course_id: courseRows[Math.floor(index / 3)].id,
+      code: letter,
+      name: `Unit ${letter}`,
+      order_index: (index % 3) + 1,
+    }));
+    state.settings_change_history.push(
+      {} as (typeof state.settings_change_history)[number],
     );
 
-    for (const course of result.courses) {
-      expect(
-        result.units.filter(
-          (unit) => unit.course_id === course.id,
-        ),
-      ).toHaveLength(3);
-    }
+    expect(removeUnusedStarterScaffold(state)).toBe(state);
+    expect(state.courses).toHaveLength(4);
+    expect(state.units).toHaveLength(12);
+  });
+
+  it("preserves a customized catalogue instead of guessing that it is demo data", () => {
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "Africa/Nairobi",
+    });
+    state.courses = [
+      {
+        id: "course-real",
+        name: "My real course",
+        code: "REAL101",
+        color: "#557C8A",
+        created_at: NOW,
+      },
+    ];
+    state.units = [{
+      id: "unit-real",
+      course_id: "course-real",
+      code: "01",
+      name: "Foundations",
+      order_index: 1,
+    }];
+
+    expect(removeUnusedStarterScaffold(state)).toBe(state);
+    expect(state.courses).toHaveLength(1);
+    expect(state.units[0].name).toBe("Foundations");
   });
 
   it("does not create a scaffold implicitly when loading a fresh store", () => {

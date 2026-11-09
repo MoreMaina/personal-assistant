@@ -2279,13 +2279,13 @@ div[data-smart-menu-panel] button {
 .app-content .calendar-overview button[aria-label="Show google"] {
   min-height: 21px !important;
   padding: 2px 5px !important;
-  border: 1px solid #6842a6 !important;
+  border: 1px solid #6750a4 !important;
   border-radius: 999px !important;
   font-size: 9px !important;
   line-height: 1.1 !important;
 }
 .app-content .calendar-overview button[aria-label="Show google"][aria-pressed="true"] {
-  box-shadow: 0 2px 0 #6842a6 !important;
+  box-shadow: 0 2px 0 #6750a4 !important;
 }
 .app-content .calendar-overview button[aria-label="Show google"]:active {
   transform: translateY(2px);
@@ -3717,7 +3717,7 @@ body:has(.calendar-page) .mobile-nav__content--active {
   color: #694331 !important;
 }
 
-.app-content .calendar-page [class*="bg-[#eee5ff]"],
+.app-content .calendar-page [class*="bg-[#eee8f8]"],
 .app-content .calendar-page [class*="bg-[#f5f0ff]"] {
   border-color: #d2c7e6 !important;
   background: #f2eff8 !important;
@@ -3742,8 +3742,8 @@ body:has(.calendar-page) .mobile-nav__content--active {
   color: #694600 !important;
 }
 
-.app-content .calendar-page [class*="text-[#46267d]"],
-.app-content .calendar-page [class*="text-[#6842a6]"] {
+.app-content .calendar-page [class*="text-[#49366f]"],
+.app-content .calendar-page [class*="text-[#6750a4]"] {
   color: #49366f !important;
 }
 
@@ -3839,13 +3839,381 @@ body:has(.calendar-page) .mobile-nav__content--active {
   }
 }
 
-/* Today: keep the task itself prominent, with its supporting details regular. */
+/* Today Up Next: bold only the task type; keep its title and details regular. */
 .app-content .today-page__up-next a.card h3 {
-  font-weight: var(--p6-weight-bold) !important;
+  font-weight: var(--p6-weight-regular) !important;
 }
 
 .app-content .today-page__up-next a.card > div > div:first-child,
 .app-content .today-page__up-next a.card > div > p {
   font-weight: var(--p6-weight-regular) !important;
+}
+
+.app-content .today-page__up-next a.card > div > .up-next__metadata > .up-next__type {
+  font-weight: var(--p6-weight-bold) !important;
+}
+
+/* Palette 6 refinement batch 2: Calendar corrections and Study screen. */
+.app-content .calendar-page [class*="border-2"] {
+  border-width: 1px !important;
+}
+
+.app-content .calendar-page [class*="border-[var(--border)]"],
+.app-content .calendar-page [class*="border-[var(--primary-dark)]"],
+.app-content .calendar-page [class*="border-[#1a2e24]"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+
+.app-content .calendar-page *,
+.app-content .calendar-page [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .card,
+.app-content .calendar-page .calendar-overview:not(.calendar-overview--expanded),
+.app-content .calendar-page .calendar-page__management > details,
+.app-content .calendar-page article.card {
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .calendar-page [data-smart-menu-panel] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+.app-content .calendar-page button,
+.app-content .calendar-page button * {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.app-content .calendar-page .calendar-collapse-toggle {
+  min-height: var(--p6-control-md);
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background-color var(--p6-motion-base) var(--p6-ease-standard),
+    border-color var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+.app-content .calendar-page .calendar-collapse-toggle:hover,
+.app-content .calendar-page .calendar-collapse-toggle:active,
+.app-content .calendar-page .calendar-collapse-toggle[aria-expanded="true"],
+.app-content .calendar-page .calendar-collapse-toggle[aria-expanded="false"] {
+  border-color: var(--p6-border-control) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.app-content .calendar-page :focus-visible {
+  outline: 3px solid var(--p6-focus) !important;
+  outline-offset: 3px;
+}
+
+/* Use one consistent Google Calendar purple for chips, dots and filters. */
+.app-content .calendar-page .calendar-overview [class*="bg-[#eee8f8]"],
+.app-content .calendar-page button[aria-label="Show google"] {
+  border-color: #d8cfee !important;
+  background: #eee8f8 !important;
+  color: #49366f !important;
+}
+
+.app-content .calendar-page .calendar-overview [class*="bg-[#6750a4]"] {
+  background: #6750a4 !important;
+}
+
+.app-content .calendar-page .calendar-class-record {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-selected) !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__trigger {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__trigger:hover,
+.app-content .calendar-page .calendar-class-menu__trigger:active {
+  border-color: var(--p6-border-control) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__panel button {
+  min-height: var(--p6-control-md);
+  color: var(--p6-text) !important;
+  text-align: left;
+}
+
+.app-content .calendar-page .calendar-class-menu__panel button:hover {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__panel button:last-child {
+  color: var(--p6-error-text) !important;
+}
+
+/* Study: carry Palette 6 through the whole planning and learning workspace. */
+.app-content .study-page {
+  color: var(--p6-text);
+  font-family: var(--font-body);
+  font-size: var(--p6-font-body);
+  font-weight: var(--p6-weight-regular);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .study-page h1,
+.app-content .study-page h2,
+.app-content .study-page h3,
+.app-content .study-page h4 {
+  color: var(--p6-text);
+  font-family: var(--font-heading);
+  font-weight: var(--p6-weight-semibold);
+  letter-spacing: -0.015em;
+  line-height: var(--p6-line-heading);
+  text-transform: none;
+}
+
+.app-content .study-page h1 {
+  font-size: var(--p6-font-page-title);
+}
+
+.app-content .study-page h2 {
+  font-size: var(--p6-font-section-title);
+}
+
+.app-content .study-page h3,
+.app-content .study-page h4 {
+  font-size: var(--p6-font-card-title);
+}
+
+.app-content .study-page p {
+  max-width: var(--p6-measure-body);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .study-page section[class*="rounded-3xl"] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .study-page section[class*="rounded-2xl"] {
+  border-color: var(--p6-border-decorative);
+}
+
+.app-content .study-page section[id] {
+  scroll-margin-top: 1.5rem;
+}
+
+.app-content .study-page .card {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .study-page .text-xs {
+  font-size: var(--p6-font-metadata);
+  line-height: var(--p6-line-compact);
+}
+
+.app-content .study-page .text-sm {
+  font-size: var(--p6-font-supporting);
+}
+
+.app-content .study-page .font-black,
+.app-content .study-page .font-extrabold,
+.app-content .study-page .font-bold {
+  font-weight: var(--p6-weight-semibold) !important;
+}
+
+.app-content .study-page .font-semibold,
+.app-content .study-page .font-medium {
+  font-weight: var(--p6-weight-medium) !important;
+}
+
+.app-content .study-page [class*="uppercase"] {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.app-content .study-page [class*="border-[#d8ccb8]"],
+.app-content .study-page [class*="border-stone-"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+
+.app-content .study-page [class*="bg-[#fffaf1]"],
+.app-content .study-page [class*="bg-white"] {
+  background: var(--p6-surface) !important;
+}
+
+.app-content .study-page [class*="bg-[#efe4d1]"] {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .study-page [class*="bg-[#23412f]"],
+.app-content .study-page button[class*="bg-emerald-900"],
+.app-content .study-page button[class*="bg-emerald-800"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-content .study-page [class*="bg-[#1a2e24]"],
+.app-content .study-page button[class*="hover:bg-emerald-800"]:hover {
+  background: var(--p6-primary-hover) !important;
+}
+
+.app-content .study-page [class*="text-[#23412f]"],
+.app-content .study-page [class*="text-stone-900"],
+.app-content .study-page [class*="text-stone-800"] {
+  color: var(--p6-text) !important;
+}
+
+.app-content .study-page [class*="text-stone-700"],
+.app-content .study-page [class*="text-stone-600"],
+.app-content .study-page [class*="text-stone-500"],
+.app-content .study-page [class*="text-stone-400"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .study-page [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.app-content .study-page > header {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--p6-radius-xl);
+  background: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page > header h1,
+.app-content .study-page > header span,
+.app-content .study-page > header button {
+  color: #ffffff;
+}
+
+.app-content .study-page > header a {
+  min-height: var(--p6-control-md);
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--p6-radius-md);
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.app-content .study-page > header button {
+  min-height: var(--p6-control-md);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--p6-radius-md);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff !important;
+}
+
+.app-content .study-page button {
+  min-height: var(--p6-control-md);
+  border-radius: var(--p6-radius-md);
+  font-family: var(--font-body);
+  font-weight: var(--p6-weight-semibold);
+  line-height: 1.25;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.app-content .study-page input:not([type="checkbox"]):not([type="radio"]),
+.app-content .study-page textarea,
+.app-content .study-page select {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--p6-control-md);
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  padding: 0.625rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: var(--p6-font-input) !important;
+  font-weight: var(--p6-weight-regular) !important;
+  line-height: 1.35;
+}
+
+.app-content .study-page input[type="checkbox"],
+.app-content .study-page input[type="radio"] {
+  accent-color: var(--p6-primary);
+}
+
+.app-content .study-page input:disabled,
+.app-content .study-page textarea:disabled,
+.app-content .study-page select:disabled,
+.app-content .study-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.app-content .study-page :focus-visible {
+  outline: 3px solid var(--p6-focus);
+  outline-offset: 3px;
+}
+
+.app-content .study-page [role="alert"] {
+  border-color: #e9c4bf !important;
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+.app-content .study-page [role="status"] {
+  border-color: #c4dfd1 !important;
+  background: var(--p6-success-bg) !important;
+  color: var(--p6-success-text) !important;
+}
+
+@media (max-width: 48rem) {
+  .app-content .study-page {
+    padding-bottom: 7rem;
+  }
+
+  .app-content .study-page > header {
+    padding: 1.125rem !important;
+  }
+
+  .app-content .study-page section[class*="p-5"],
+  .app-content .study-page section[class*="p-6"],
+  .app-content .study-page section[class*="p-8"] {
+    padding: 1rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-content .study-page *,
+  .app-content .calendar-page .calendar-collapse-toggle {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
 }
 

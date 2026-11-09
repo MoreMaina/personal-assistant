@@ -43,7 +43,6 @@ type CalendarAgendaEntry = {
 
 type CalendarOverviewProps = {
   classes: ClassItem[];
-  getStudyUnitLabel?: (studyUnitId: string) => string;
   events: CalendarEvent[];
   tasks: CalendarTask[];
   onAddEvent: (date: string) => void;
@@ -169,7 +168,6 @@ function entryKindLabel(entry: CalendarAgendaEntry): string {
 
 export default function CalendarOverview({
   classes,
-  getStudyUnitLabel,
   events,
   tasks,
   onAddEvent,
@@ -359,9 +357,7 @@ export default function CalendarOverview({
           title: classItem.name,
           startTime: classItem.start,
           endTime: classItem.end,
-          detail: classItem.studyUnitId && getStudyUnitLabel
-            ? `${classItem.type} · ${getStudyUnitLabel(classItem.studyUnitId)}`
-            : classItem.type,
+          detail: classItem.type,
           cancelled,
           classItem,
         });
@@ -501,7 +497,7 @@ export default function CalendarOverview({
         kindOrder[a.kind] - kindOrder[b.kind] ||
         a.title.localeCompare(b.title),
     );
-  }, [classes, events, googleEvents, tasks, visibleDates, cancelledByDate, getStudyUnitLabel]);
+  }, [classes, events, googleEvents, tasks, visibleDates, cancelledByDate]);
 
   const visibleEntries = entries.filter(
     (entry) => visibleKinds[entry.kind],
@@ -652,7 +648,7 @@ export default function CalendarOverview({
                           : entry.kind === "event"
                             ? "bg-[#fff0b3] text-[#684000]"
                             : entry.kind === "google"
-                              ? "bg-[#eee5ff] text-[#46267d]"
+                              ? "bg-[#eee8f8] text-[#49366f]"
                               : "bg-[var(--accent-soft)] text-[var(--accent-dark)]",
                     ].join(" ")}
                   >
@@ -688,7 +684,7 @@ export default function CalendarOverview({
                     : kind === "event"
                       ? "bg-[#946200]"
                       : kind === "google"
-                        ? "bg-[#6842a6]"
+                        ? "bg-[#6750a4]"
                         : "bg-[var(--accent-dark)]";
 
                 const countColor =
@@ -697,7 +693,7 @@ export default function CalendarOverview({
                     : kind === "event"
                       ? "text-[#946200]"
                       : kind === "google"
-                        ? "text-[#6842a6]"
+                        ? "text-[#6750a4]"
                         : "text-[var(--accent-dark)]";
 
                 return (
@@ -731,7 +727,7 @@ export default function CalendarOverview({
                     : entry.kind === "event"
                       ? "border-l-4 border-[#946200] bg-[#fff0b3] text-[#684000]"
                       : entry.kind === "google"
-                        ? "border-l-4 border-[#6842a6] bg-[#eee5ff] text-[#46267d]"
+                        ? "border-l-4 border-[#6750a4] bg-[#eee8f8] text-[#49366f]"
                         : "border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] text-[var(--accent-dark)]"
               }`}
             >
@@ -832,7 +828,7 @@ export default function CalendarOverview({
                 setIsAgendaOpen(false);
               }
             }}
-            className="calendar-day-action calendar-day-action--toggle rounded-lg px-3 py-2 text-xs font-extrabold action-primary--sage"
+            className="calendar-collapse-toggle rounded-lg px-3 py-2 text-sm font-semibold"
           >
             {isCalendarCollapsed ? "Expand" : "Collapse"}
           </button>
@@ -857,7 +853,7 @@ export default function CalendarOverview({
             {([
               { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
               { kind: "event", label: "Events", marker: "bg-[#946200]" },
-              { kind: "google", label: "Google", marker: "bg-[#6842a6]" },
+              { kind: "google", label: "Google", marker: "bg-[#6750a4]" },
               { kind: "task", label: "Tasks", marker: "bg-[var(--accent-dark)]" },
             ] as const).map(({ kind, label, marker }) => (
               <button
@@ -880,7 +876,7 @@ export default function CalendarOverview({
                       : kind === "event"
                         ? "bg-[#fff0b3] text-[#684000] shadow-[0_2px_0_#946200]"
                         : kind === "google"
-                          ? "bg-[#eee5ff] text-[#46267d] shadow-[0_2px_0_#6842a6]"
+                          ? "bg-[#eee8f8] text-[#49366f] shadow-[0_2px_0_#6750a4]"
                           : "bg-[var(--accent-soft)] text-[var(--accent-dark)] shadow-[0_2px_0_var(--accent-dark)]"
                     : "text-[var(--muted)]",
                 ].join(" ")}
@@ -1132,7 +1128,7 @@ export default function CalendarOverview({
                         : entry.kind === "event"
                           ? "border-[#946200] bg-[#fff8d9]"
                           : entry.kind === "google"
-                            ? "border-[#6842a6] bg-[#f5f0ff]"
+                            ? "border-[#6750a4] bg-[#f5f0ff]"
                             : "border-[var(--accent-dark)] bg-[var(--accent-soft)]"
                   }`}
                 >
@@ -1188,7 +1184,7 @@ export default function CalendarOverview({
                           href={entry.googleEvent.htmlLink}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-2 inline-block text-sm font-bold text-[#6842a6] underline"
+                          className="mt-2 inline-block text-sm font-bold text-[#6750a4] underline"
                         >
                           Open in Google Calendar
                         </a>

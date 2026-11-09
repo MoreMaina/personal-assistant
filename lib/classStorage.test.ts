@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getClasses, saveClasses, updateClassStudyUnit } from "./classStorage";
+import { deleteClass, getClasses, saveClasses, updateClass, updateClassStudyUnit } from "./classStorage";
 import type { ClassItem } from "./classes";
 
 const CLASSES_KEY = "personal-assistant-classes";
@@ -111,6 +111,60 @@ describe("Class–Study Unit links", () => {
     const before = values.get(CLASSES_KEY);
 
     expect(() => updateClassStudyUnit(99, "unit-missing")).toThrow(/was not found/i);
+    expect(values.get(CLASSES_KEY)).toBe(before);
+  });
+});
+
+
+describe("weekly class management", () => {
+  it("updates class details while retaining the stable class ID", () => {
+    const original = makeClass(7, "Economics", "unit-economics");
+    saveClasses([original, makeClass(8, "Mathematics")]);
+
+    const updated = updateClass(7, {
+      name: "Applied Economics",
+      type: "Seminar",
+      day: "Thursday",
+      start: "11:00",
+      end: "12:30",
+      studyUnitId: "unit-economics",
+    });
+
+    expect(updated).toEqual([
+      {
+        ...original,
+        name: "Applied Economics",
+        type: "Seminar",
+        day: "Thursday",
+        start: "11:00",
+        end: "12:30",
+      },
+      makeClass(8, "Mathematics"),
+    ]);
+    expect(JSON.parse(values.get(CLASSES_KEY) ?? "[]")).toEqual(updated);
+  });
+
+  it("deletes a class and clears its cancelled-session references", () => {
+    saveClasses([makeClass(7, "Economics"), makeClass(8, "Mathematics")]);
+    values.set("cancelled-class-sessions", JSON.stringify({
+      "2026-11-09": [7, 8],
+      "2026-11-10": [7],
+    }));
+
+    const updated = deleteClass(7);
+
+    expect(updated).toEqual([makeClass(8, "Mathematics")]);
+    expect(JSON.parse(values.get(CLASSES_KEY) ?? "[]")).toEqual(updated);
+    expect(JSON.parse(values.get("cancelled-class-sessions") ?? "{}"))
+      .toEqual({ "2026-11-09": [8] });
+  });
+
+  it("does not alter storage when updating or deleting a missing class", () => {
+    saveClasses([makeClass(7, "Economics")]);
+    const before = values.get(CLASSES_KEY);
+
+    expect(() => updateClass(99, makeClass(99, "Missing"))).toThrow(/was not found/i);
+    expect(() => deleteClass(99)).toThrow(/was not found/i);
     expect(values.get(CLASSES_KEY)).toBe(before);
   });
 });
