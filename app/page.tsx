@@ -809,8 +809,8 @@ export default function TodayPage() {
 
   if (!now) {
     return (
-      <main>
-        <div className="rounded-[24px] border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-8 text-center shadow-[0_4px_0_var(--primary-dark)]">
+      <main className="today-page">
+        <div className="today-page__loading rounded-[24px] border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-8 text-center shadow-[0_4px_0_var(--primary-dark)]">
           <h1 className="text-2xl">
             Getting today ready...
           </h1>
@@ -825,8 +825,8 @@ export default function TodayPage() {
   }
 
   return (
-    <main>
-      <div className="mb-8">
+    <main className="today-page">
+      <div className="today-page__header mb-8">
         <p className="text-sm font-extrabold uppercase tracking-[0.08em] text-[var(--muted)]">
           Today
         </p>
@@ -862,7 +862,7 @@ export default function TodayPage() {
       
       <section
         aria-labelledby="daily-plan-heading"
-        className="card mb-6 bg-[var(--surface)] p-4 sm:p-5"
+        className="card today-page__card mb-6 bg-[var(--surface)] p-4 sm:p-5"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -913,7 +913,7 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="card bg-[var(--surface)] p-4 sm:p-6">
+      <section className="card today-page__card today-page__right-now bg-[var(--surface)] p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="stat-label">
@@ -947,7 +947,7 @@ export default function TodayPage() {
 
         {recommendation ? (
           <>
-            <div className="mt-4 grid grid-cols-3 gap-1.5 sm:gap-3">
+            <div className="today-page__metrics mt-4 grid grid-cols-3 gap-1.5 sm:gap-3">
               <div className="min-w-0 rounded-[12px] bg-[var(--primary-soft)] p-2 sm:p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary)]">
                   Time
@@ -991,7 +991,7 @@ export default function TodayPage() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-[12px] border-2 border-[var(--border)] bg-white/60 p-3">
+            <div className="today-page__reason mt-4 rounded-[12px] border-2 border-[var(--border)] bg-white/60 p-3">
               <p className="text-sm font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
                 Why this?
               </p>
@@ -1026,7 +1026,7 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="mt-6">
+      <section className="today-page__up-next mt-6">
         <div className="mb-3">
           <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">
             Up next
@@ -1084,7 +1084,7 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="mt-6">
+      <section className="today-page__schedule mt-6">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">

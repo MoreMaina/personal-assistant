@@ -17,7 +17,7 @@ const fredoka = Fredoka({
 const nunito = Nunito({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
