@@ -992,7 +992,7 @@ export default function ClassesPage() {
   }
 
   return (
-    <main>
+    <main className="calendar-page">
       <header className="mb-5">
         <h1 className="text-3xl sm:text-4xl">Calendar</h1>
       </header>
@@ -1045,7 +1045,7 @@ export default function ClassesPage() {
       />
 
       {/* Calendar management: one tab visible at a time */}
-      <section className="mt-7">
+      <section className="calendar-page__management mt-7">
         <div className="mb-3">
           <p className="stat-label">Manage your plan</p>
           <h2 className="mt-1 text-xl sm:text-2xl">Classes, events & tasks</h2>
