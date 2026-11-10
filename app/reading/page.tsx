@@ -1332,8 +1332,8 @@ export default function ReadingPage() {
   ];
 
   return (
-    <main className="min-h-full text-[var(--ink)]">
-      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
+    <main className="workspace-page min-h-full text-[var(--ink)]">
+      <div className="workspace-page__container mx-auto max-w-5xl px-5 py-8 sm:px-8">
         <header className="mb-5">
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
             Workspace
@@ -1343,7 +1343,7 @@ export default function ReadingPage() {
         <div
           role="group"
           aria-label="Workspace section"
-          className="mb-5 grid grid-cols-3 gap-1 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface-soft)] p-1"
+          className="workspace-page__tabs mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-1"
         >
           {(["books", "essays", "projects"] as const).map((option) => (
             <button

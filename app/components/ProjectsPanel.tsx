@@ -398,7 +398,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
         </div>
       )}
 
-      <div className={embedded ? "w-full" : "mx-auto max-w-5xl px-5 py-8 sm:px-8"}>
+      <div className={`workspace-projects-panel ${embedded ? "w-full" : "mx-auto max-w-5xl px-5 py-8 sm:px-8"}`}>
 {!embedded && (
         <header className="mb-8">
           <p className="stat-label">

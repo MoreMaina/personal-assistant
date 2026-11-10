@@ -86,6 +86,39 @@ function newId(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
+/** Format an ISO study date as a readable label, e.g. "Nov 9th". */
+function formatStudyDateLabel(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return value;
+  }
+
+  const suffix =
+    day % 100 >= 11 && day % 100 <= 13
+      ? "th"
+      : day % 10 === 1
+        ? "st"
+        : day % 10 === 2
+          ? "nd"
+          : day % 10 === 3
+            ? "rd"
+            : "th";
+
+  const monthLabel = date.toLocaleDateString("en-US", { month: "short" });
+  return `${monthLabel} ${day}${suffix}`;
+}
+
 function downloadFile(
   filename: string,
   content: string,
@@ -3083,29 +3116,6 @@ const hasRecordedTodaysWork =
   ];
 }, [plan, planningOrder]);
 
-function movePlanningItem(
-  itemId: EntityId,
-  direction: -1 | 1,
-) {
-  const ids = orderedPlanItems.map((item) => item.id);
-  const currentIndex = ids.indexOf(itemId);
-  const nextIndex = currentIndex + direction;
-
-  if (
-    currentIndex < 0 ||
-    nextIndex < 0 ||
-    nextIndex >= ids.length
-  ) {
-    return;
-  }
-
-  [ids[currentIndex], ids[nextIndex]] = [
-    ids[nextIndex],
-    ids[currentIndex],
-  ];
-
-  setPlanningOrder(ids);
-}
 function movePlanningItemTo(
   itemId: EntityId,
   targetItemId: EntityId,
@@ -4175,12 +4185,12 @@ function movePlanningItemTo(
 
   return (
     <div className="study-page mx-auto max-w-6xl space-y-8 pb-12">
-      <header className="overflow-hidden rounded-2xl bg-[#23412f] p-4 text-white shadow-sm sm:p-5">
+      <header className="study-page__header overflow-hidden rounded-2xl border border-[#d5e1e4] bg-white p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="rounded-full border border-white/25 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.15em]">
-            Study System
+          <span className="study-page__eyebrow rounded-full border px-3 py-1 text-xs font-semibold">
+            Study system
           </span>
-          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
+          <span className="study-sync-status rounded-full px-3 py-1 text-sm font-semibold" aria-live="polite">
             {cloudSyncStatus === "synced"
               ? "Cloud-backed · synced"
               : cloudSyncStatus === "syncing"
@@ -4193,25 +4203,9 @@ function movePlanningItemTo(
           </span>
         </div>
 
-        <h1 className="mt-2 text-2xl font-bold text-white sm:text-3xl">
+        <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">
           Study with evidence, not guesswork.
         </h1>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <a
-            href="#daily-plan"
-            className="rounded-lg bg-[#fffaf1] px-3 py-2 text-xs font-extrabold text-[#23412f] transition hover:bg-white"
-          >
-            View daily plan
-          </a>
-          <button
-  type="button"
-  onClick={openCatalogTools}
-  className="rounded-lg border border-white/30 px-3 py-2 text-xs font-extrabold text-white transition hover:bg-white/10"
->
-  Import topic catalog
-</button>
-        </div>
       </header>
 
       {notice && (
@@ -4283,13 +4277,13 @@ function movePlanningItemTo(
           }
         />
 
-        <div className="mb-5 flex flex-wrap items-end gap-4">
+        <div className="study-page__daily-summary mb-5 flex flex-wrap items-end gap-4">
           <div className="rounded-xl bg-[#efe4d1] px-4 py-2.5">
             <p className="text-xs font-extrabold uppercase tracking-wider text-stone-500">
               Study day
             </p>
-            <p className="text-xl font-extrabold text-[#23412f]">
-              {today || "Loading…"}
+            <p className="text-xl font-semibold text-[#1a2b2f]">
+              {today ? formatStudyDateLabel(today) : "Loading…"}
             </p>
           </div>
 
@@ -4308,7 +4302,11 @@ function movePlanningItemTo(
             </p>
             <p className="text-sm font-extrabold text-[#23412f]">
               {state.settings.trial_start_date
-                ? `${state.settings.trial_start_date} → ${state.settings.trial_end_date}`
+                ? `${formatStudyDateLabel(state.settings.trial_start_date)}${
+                    state.settings.trial_end_date
+                      ? ` → ${formatStudyDateLabel(state.settings.trial_end_date)}`
+                        : ""
+                  }`
                 : "Not started"}
             </p>
           </div>
@@ -4327,11 +4325,6 @@ function movePlanningItemTo(
             <span>
               <span className="block text-sm font-extrabold text-[#23412f]">
                 Consider additional new topics
-              </span>
-              <span className="mt-1 block text-xs font-semibold leading-5 text-stone-600">
-                Add more eligible topics when there is spare study time.
-                Prerequisites, topic priorities, review reserves, and the
-                daily time budget still apply.
               </span>
             </span>
           </label>
@@ -4405,7 +4398,7 @@ function movePlanningItemTo(
               </p>
             ) : (
               <div className="space-y-3">
-                {orderedPlanItems.map((item, index) => {
+                {orderedPlanItems.map((item) => {
                   const presentation = getDailyPlanItemPresentation(item, state);
                   const choice = planningChoices[item.id] ?? "";
                   const forcedControl =
@@ -4415,7 +4408,7 @@ function movePlanningItemTo(
                   return (
                     <div
                       key={item.id}
-                      className="rounded-2xl border border-[#e4dac9] bg-white p-4"
+                      className={`study-plan-item rounded-2xl border border-[#e4dac9] bg-white p-4 ${planningMode ? "study-plan-item--reorderable" : ""}`}
                       onDragOver={(event) => {
                         if (
                           !planningMode ||
@@ -4450,7 +4443,7 @@ function movePlanningItemTo(
                         {planningMode &&
                           dragOverPlanningItemId === item.id && (
                             <div
-                              className="mb-3 h-1 rounded-full bg-emerald-500"
+                              className="study-plan-item__drop-indicator mb-3 h-1 rounded-full bg-[#006d77]"
                               aria-hidden="true"
                             />
                           )}
@@ -4462,49 +4455,45 @@ function movePlanningItemTo(
                         </p>
 
                         {planningMode && (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              draggable={true}
-                              onDragStart={(event) => {
-                                event.dataTransfer.effectAllowed = "move";
-                                event.dataTransfer.setData(
-                                  "text/plain",
-                                  String(item.id),
-                                );
-                                setDraggedPlanningItemId(item.id);
-                              }}
-                              onDragEnd={() => {
-                                setDraggedPlanningItemId(null);
-                                setDragOverPlanningItemId(null);
-                              }}
-                              className="cursor-grab rounded-lg border border-stone-300 px-3 py-2 text-sm font-bold active:cursor-grabbing"
-                              aria-label={`Drag ${presentation.title} to reorder`}
-                              title="Drag this activity onto another activity to reorder"
-                            >
-                              ⠿ Grab
-                            </button>
+                          <button
+                            type="button"
+                            draggable={true}
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = "move";
+                              event.dataTransfer.setData(
+                                "text/plain",
+                                String(item.id),
+                              );
+                              setDraggedPlanningItemId(item.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedPlanningItemId(null);
+                              setDragOverPlanningItemId(null);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+                                return;
+                              }
 
-                            <button
-                              type="button"
-                              disabled={index === 0}
-                              onClick={() => movePlanningItem(item.id, -1)}
-                              className="rounded-lg border border-[#d8ccb8] px-3 py-1.5 text-xs font-bold disabled:opacity-40"
-                              aria-label={`Move ${presentation.title} earlier`}
-                            >
-                              ↑ Move earlier
-                            </button>
+                              event.preventDefault();
+                              const currentIndex = orderedPlanItems.findIndex(
+                                (orderedItem) => orderedItem.id === item.id,
+                              );
+                              const targetIndex =
+                                currentIndex + (event.key === "ArrowUp" ? -1 : 1);
+                              const targetItem = orderedPlanItems[targetIndex];
 
-                            <button
-                              type="button"
-                              disabled={index === orderedPlanItems.length - 1}
-                              onClick={() => movePlanningItem(item.id, 1)}
-                              className="rounded-lg border border-[#d8ccb8] px-3 py-1.5 text-xs font-bold disabled:opacity-40"
-                              aria-label={`Move ${presentation.title} later`}
-                            >
-                              ↓ Move later
-                            </button>
-                          </div>
+                              if (targetItem) {
+                                movePlanningItemTo(item.id, targetItem.id);
+                              }
+                            }}
+                            className="study-plan-item__drag-handle"
+                            aria-label={`Reorder ${presentation.title}; use the Up and Down arrow keys to move`}
+                            aria-keyshortcuts="ArrowUp ArrowDown"
+                            title="Drag to reorder, or use the Up and Down arrow keys"
+                          >
+                            <span aria-hidden="true" className="text-2xl leading-none">⠿</span>
+                          </button>
                         )}
 
                         {!planningMode &&
@@ -4695,7 +4684,7 @@ function movePlanningItemTo(
 
             {planningMode ? (
               <>
-                <div className="mt-5 flex flex-wrap items-center gap-3">
+                <div className="study-plan-actions mt-5 flex flex-wrap items-center gap-3">
                   <button
                     type="button"
                     onClick={saveDailyPlan}
@@ -4703,7 +4692,7 @@ function movePlanningItemTo(
                       !plan.can_finalize ||
                       hasIncompletePlanningChoice
                     }
-                    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] disabled:cursor-not-allowed disabled:bg-stone-300 disabled:text-stone-500 action-primary--forest"
+                    className="study-primary-action rounded-xl px-5 py-3 text-sm font-semibold"
                   >
                     Save today&apos;s plan
                   </button>
@@ -4734,11 +4723,8 @@ function movePlanningItemTo(
                   )}
                 </div>
 
-                <p className="mt-4 text-xs font-semibold leading-5 text-stone-500">
-                  Saving creates an immutable plan snapshot and records required
-                  planning decisions. Allocations are intent, not evidence of
-                  completed work. Actual attempts and work sessions are recorded
-                  separately. Rest-day plans can also be saved.
+                <p className="study-plan-explainer mt-4 text-sm leading-6">
+                  Your plan is saved as a snapshot. Planned time is not counted as completed work; only recorded attempts and work sessions count. Rest-day plans can also be saved.
                 </p>
               </>
             ) : (
@@ -4752,12 +4738,12 @@ function movePlanningItemTo(
                       setPlanningReentries({});
                       setIsReplanning(true);
                     }}
-                    className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#183021] action-primary--terracotta"
+                    className="study-primary-action rounded-xl px-5 py-3 text-sm font-semibold"
                   >
                     Replan today
                   </button>
                 ) : (
-                  <span className="text-xs font-semibold text-stone-500">Saved worklist · {today}</span>
+                  <span className="text-xs font-semibold text-stone-500">Saved worklist · {formatStudyDateLabel(today)}</span>
                 )}
               </div>
             )}
