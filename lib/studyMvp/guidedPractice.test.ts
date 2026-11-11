@@ -135,6 +135,67 @@ describe("guided practice question selection", () => {
     ).toEqual([]);
   });
 
+  it("reports when only one active topic has mixed-practice questions", () => {
+    const state = fixtureState();
+    state.topics = state.topics.slice(0, 1);
+
+    const selection = getGuidedPracticeSessionSelection(
+      state,
+      "mixed",
+      "mixed-block-one-topic",
+      "2026-10-31",
+      25,
+    );
+
+    expect(selection.selectedTaskIds).toEqual([]);
+    expect(selection.selectionIssue).toBe("not-enough-topics");
+  });
+
+  it("finds a feasible pair across two topics before using the rest of the allocation", () => {
+    const state = fixtureState();
+    state.retrieval_tasks = state.retrieval_tasks.map((task) => {
+      if (task.id === "mixed-a1") return { ...task, estimated_duration_min: 7 };
+      if (task.id === "mixed-b1") return { ...task, estimated_duration_min: 5 };
+      if (task.id === "mixed-a2") return { ...task, estimated_duration_min: 3 };
+      return task;
+    });
+    state.retrieval_tasks.push({
+      id: "mixed-b2",
+      topic_id: "topic-2",
+      prompt: "Prompt mixed-b2",
+      expected_answer_criteria: "Criteria mixed-b2",
+      task_type: "explanation",
+      purpose: "mixed",
+      estimated_duration_min: 3,
+      last_used_on: null,
+      active: true,
+    });
+
+    const selection = getGuidedPracticeSessionSelection(
+      state,
+      "mixed",
+      "mixed-block-short-first-questions",
+      "2026-10-31",
+      6,
+    );
+
+    expect(selection.selectedTaskIds).toEqual(["mixed-a2", "mixed-b2"]);
+    expect(selection.selectionIssue).toBeNull();
+  });
+
+  it("reports when no cross-topic pair fits the allocation", () => {
+    const selection = getGuidedPracticeSessionSelection(
+      fixtureState(),
+      "mixed",
+      "mixed-block-too-short",
+      "2026-10-31",
+      9,
+    );
+
+    expect(selection.selectedTaskIds).toEqual([]);
+    expect(selection.selectionIssue).toBe("allocation-too-short");
+  });
+
   it("selects sampler questions separately from mixed-practice questions", () => {
     const questions = getGuidedPracticeQuestions(
       fixtureState(),

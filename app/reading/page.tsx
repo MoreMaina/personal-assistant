@@ -1952,7 +1952,7 @@ export default function ReadingPage() {
 
         {tab === "essays" && (
           <>
-            <div className="mb-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+            <div className="mb-4">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-base font-semibold">Essay practice</h2>
                 <div className="flex shrink-0 items-center gap-1.5">

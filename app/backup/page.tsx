@@ -47,6 +47,16 @@ type ImportedBackupPreview = {
   sections: string[];
 };
 
+type BackupDisplayLimit = 3 | 5 | 10 | 20 | 50 | "all";
+
+function parseBackupDisplayLimit(value: string): BackupDisplayLimit {
+  if (value === "all") return "all";
+  const parsed = Number(value);
+  return ([3, 5, 10, 20, 50] as number[]).includes(parsed)
+    ? (parsed as Exclude<BackupDisplayLimit, "all">)
+    : 3;
+}
+
 const BACKUP_FORMAT = "personal-assistant-backup";
 const BACKUP_VERSION = 1;
 
@@ -195,6 +205,10 @@ export default function BackupRecoveryPage() {
     useState<BackupRow[]>([]);
   const [studyBackups, setStudyBackups] =
     useState<StudyBackupRow[]>([]);
+  const [studyBackupDisplayLimit, setStudyBackupDisplayLimit] =
+    useState<BackupDisplayLimit>(3);
+  const [appBackupDisplayLimit, setAppBackupDisplayLimit] =
+    useState<BackupDisplayLimit>(3);
   const [studyBackupsLoading, setStudyBackupsLoading] =
     useState(true);
   const [studyBackupsError, setStudyBackupsError] =
@@ -210,6 +224,15 @@ export default function BackupRecoveryPage() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const visibleStudyBackups =
+    studyBackupDisplayLimit === "all"
+      ? studyBackups
+      : studyBackups.slice(0, studyBackupDisplayLimit);
+  const visibleAppBackups =
+    appBackupDisplayLimit === "all"
+      ? backups
+      : backups.slice(0, appBackupDisplayLimit);
 
   useEffect(() => {
     if (!message) return;
@@ -797,19 +820,36 @@ export default function BackupRecoveryPage() {
           Previous Study versions
         </h3>
         <p className="mt-1 text-sm text-stone-600">
-          Previous cloud versions are saved automatically.
-          Up to 50 are retained.
+          Choose how many recent versions to display.
         </p>
       </div>
 
-      <button
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-sm font-semibold text-stone-600">
+          Show
+          <select
+            aria-label="Study backup versions to show"
+            value={String(studyBackupDisplayLimit)}
+            onChange={(event) => setStudyBackupDisplayLimit(parseBackupDisplayLimit(event.target.value))}
+            className="min-h-12 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold"
+          >
+            <option value="3">Latest 3</option>
+            <option value="5">Latest 5</option>
+            <option value="10">Latest 10</option>
+            <option value="20">Latest 20</option>
+            <option value="50">Latest 50</option>
+            <option value="all">All loaded</option>
+          </select>
+        </label>
+        <button
         type="button"
         onClick={() => void refreshStudyBackups()}
         disabled={studyBackupsLoading || working !== null}
         className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-700 disabled:opacity-50"
       >
         {studyBackupsLoading ? "Loading…" : "Refresh history"}
-      </button>
+        </button>
+      </div>
     </div>
 
     {studyBackupsError && (
@@ -829,7 +869,10 @@ export default function BackupRecoveryPage() {
       </p>
     ) : (
       <div className="mt-4 space-y-3">
-        {studyBackups.map((backup) => (
+        <p className="text-xs font-semibold text-stone-500">
+          Showing {visibleStudyBackups.length} of {studyBackups.length} available versions.
+        </p>
+        {visibleStudyBackups.map((backup) => (
           <article
             key={String(backup.id)}
             className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50 p-4"
@@ -1103,14 +1146,32 @@ export default function BackupRecoveryPage() {
             </p>
           </div>
 
-          <button
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[var(--ink-soft)]">
+              Show
+              <select
+                aria-label="Automatic cloud history versions to show"
+                value={String(appBackupDisplayLimit)}
+                onChange={(event) => setAppBackupDisplayLimit(parseBackupDisplayLimit(event.target.value))}
+                className="min-h-12 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--ink)]"
+              >
+                <option value="3">Latest 3</option>
+                <option value="5">Latest 5</option>
+                <option value="10">Latest 10</option>
+                <option value="20">Latest 20</option>
+                <option value="50">Latest 50</option>
+                <option value="all">All loaded</option>
+              </select>
+            </label>
+            <button
             type="button"
             onClick={() => void refreshBackups()}
             disabled={loading || working !== null}
             className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 font-extrabold text-[var(--primary)] disabled:opacity-50"
           >
             {loading ? "Loading…" : "↻ Refresh"}
-          </button>
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -1131,7 +1192,10 @@ export default function BackupRecoveryPage() {
           </div>
         ) : (
           <div className="mt-5 space-y-3">
-            {backups.map((backup) => {
+            <p className="text-xs font-bold text-[var(--muted)]">
+              Showing {visibleAppBackups.length} of {backups.length} available versions.
+            </p>
+            {visibleAppBackups.map((backup) => {
               const snapshot =
                 normalizeSnapshot(backup.data);
 

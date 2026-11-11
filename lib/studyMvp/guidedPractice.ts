@@ -37,7 +37,7 @@ const IMPORTANCE_ORDER = {
   low: 3,
 } as const;
 
-export function getGuidedPracticeQuestions(
+function getEligibleGuidedPracticeQuestions(
   state: StudyMvpState,
   purpose: GuidedPracticeKind,
 ): GuidedPracticeQuestion[] {
@@ -112,13 +112,6 @@ export function getGuidedPracticeQuestions(
     grouped.set(topic.id, group);
   }
 
-  if (
-    purpose === "mixed" &&
-    grouped.size < 2
-  ) {
-    return [];
-  }
-
   const groups = [...grouped.values()].sort(
     (a, b) =>
       IMPORTANCE_ORDER[a.topic.topic_importance] -
@@ -165,11 +158,34 @@ export function getGuidedPracticeQuestions(
   return result;
 }
 
+export function getGuidedPracticeQuestions(
+  state: StudyMvpState,
+  purpose: GuidedPracticeKind,
+): GuidedPracticeQuestion[] {
+  const questions = getEligibleGuidedPracticeQuestions(state, purpose);
+
+  if (
+    purpose === "mixed" &&
+    new Set(questions.map((question) => question.topicId)).size < 2
+  ) {
+    return [];
+  }
+
+  return questions;
+}
+
+export type GuidedPracticeSelectionIssue =
+  | "no-active-questions"
+  | "not-enough-topics"
+  | "allocation-too-short"
+  | "missing-questions";
+
 export interface GuidedPracticeSessionSelection {
   selectedTaskIds: EntityId[];
   questions: GuidedPracticeQuestion[];
   missingTaskIds: EntityId[];
   attemptedTaskIds: EntityId[];
+  selectionIssue: GuidedPracticeSelectionIssue | null;
 }
 
 /**
@@ -205,47 +221,94 @@ export function getGuidedPracticeSessionSelection(
       ),
   )?.guided_practice_selected_task_ids_snapshot;
 
+  const candidates = getEligibleGuidedPracticeQuestions(state, purpose);
   let selectedTaskIds: EntityId[];
+  let selectionIssue: GuidedPracticeSelectionIssue | null = null;
 
   if (savedSnapshot) {
     selectedTaskIds = [...savedSnapshot];
-  } else {
-    const candidates = getGuidedPracticeQuestions(
-      state,
-      purpose,
-    );
+  } else if (purpose === "mixed") {
+    const availableTopicCount = new Set(
+      candidates.map((question) => question.topicId),
+    ).size;
+    const budget =
+      Number.isSafeInteger(plannedMinutes) && plannedMinutes > 0
+        ? plannedMinutes
+        : 0;
 
+    if (candidates.length === 0) {
+      selectedTaskIds = [];
+      selectionIssue = "no-active-questions";
+    } else if (availableTopicCount < 2) {
+      selectedTaskIds = [];
+      selectionIssue = "not-enough-topics";
+    } else {
+      // Find the cheapest feasible cross-topic pair first. A greedy pass can
+      // otherwise consume the entire allocation on one topic and falsely
+      // report that no valid mixed set exists.
+      let seedPair: [GuidedPracticeQuestion, GuidedPracticeQuestion] | null = null;
+      let seedDuration = Number.POSITIVE_INFINITY;
+
+      for (let left = 0; left < candidates.length; left += 1) {
+        for (let right = left + 1; right < candidates.length; right += 1) {
+          const first = candidates[left];
+          const second = candidates[right];
+          if (first.topicId === second.topicId) continue;
+
+          const combined =
+            first.estimatedDurationMin + second.estimatedDurationMin;
+          if (combined <= budget && combined < seedDuration) {
+            seedPair = [first, second];
+            seedDuration = combined;
+          }
+        }
+      }
+
+      if (!seedPair) {
+        selectedTaskIds = [];
+        selectionIssue = "allocation-too-short";
+      } else {
+        const selected = [...seedPair];
+        const selectedIds = new Set(selected.map((question) => question.taskId));
+        let remainingMinutes = budget - seedDuration;
+
+        for (const question of candidates) {
+          if (selectedIds.has(question.taskId)) continue;
+          if (question.estimatedDurationMin <= remainingMinutes) {
+            selected.push(question);
+            selectedIds.add(question.taskId);
+            remainingMinutes -= question.estimatedDurationMin;
+          }
+        }
+
+        // Preserve the stable candidate ordering in the frozen snapshot.
+        selectedTaskIds = candidates
+          .filter((question) => selectedIds.has(question.taskId))
+          .map((question) => question.taskId);
+      }
+    }
+  } else {
     const selected: GuidedPracticeQuestion[] = [];
     let remainingMinutes =
-      Number.isSafeInteger(plannedMinutes) &&
-      plannedMinutes > 0
+      Number.isSafeInteger(plannedMinutes) && plannedMinutes > 0
         ? plannedMinutes
         : 0;
 
     for (const question of candidates) {
-      if (
-        question.estimatedDurationMin <=
-        remainingMinutes
-      ) {
+      if (question.estimatedDurationMin <= remainingMinutes) {
         selected.push(question);
         remainingMinutes -= question.estimatedDurationMin;
       }
     }
 
-    const selectedTopicCount = new Set(
-      selected.map((question) => question.topicId),
-    ).size;
-
-    selectedTaskIds =
-      purpose === "mixed" && selectedTopicCount < 2
-        ? []
-        : selected.map((question) => question.taskId);
+    selectedTaskIds = selected.map((question) => question.taskId);
+    if (selectedTaskIds.length === 0) {
+      selectionIssue = "no-active-questions";
+    }
   }
 
   const availableById = new Map(
-    getGuidedPracticeQuestions(state, purpose).map(
-      (question) => [question.taskId, question],
-    ),
+    candidates.map((question) => [question.taskId, question]),
   );
 
   const questions = selectedTaskIds
@@ -267,11 +330,16 @@ export function getGuidedPracticeSessionSelection(
     ),
   ];
 
+  if (missingTaskIds.length > 0) {
+    selectionIssue = "missing-questions";
+  }
+
   return {
     selectedTaskIds,
     questions,
     missingTaskIds,
     attemptedTaskIds,
+    selectionIssue,
   };
 }
 

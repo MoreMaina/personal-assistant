@@ -5571,3 +5571,44 @@ body,
     transition-delay: 0ms !important;
   }
 }
+
+/* Study refinement: compact guidance, consistent guided-practice surfaces,
+   and accessible Palette 6 timer controls. */
+.app-content .study-page [class*="bg-[#f7f1e7]"] {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+
+.app-content .study-page [class*="bg-[#edf4ed]"] {
+  background: var(--p6-success-bg) !important;
+  color: var(--p6-success-text) !important;
+}
+
+.app-content .study-page .item-work-tracker__mode {
+  min-height: 3rem !important;
+  height: auto !important;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .item-work-tracker__mode--active {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page button.study-primary-action,
+.app-content .study-page button.study-primary-action:hover:not(:disabled) {
+  box-shadow: none !important;
+}
+
+.app-content .study-page .study-plan-complete {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}

@@ -181,9 +181,13 @@ export default function GuidedPracticeRunner({
 
       {selection.selectedTaskIds.length === 0 && (
         <p className="mt-4 rounded-xl bg-[#f7f1e7] p-4 text-sm font-semibold text-stone-700">
-          {purpose === "mixed"
-            ? "No suitable mixed-practice question set fits this allocation. Prepare active mixed-practice questions across at least two active topics."
-            : "No Sampler questions are ready yet. Add or activate a question with the Sampler purpose in Study management."}
+          {purpose === "sampler"
+            ? "No active Sampler questions are available. Add or activate one in Study management."
+            : selection.selectionIssue === "not-enough-topics"
+              ? "Mixed practice needs questions from at least two active topics. Add or activate questions in another topic."
+              : selection.selectionIssue === "allocation-too-short"
+                ? "This time allocation cannot fit questions from two topics. Increase the allocation or shorten question estimates."
+                : "No active mixed-practice questions are available. Add or activate questions across two topics."}
         </p>
       )}
 
@@ -192,10 +196,7 @@ export default function GuidedPracticeRunner({
           role="alert"
           className="mt-4 rounded-xl bg-rose-100 p-4 text-sm font-semibold text-rose-900"
         >
-          This saved question set contains questions that are no
-          longer eligible. Restore the original questions or their
-          active topic/course status before continuing. The saved
-          selection has not been replaced.
+          Some saved questions are no longer eligible. Restore them before continuing.
         </p>
       )}
 
@@ -227,9 +228,7 @@ export default function GuidedPracticeRunner({
 
       {allQuestionsAnswered && (
         <p className="mt-4 rounded-xl bg-[#edf4ed] p-4 text-sm font-bold text-[#23412f]">
-          All selected questions have saved answers. You can
-          continue to the time-recording and section-completion
-          requirements.
+          All selected questions are answered.
         </p>
       )}
 

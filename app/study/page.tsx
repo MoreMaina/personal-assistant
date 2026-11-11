@@ -443,7 +443,7 @@ function InitialLearningSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Initial learning"
-        detail="Start the planned topic, record the actual work you complete, and finish this section only after the required study time has been recorded. Saving a plan alone does not count as work."
+        detail="Record time spent on the planned topic."
       />
             <ItemWorkTimer
         itemId="study-section:initial-learning"
@@ -828,7 +828,7 @@ function TopicConsolidationSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Topic consolidation"
-        detail="Record the actual work you complete for each planned topic. Only consolidation sessions recorded today count toward today's allocation; gate attempts and corrective work do not count."
+        detail="Log time spent consolidating each topic."
       />
 
       <ItemWorkTimer
@@ -1246,7 +1246,7 @@ function AssignmentSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Assignments"
-        detail="Record actual time spent on each planned assignment and update the estimate of work remaining. An assignment is marked complete only when you explicitly confirm it."
+        detail="Log time and update the remaining work."
       />
 
       <ItemWorkTimer
@@ -1656,7 +1656,7 @@ function CorrectiveSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Corrective work"
-        detail="Record the actual time spent addressing learning gaps. Only corrective-work sessions count toward these allocations. Logging time does not silently mark the underlying repair task as complete."
+        detail="Record time spent closing learning gaps."
       />
 
       <ItemWorkTimer
@@ -1979,7 +1979,7 @@ function RecoverySection({
       <SectionHeading
         eyebrow="Study activity"
         title="Recovery work"
-        detail="Record actual time spent recovering overdue or unfinished work. Recovery sessions are tracked separately from corrective work, while both remain subject to the planner's shared repair and recovery budget."
+        detail="Record time spent catching up on unfinished work."
       />
 
       <ItemWorkTimer
@@ -2157,25 +2157,48 @@ function MixedPracticeSection({
         item.allocated_minutes,
     );
 
+  const guidedSelections = items.map((item) => ({
+    item,
+    selection: getGuidedPracticeSessionSelection(
+      state,
+      "mixed",
+      item.subject_id,
+      today,
+      item.allocated_minutes,
+    ),
+  }));
+
   const allGuidedQuestionsCompleted =
     items.length > 0 &&
-    items.every((item) => {
-      const selection = getGuidedPracticeSessionSelection(
-        state,
-        "mixed",
-        item.subject_id,
-        today,
-        item.allocated_minutes,
-      );
+    guidedSelections.every(({ selection }) =>
+      selection.selectedTaskIds.length > 0 &&
+      selection.missingTaskIds.length === 0 &&
+      selection.selectedTaskIds.every((id) =>
+        selection.attemptedTaskIds.includes(id),
+      ),
+    );
 
-      return (
-        selection.selectedTaskIds.length > 0 &&
-        selection.missingTaskIds.length === 0 &&
-        selection.selectedTaskIds.every((id) =>
-          selection.attemptedTaskIds.includes(id),
-        )
-      );
-    });
+  const blockingGuidedSelection = guidedSelections.find(({ selection }) =>
+    selection.selectedTaskIds.length === 0 ||
+    selection.missingTaskIds.length > 0 ||
+    !selection.selectedTaskIds.every((id) =>
+      selection.attemptedTaskIds.includes(id),
+    ),
+  )?.selection ?? null;
+
+  const guidedPracticeStatusMessage = !allGuidedQuestionsCompleted
+    ? blockingGuidedSelection?.selectionIssue === "not-enough-topics"
+      ? "Add active mixed-practice questions to a second topic."
+      : blockingGuidedSelection?.selectionIssue === "allocation-too-short"
+        ? "Increase mixed-practice time or reduce question estimates."
+        : blockingGuidedSelection?.selectionIssue === "missing-questions"
+          ? "Restore the missing selected questions before continuing."
+          : blockingGuidedSelection?.selectionIssue === "no-active-questions"
+            ? "Add active mixed-practice questions to at least two topics."
+            : "Answer the selected questions before continuing."
+    : !allAllocationsRecorded
+      ? "Record the allocated time for every mixed-practice block."
+      : "Mixed practice is complete.";
 
   function saveSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2311,7 +2334,7 @@ function MixedPracticeSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Mixed practice"
-        detail="Answer questions across different active topics. Write your answer before revealing the criteria, assess it, and save it. Record the actual work time separately."
+        detail="Answer questions from at least two active topics."
       />
 
       <ItemWorkTimer
@@ -2426,11 +2449,7 @@ function MixedPracticeSection({
 
           <div className="mt-6 border-t border-[#e4dac9] pt-5">
             <p className="text-sm font-semibold text-stone-600">
-              {!allGuidedQuestionsCompleted
-                ? "Answer every selected guided-practice question before continuing."
-                : allAllocationsRecorded
-                  ? "All guided questions are answered and all mixed-practice time is recorded."
-                  : "Record the allocated time for every mixed-practice block before continuing."}
+              {guidedPracticeStatusMessage}
             </p>
             <button
               type="button"
@@ -2661,7 +2680,7 @@ function SamplerSection({
       <SectionHeading
         eyebrow="Study activity"
         title="Saturday Sampler"
-        detail="Complete the selected questions, then record your Sampler and analysis time."
+        detail="Answer the selected questions, then record your time."
       />
 
       <ItemWorkTimer
@@ -2899,6 +2918,7 @@ function openCatalogTools() {
   const [dragOverPlanningItemId, setDragOverPlanningItemId] =
   useState<EntityId | null>(null);
   const [isReplanning, setIsReplanning] = useState(false);
+  const [isAdditionalPlanning, setIsAdditionalPlanning] = useState(false);
 
   const [
   includeAdditionalInitialLearning,
@@ -2999,7 +3019,12 @@ const hasRecordedTodaysWork =
       (sectionId) => !completedSectionIds.has(sectionId),
     ) ?? null;
 
-  
+  const todayPlanComplete = Boolean(
+    latestTodaysPlan &&
+    plannedSectionIds.length > 0 &&
+    activeSectionId === null
+  );
+
   const planningMode = !latestTodaysPlan || isReplanning;
 
   const planResult = useMemo(() => {
@@ -3156,10 +3181,10 @@ function movePlanningItemTo(
   function saveDailyPlan() {
     if (!state || !plan || !planningMode) return;
 
-      if (latestTodaysPlan && hasRecordedTodaysWork) {
+      if (latestTodaysPlan && hasRecordedTodaysWork && !isAdditionalPlanning) {
     setIsReplanning(false);
     setProblem(
-      "Today's plan is locked because study work or a section completion has already been recorded. The saved plan has not been changed.",
+      "Today's saved worklist cannot be replaced after work has been recorded. Use the additional-work option to create a new version.",
     );
     return;
   }
@@ -3210,6 +3235,8 @@ function movePlanningItemTo(
         setPlanningReasons({});
         setPlanningReentries({});
         setIsReplanning(false);
+        setIsAdditionalPlanning(false);
+        setPlanningOrder([]);
       }
     } catch (error) {
       setProblem(
@@ -4204,7 +4231,7 @@ function movePlanningItemTo(
         </div>
 
         <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">
-          Study with evidence, not guesswork.
+          Study workspace
         </h1>
       </header>
 
@@ -4231,7 +4258,7 @@ function movePlanningItemTo(
           <SectionHeading
             eyebrow="First steps"
             title="Set up your study workspace"
-            detail="Your catalogue starts empty. Import your actual courses, units and topics to build a workspace around your programme. No sample courses or placeholder units are inserted."
+            detail="Import your courses, units and topics to get started."
           />
           <button
             type="button"
@@ -4272,7 +4299,7 @@ function movePlanningItemTo(
           title={planningMode ? "Daily time budget" : "Today's saved worklist"}
           detail={
             planningMode
-              ? "Build today's plan from due reviews, unfinished consolidation, assignments, and mixed practice. Saving creates a durable snapshot for this Study day."
+              ? "Build a plan from due reviews and unfinished work. Each saved plan is kept as a dated snapshot."
               : ""
           }
         />
@@ -4325,6 +4352,30 @@ function movePlanningItemTo(
         {planResult.error && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-900">
             {planResult.error}
+          </div>
+        )}
+
+        {isAdditionalPlanning && plan && plan.items.length === 0 && (
+          <div className="mb-5 rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface-subtle)] p-4">
+            <h3 className="font-bold text-[var(--p6-text)]">No additional work available</h3>
+            <p className="mt-1 text-sm text-[var(--p6-text-secondary)]">
+              There are no more eligible activities in this plan. You can finish for today.
+              {!includeAdditionalInitialLearning && " You can also consider additional new topics above."}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdditionalPlanning(false);
+                setIsReplanning(false);
+                setPlanningChoices({});
+                setPlanningReasons({});
+                setPlanningReentries({});
+                setPlanningOrder([]);
+              }}
+              className="mt-3 rounded-xl border border-[var(--p6-border-strong)] bg-white px-4 py-3 text-sm font-semibold text-[var(--p6-primary)]"
+            >
+              Finish for today
+            </button>
           </div>
         )}
 
@@ -4677,17 +4728,20 @@ function movePlanningItemTo(
             {planningMode ? (
               <>
                 <div className="study-plan-actions mt-5 flex flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={saveDailyPlan}
-                    disabled={
-                      !plan.can_finalize ||
-                      hasIncompletePlanningChoice
-                    }
-                    className="study-primary-action rounded-xl px-5 py-3 text-sm font-semibold"
-                  >
-                    Save today&apos;s plan
-                  </button>
+                  {(!isAdditionalPlanning || plan.items.length > 0) && (
+                    <button
+                      type="button"
+                      onClick={saveDailyPlan}
+                      disabled={
+                        !plan.can_finalize ||
+                        plan.items.length === 0 ||
+                        hasIncompletePlanningChoice
+                      }
+                      className="study-primary-action rounded-xl px-5 py-3 text-sm font-semibold"
+                    >
+                      {isAdditionalPlanning ? "Save next worklist" : "Save today's plan"}
+                    </button>
+                  )}
                   {latestTodaysPlan && (
                     <button
                       type="button"
@@ -4696,6 +4750,7 @@ function movePlanningItemTo(
                         setPlanningReasons({});
                         setPlanningReentries({});
                         setIsReplanning(false);
+                        setIsAdditionalPlanning(false);
                         setPlanningOrder([]);
                       }}
                       className="rounded-xl border border-[#d8ccb8] bg-white px-5 py-3 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
@@ -4716,7 +4771,7 @@ function movePlanningItemTo(
                 </div>
 
                 <p className="study-plan-explainer mt-4 text-sm leading-6">
-                  Your plan is saved as a snapshot. Planned time is not counted as completed work; only recorded attempts and work sessions count. Rest-day plans can also be saved.
+                  Planned time is not completed work. Only saved attempts and sessions count.
                 </p>
               </>
             ) : (
@@ -4728,6 +4783,7 @@ function movePlanningItemTo(
                       setPlanningChoices({});
                       setPlanningReasons({});
                       setPlanningReentries({});
+                      setIsAdditionalPlanning(false);
                       setIsReplanning(true);
                     }}
                     className="study-primary-action rounded-xl px-5 py-3 text-sm font-semibold"
@@ -4735,13 +4791,42 @@ function movePlanningItemTo(
                     Replan today
                   </button>
                 ) : (
-                  <span className="text-xs font-semibold text-stone-500">Saved worklist · {formatStudyDateLabel(today)}</span>
+                  <span className="text-xs font-semibold text-stone-500">Saved · {formatStudyDateLabel(today)}</span>
                 )}
               </div>
             )}
           </>
                 )}
       </section>
+
+      {state && todayPlanComplete && !planningMode && (
+        <section className="study-plan-complete rounded-3xl border p-5 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-[var(--p6-primary)]">Today</p>
+              <h2 className="mt-1 text-xl font-bold">Today's plan is complete</h2>
+              <p className="mt-2 text-sm text-[var(--p6-text-secondary)]">
+                All {plannedSectionIds.length} planned sections are complete. Your work is saved.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPlanningChoices({});
+                setPlanningReasons({});
+                setPlanningReentries({});
+                setPlanningOrder([]);
+                setIncludeAdditionalInitialLearning(false);
+                setIsAdditionalPlanning(true);
+                setIsReplanning(true);
+              }}
+              className="study-primary-action rounded-xl px-5 py-3 text-sm font-semibold"
+            >
+              Check for more work
+            </button>
+          </div>
+        </section>
+      )}
 
       {state &&
         latestTodaysPlan &&
@@ -4831,7 +4916,7 @@ function movePlanningItemTo(
             <SectionHeading
               eyebrow="02 · Course data"
               title="Import and export your catalog"
-              detail="Paste spreadsheet rows or choose a CSV/TSV file. Imports are validated before saving; conflicting catalog content is rejected instead of overwriting your existing data."
+              detail="Import a CSV or TSV catalogue. Changes are validated before saving."
             />
           </div>
 
@@ -5001,7 +5086,7 @@ function movePlanningItemTo(
         <SectionHeading
           eyebrow="03 · Initial learning"
           title="Topic gate"
-          detail="Attempt selected questions closed-book. Every attempt is saved as immutable evidence. A topic activates only after the gate passes; a failed gate requires corrective work before a new session."
+          detail="Answer the selected questions from memory."
         />
 
       <ItemWorkTimer
@@ -5406,7 +5491,7 @@ function movePlanningItemTo(
         <SectionHeading
           eyebrow="04 · Retrieval"
           title="Due reviews"
-          detail="Answer from memory; a red result ends the review. Incomplete work keeps its saved review and selected questions."
+          detail="Answer from memory and record your result."
         />
 
       <ItemWorkTimer
