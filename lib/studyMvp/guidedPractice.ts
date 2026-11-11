@@ -189,6 +189,22 @@ export interface GuidedPracticeSessionSelection {
 }
 
 /**
+ * A mixed-practice block may be closed without attempts only when no eligible
+ * question set exists because there are no active questions or fewer than two
+ * active topics. Missing frozen questions and short allocations remain blockers.
+ */
+export function canCompleteMixedPracticeWithoutQuestions(
+  selection: GuidedPracticeSessionSelection,
+): boolean {
+  return (
+    selection.selectedTaskIds.length === 0 &&
+    selection.missingTaskIds.length === 0 &&
+    (selection.selectionIssue === "no-active-questions" ||
+      selection.selectionIssue === "not-enough-topics")
+  );
+}
+
+/**
  * Selects a question set that fits the planned practice allocation.
  * Once the first answer is saved, its question-ID snapshot is reused
  * so the session does not reshuffle after a refresh.

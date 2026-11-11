@@ -18,11 +18,13 @@ export type CardMenuAction = {
 type CardMenuProps = {
   actions: CardMenuAction[];
   title?: string;
+  disabled?: boolean;
 };
 
 export default function CardMenu({
   actions,
   title = "Card actions",
+  disabled = false,
 }: CardMenuProps) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -277,6 +279,7 @@ export default function CardMenu({
           aria-haspopup="menu"
           aria-expanded={open}
           title={title}
+          disabled={disabled}
           onClick={() => setOpen((current) => !current)}
         >
           <svg

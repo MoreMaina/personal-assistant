@@ -36,6 +36,7 @@ import {
 import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
 import {
+  canCompleteMixedPracticeWithoutQuestions,
   getGuidedPracticeSessionSelection,
 } from "@/lib/studyMvp/guidedPractice";
 
@@ -2178,24 +2179,52 @@ function MixedPracticeSection({
       ),
     );
 
+  const unavailableQuestionBlocks = guidedSelections.filter(({ selection }) =>
+    canCompleteMixedPracticeWithoutQuestions(selection),
+  );
+
+  const guidedRequirementsResolved = guidedSelections.every(({ selection }) =>
+    canCompleteMixedPracticeWithoutQuestions(selection) || (
+      selection.selectedTaskIds.length > 0 &&
+      selection.missingTaskIds.length === 0 &&
+      selection.selectedTaskIds.every((id) =>
+        selection.attemptedTaskIds.includes(id),
+      )
+    ),
+  );
+
+  const canCompleteWithoutQuestions =
+    allAllocationsRecorded &&
+    unavailableQuestionBlocks.length > 0 &&
+    guidedRequirementsResolved;
+
+  const guidedPracticeCanCloseWithUnavailableQuestions =
+    unavailableQuestionBlocks.length > 0 && guidedRequirementsResolved;
+
   const blockingGuidedSelection = guidedSelections.find(({ selection }) =>
-    selection.selectedTaskIds.length === 0 ||
-    selection.missingTaskIds.length > 0 ||
-    !selection.selectedTaskIds.every((id) =>
-      selection.attemptedTaskIds.includes(id),
+    !canCompleteMixedPracticeWithoutQuestions(selection) && (
+      selection.selectedTaskIds.length === 0 ||
+      selection.missingTaskIds.length > 0 ||
+      !selection.selectedTaskIds.every((id) =>
+        selection.attemptedTaskIds.includes(id),
+      )
     ),
   )?.selection ?? null;
 
-  const guidedPracticeStatusMessage = !allGuidedQuestionsCompleted
-    ? blockingGuidedSelection?.selectionIssue === "not-enough-topics"
-      ? "Add active mixed-practice questions to a second topic."
-      : blockingGuidedSelection?.selectionIssue === "allocation-too-short"
-        ? "Increase mixed-practice time or reduce question estimates."
-        : blockingGuidedSelection?.selectionIssue === "missing-questions"
-          ? "Restore the missing selected questions before continuing."
-          : blockingGuidedSelection?.selectionIssue === "no-active-questions"
-            ? "Add active mixed-practice questions to at least two topics."
-            : "Answer the selected questions before continuing."
+  const guidedPracticeStatusMessage = guidedPracticeCanCloseWithUnavailableQuestions
+    ? allAllocationsRecorded
+      ? "Planned time is recorded. No eligible questions were available for one or more blocks. Complete without questions to save this limitation and continue."
+      : "No eligible questions were available for one or more blocks. Record the planned time, then close the section with this limitation recorded."
+    : !allGuidedQuestionsCompleted
+      ? blockingGuidedSelection?.selectionIssue === "not-enough-topics"
+        ? "Add active mixed-practice questions to a second topic."
+        : blockingGuidedSelection?.selectionIssue === "allocation-too-short"
+          ? "Increase mixed-practice time or reduce question estimates."
+          : blockingGuidedSelection?.selectionIssue === "missing-questions"
+            ? "Restore the missing selected questions before continuing."
+            : blockingGuidedSelection?.selectionIssue === "no-active-questions"
+              ? "Add active mixed-practice questions to at least two topics."
+              : "Answer the selected questions before continuing."
     : !allAllocationsRecorded
       ? "Record the allocated time for every mixed-practice block."
       : "Mixed practice is complete.";
@@ -2298,7 +2327,7 @@ function MixedPracticeSection({
   function finishSection() {
     if (
       !allAllocationsRecorded ||
-      !allGuidedQuestionsCompleted
+      (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
     ) {
       return;
     }
@@ -2306,16 +2335,74 @@ function MixedPracticeSection({
     setError("");
 
     try {
+      const completedAt = new Date().toISOString();
+      const unavailableResolutionEvents: TaskEvent[] =
+        canCompleteWithoutQuestions
+          ? unavailableQuestionBlocks
+              .filter(({ item }) => !state.task_events.some((event) =>
+                event.event_type === "guided_practice_unavailable" &&
+                event.subject_type === "mixed_practice" &&
+                event.subject_id === item.subject_id &&
+                localDateOfTimestamp(
+                  event.logged_at,
+                  state.settings.timezone,
+                ) === today,
+              ))
+              .map(({ item, selection }) => ({
+                id: newId("event"),
+                logged_at: completedAt,
+                event_type: "guided_practice_unavailable",
+                subject_type: "mixed_practice",
+                subject_id: item.subject_id,
+                review_event_id: null,
+                retrieval_task_id: null,
+                gate_session_id: null,
+                gate_selected_task_ids_snapshot: null,
+                skill_demonstrated_without_hints: null,
+                work_session_id: null,
+                related_event_id: null,
+                estimated_duration_min_at_event: item.estimated_minutes,
+                task_type_at_event: null,
+                priority_at_event: item.priority,
+                intended_due_date_at_event: item.intended_due_date,
+                current_due_date_at_event: item.current_due_date,
+                actual_duration_min: null,
+                result: null,
+                yellow_gap_severity: null,
+                disposition: null,
+                reason: `No eligible active mixed-practice questions were available (${selection.selectionIssue}); planned time was recorded and the section was closed without question attempts.`,
+                guided_practice_selected_task_ids_snapshot: null,
+                critical_error_flag: null,
+                defer_count_at_event: item.defer_count,
+                re_entry_condition: null,
+                old_priority: null,
+                new_priority: null,
+              }))
+          : [];
+
+      const stateWithResolution: StudyMvpState =
+        unavailableResolutionEvents.length > 0
+          ? {
+              ...state,
+              task_events: [
+                ...state.task_events,
+                ...unavailableResolutionEvents,
+              ],
+            }
+          : state;
+
       const nextState = completeDailyPlanSection(
-        state,
+        stateWithResolution,
         snapshot.id,
         "mixed_practice",
-        new Date().toISOString(),
+        completedAt,
       );
 
       persist(
         nextState,
-        "Mixed-practice section completed. The next planned section is now eligible.",
+        canCompleteWithoutQuestions
+          ? "Mixed-practice time recorded. No eligible questions were available, so the section was closed with that limitation saved."
+          : "Mixed-practice section completed. The next planned section is now eligible.",
       );
     } catch (cause) {
       setError(
@@ -2430,7 +2517,11 @@ function MixedPracticeSection({
 
             <button
               type="submit"
-              className="rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f]"
+              disabled={
+                !selectedItem ||
+                loggedMinutesFor(selectedItem.subject_id) >= selectedItem.allocated_minutes
+              }
+              className="study-primary-action rounded-xl border border-[#006d77] bg-[#006d77] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#005a63] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Record mixed-practice session
             </button>
@@ -2455,12 +2546,14 @@ function MixedPracticeSection({
               type="button"
               disabled={
                 !allAllocationsRecorded ||
-                !allGuidedQuestionsCompleted
+                (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
               }
               onClick={finishSection}
-              className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
+              className="study-primary-action mt-3 rounded-xl border border-[#006d77] bg-[#006d77] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#005a63] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Complete mixed-practice section
+              {canCompleteWithoutQuestions
+                ? "Complete without questions"
+                : "Complete mixed-practice section"}
             </button>
           </div>
         </>

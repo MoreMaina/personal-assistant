@@ -133,7 +133,8 @@ export type TaskEventType =
   | "priority_change"
   | "skip_resolution"
   | "content_preparation"
-  | "guided_practice_attempt";
+  | "guided_practice_attempt"
+  | "guided_practice_unavailable";
 
 export type TaskEventSubjectType =
   | "review_event"

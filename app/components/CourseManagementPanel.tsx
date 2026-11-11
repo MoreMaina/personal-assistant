@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CardMenu, { type CardMenuAction } from "@/app/components/CardMenu";
 import { deleteCourseStudyData } from "@/lib/studyMvp/courseDeletion";
 import {
   exportStudyMvpJSON,
@@ -156,23 +157,28 @@ export default function CourseManagementPanel({
                     {archived && course.archived_at ? ` · ${new Date(course.archived_at).toLocaleDateString()}` : ""}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={!state || Boolean(busyCourseId) || Boolean(loadingError) || syncConflict}
-                    onClick={() => archiveOrRestore(course.id, course.name, archived)}
-                    className={archived ? "course-management__restore" : "course-management__archive"}
-                  >
-                    {busy ? "Deleting…" : archived ? "Restore course" : "Archive course"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!state || Boolean(busyCourseId) || Boolean(loadingError) || syncConflict}
-                    onClick={() => void permanentlyDeleteCourse(course.id, course.name)}
-                    className="course-management__delete"
-                  >
-                    {busy ? "Deleting…" : "Permanently delete"}
-                  </button>
+                <div className="flex items-center justify-end">
+                  {busy ? (
+                    <span role="status" className="text-sm font-bold text-[var(--muted)]">
+                      Deleting…
+                    </span>
+                  ) : (
+                    <CardMenu
+                      title={`Actions for ${course.name}`}
+                      disabled={!state || Boolean(busyCourseId) || Boolean(loadingError) || syncConflict}
+                      actions={[
+                        {
+                          label: archived ? "Restore course" : "Archive course",
+                          onSelect: () => archiveOrRestore(course.id, course.name, archived),
+                        },
+                        {
+                          label: "Permanently delete",
+                          destructive: true,
+                          onSelect: () => { void permanentlyDeleteCourse(course.id, course.name); },
+                        },
+                      ] satisfies CardMenuAction[]}
+                    />
+                  )}
                 </div>
               </article>
             );

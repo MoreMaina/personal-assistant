@@ -5535,14 +5535,25 @@ body,
 
 @media (max-width: 48rem) {
   .app-content .study-page .study-page__summary-banner {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .app-content .study-page .study-page__summary-item {
-    padding: 0.875rem 1rem;
+    padding: 0.7rem 0.55rem;
   }
   .app-content .study-page .study-page__summary-item + .study-page__summary-item {
-    border-left: 0;
-    border-top: 1px solid var(--p6-border-decorative);
+    border-left: 1px solid var(--p6-border-decorative);
+    border-top: 0;
+  }
+  .app-content .study-page .study-page__summary-label {
+    font-size: clamp(0.58rem, 2.15vw, 0.7rem) !important;
+    line-height: 1.2;
+    overflow-wrap: normal;
+  }
+  .app-content .study-page .study-page__summary-value {
+    margin-top: 0.25rem;
+    font-size: clamp(0.72rem, 2.85vw, 0.95rem) !important;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -5611,4 +5622,31 @@ body,
   background: var(--p6-surface) !important;
   color: var(--p6-text) !important;
   box-shadow: var(--p6-elevation-card) !important;
+}
+
+/* Course action menus use the flat Palette 6 control and a soft dropdown. */
+.app-content .course-management button.card-menu__trigger,
+.app-content .course-management button.card-menu__trigger:active {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.card-menu__panel[aria-label^="Actions for "] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+.card-menu__panel[aria-label^="Actions for "] .card-menu__heading {
+  color: var(--p6-text-secondary) !important;
+}
+.card-menu__panel[aria-label^="Actions for "] button.card-menu__action {
+  min-height: 48px !important;
+  color: var(--p6-text) !important;
+}
+.card-menu__panel[aria-label^="Actions for "] button.card-menu__action--destructive {
+  color: #b42318 !important;
 }

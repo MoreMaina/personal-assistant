@@ -163,6 +163,7 @@ function isTaskEventType(value: unknown): value is TaskEvent["event_type"] {
     "skip_resolution",
     "content_preparation",
     "guided_practice_attempt",
+    "guided_practice_unavailable",
   ].includes(String(value));
 }
 

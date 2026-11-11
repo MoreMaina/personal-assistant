@@ -7,6 +7,7 @@ import {
 
 import {
   applyGuidedPracticeAttempt,
+  canCompleteMixedPracticeWithoutQuestions,
   getGuidedPracticeQuestions,
   getGuidedPracticeSessionSelection,
 } from "./guidedPractice";
@@ -108,6 +109,73 @@ function fixtureState() {
 }
 
 describe("guided practice question selection", () => {
+  it("allows an explicit close only when no eligible cross-topic questions exist", () => {
+    const noQuestions = {
+      selectedTaskIds: [],
+      questions: [],
+      missingTaskIds: [],
+      attemptedTaskIds: [],
+      selectionIssue: "no-active-questions" as const,
+    };
+
+    expect(canCompleteMixedPracticeWithoutQuestions(noQuestions)).toBe(true);
+    expect(
+      canCompleteMixedPracticeWithoutQuestions({
+        ...noQuestions,
+        selectionIssue: "not-enough-topics",
+      }),
+    ).toBe(true);
+    expect(
+      canCompleteMixedPracticeWithoutQuestions({
+        ...noQuestions,
+        selectionIssue: "allocation-too-short",
+      }),
+    ).toBe(false);
+    expect(
+      canCompleteMixedPracticeWithoutQuestions({
+        ...noQuestions,
+        missingTaskIds: ["previously-selected-question"],
+        selectionIssue: "missing-questions",
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts an immutable event recording unavailable mixed-practice questions", () => {
+    const state = fixtureState();
+    state.task_events.push({
+      id: "mixed-practice-unavailable-event",
+      logged_at: NOW,
+      event_type: "guided_practice_unavailable",
+      subject_type: "mixed_practice",
+      subject_id: "mixed-block",
+      review_event_id: null,
+      retrieval_task_id: null,
+      gate_session_id: null,
+      gate_selected_task_ids_snapshot: null,
+      skill_demonstrated_without_hints: null,
+      work_session_id: null,
+      related_event_id: null,
+      estimated_duration_min_at_event: 25,
+      task_type_at_event: null,
+      priority_at_event: 3,
+      intended_due_date_at_event: null,
+      current_due_date_at_event: null,
+      actual_duration_min: null,
+      result: null,
+      yellow_gap_severity: null,
+      disposition: null,
+      reason: "No active mixed-practice questions were available.",
+      guided_practice_selected_task_ids_snapshot: null,
+      critical_error_flag: null,
+      defer_count_at_event: null,
+      re_entry_condition: null,
+      old_priority: null,
+      new_priority: null,
+    });
+
+    expect(() => assertStudyStateIntegrity(state)).not.toThrow();
+  });
+
   it("alternates mixed-practice questions across active topics", () => {
     const questions = getGuidedPracticeQuestions(
       fixtureState(),
