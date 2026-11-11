@@ -676,7 +676,18 @@ function BookDetailContent() {
   const currentWorkflowStep = getCurrentBookWorkflowStep(book);
   const currentSecondPassSection =
     secondPassSections.find((section) => !section.completed) ?? null;
-  
+
+  const activeWorkTimer =
+    currentWorkflowStep === "first_pass"
+      ? { itemId: `reading-book-${book.id}-first-pass`, itemName: `First pass: ${book.title}` }
+      : currentWorkflowStep === "reconstruction"
+        ? { itemId: `reading-book-${book.id}-reconstruction`, itemName: `Reconstruction: ${book.title}` }
+        : currentWorkflowStep === "second_pass" && currentSecondPassSection
+          ? { itemId: `reading-book-${book.id}-second-pass-${currentSecondPassSection.id}`, itemName: `Revisit: ${currentSecondPassSection.section}` }
+          : currentWorkflowStep === "application"
+            ? { itemId: `reading-book-${book.id}-application`, itemName: `Application: ${book.title}` }
+            : null;
+
   return (
     <main className="reading-detail-page">
       <Link className="reading-detail-page__back" href="/reading">
@@ -716,6 +727,14 @@ function BookDetailContent() {
           ]}
         />
       </header>
+
+      {activeWorkTimer && (
+        <ItemWorkTimer
+          itemId={activeWorkTimer.itemId}
+          itemName={activeWorkTimer.itemName}
+          defaultMinutes={25}
+        />
+      )}
 
       {showNotes && (
         <section className="reading-detail-page__panel space-y-4" id="reading-notes">
@@ -981,13 +1000,7 @@ function BookDetailContent() {
             difficult, and reconstruct what matters before continuing.
           </p>
 
-          <ItemWorkTimer
-            itemId={`reading-book-${book.id}-first-pass`}
-            itemName={`First pass: ${book.title}`}
-            defaultMinutes={25}
-          />
-
-          <form onSubmit={savePage} className="flex flex-wrap items-end gap-3">
+          <form onSubmit={savePage} className="flex flex-wrap items-end justify-end gap-3">
             <label className="min-w-0 flex-1">
               <span className="reading-detail-page__label mb-1 block">
                 Current page
@@ -1002,7 +1015,7 @@ function BookDetailContent() {
                 className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
               />
             </label>
-            <button type="submit" className="reading-detail-page__action action-primary--forest">
+            <button type="submit" className="reading-detail-page__secondary-action">
               Save progress
             </button>
           </form>
@@ -1013,7 +1026,7 @@ function BookDetailContent() {
               Optional. Use a few words if that is enough. A mental summary is often all you need.
             </p>
 
-            <form onSubmit={saveChapterReflection} className="mt-3 space-y-3">
+            <form onSubmit={saveChapterReflection} className="mt-3 space-y-4">
               <label className="block">
                 <span className="reading-detail-page__label mb-1 block">
                   Chapter or section
@@ -1062,9 +1075,11 @@ function BookDetailContent() {
                 />
               </label>
 
-              <button type="submit" className="reading-detail-page__action action-primary--forest">
-                Save reflection
-              </button>
+              <div className="reading-detail-page__save-actions">
+                <button type="submit" className="reading-detail-page__secondary-action">
+                  Save reflection
+                </button>
+              </div>
             </form>
           </div>
 
@@ -1101,10 +1116,14 @@ function BookDetailContent() {
           {book.status !== "Finished" && (
             <div className="border-t border-[var(--border)] pt-4">
               <h3 className="text-sm font-semibold">Finished the book?</h3>
-              <p className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">
-                Complete the first pass before undertaking a comprehensive analysis, unless the book
-                is difficult enough to require deeper work as you go.
-              </p>
+              <div className="reading-detail-page__finished-guidance mt-1">
+                <p className="text-sm leading-6">
+                  <strong>Complete the first pass before undertaking a comprehensive analysis.</strong>
+                </p>
+                <p className="reading-detail-page__finished-guidance-exception mt-1">
+                  Exception: A particularly difficult book may call for deeper work as you go.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={markFinished}
@@ -1126,12 +1145,6 @@ function BookDetailContent() {
           <span className="mr-2 text-[var(--primary-dark)]">3</span>
           After finishing: reconstruct the whole
         </summary>
-
-        <ItemWorkTimer
-          itemId={`reading-book-${book.id}-reconstruction`}
-          itemName={`Reconstruction: ${book.title}`}
-          defaultMinutes={25}
-        />
 
         <form onSubmit={saveReconstruction} className="mt-4 space-y-4">
           <p className="text-sm leading-6 text-[var(--ink-soft)]">
@@ -1291,12 +1304,6 @@ function BookDetailContent() {
                 </span>
               </div>
 
-              <ItemWorkTimer
-                itemId={`reading-book-${book.id}-second-pass-${currentSecondPassSection.id}`}
-                itemName={`Revisit: ${currentSecondPassSection.section}`}
-                defaultMinutes={25}
-              />
-
               <form
                 onSubmit={(event) =>
                   saveSecondPassNotes(event, currentSecondPassSection.id)
@@ -1392,12 +1399,6 @@ function BookDetailContent() {
           <span className="mr-2 text-[var(--primary-dark)]">5</span>
           Apply what matters—or decide to stop
         </summary>
-
-        <ItemWorkTimer
-          itemId={`reading-book-${book.id}-application`}
-          itemName={`Application: ${book.title}`}
-          defaultMinutes={25}
-        />
 
         <form onSubmit={saveApplicationAndDecision} className="mt-4 space-y-4">
           <p className="text-sm leading-6 text-[var(--ink-soft)]">

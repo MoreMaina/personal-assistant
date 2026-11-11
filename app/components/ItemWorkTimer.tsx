@@ -685,7 +685,6 @@ export function ItemWorkTimer({
     start,
     pause,
     reset,
-    setDuration,
     startStopwatch,
     pauseStopwatch,
     resetStopwatch,
@@ -727,24 +726,7 @@ export function ItemWorkTimer({
 
   const timeLabel = formatTime(remainingMs);
 
-  const [durationDraft, setDurationDraft] = useState(
-    String(entry.durationMinutes),
-  );
   const [mode, setMode] = useState<"timer" | "stopwatch">("timer");
-
-  useEffect(() => {
-    setDurationDraft(String(entry.durationMinutes));
-  }, [entry.durationMinutes]);
-
-  function saveDuration() {
-    const minutes = Number(durationDraft);
-
-    if (validDuration(minutes)) {
-      setDuration(itemId, minutes);
-    } else {
-      setDurationDraft(String(entry.durationMinutes));
-    }
-  }
 
   function toggleTimer() {
     if (isRunning) {
@@ -756,7 +738,7 @@ export function ItemWorkTimer({
 
   return (
     <div
-      className="mt-3 rounded-xl border border-[#e4dac9] bg-[#fffaf1] p-3"
+      className="item-work-timer mt-3 rounded-xl border border-[#e4dac9] bg-[#fffaf1] p-4"
       aria-label={`Work tracker for ${itemName}`}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -796,53 +778,33 @@ export function ItemWorkTimer({
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-2xl font-extrabold tabular-nums text-[#23412f]">
-                {hydrated ? timeLabel : "--:--"}
-              </p>
-              <p className="mt-1 text-xs font-bold text-stone-500">
-                {isRunning
-                  ? "Running"
-                  : remainingMs === 0 && entry.completedAtMs !== null
-                    ? "Time complete"
-                    : anotherTimerRunning
-                      ? "Paused · another item is running"
-                      : "Ready"}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="block">
-                <span className="mb-1 block text-xs font-bold text-stone-500">
-                  Minutes
-                </span>
-                <input
-                  type="number"
-                  min={MIN_DURATION_MINUTES}
-                  max={MAX_DURATION_MINUTES}
-                  step={1}
-                  value={durationDraft}
-                  disabled={!hydrated || isRunning}
-                  onChange={(event) => setDurationDraft(event.target.value)}
-                  onBlur={saveDuration}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                  }}
-                  className="w-20 rounded-lg border border-[#d8ccb8] bg-white px-2 py-2 text-center text-sm font-extrabold disabled:opacity-50"
-                />
-              </label>
               <button
                 type="button"
                 disabled={!hydrated}
                 onClick={toggleTimer}
-                className="rounded-lg bg-[#23412f] px-3 py-2 text-sm font-extrabold text-white hover:bg-[#183021] disabled:opacity-50"
+                className="item-work-timer__clock rounded-lg px-1 text-2xl font-bold tabular-nums text-[#23412f] focus-visible:outline-2 disabled:opacity-50"
+                aria-label={`${isRunning ? "Pause" : "Start"} ${itemName} timer. ${timeLabel} remaining.`}
+                title={`${isRunning ? "Pause" : "Start"} timer`}
               >
-                {isRunning ? "Pause" : "Start"}
+                {hydrated ? timeLabel : "--:--"}
               </button>
+              <p className="mt-1 text-xs font-medium text-stone-500">
+                {isRunning
+                  ? "Running · tap the clock to pause"
+                  : remainingMs === 0 && entry.completedAtMs !== null
+                    ? "Time complete"
+                    : anotherTimerRunning
+                      ? "Paused · another item is running"
+                      : "Ready · tap the clock to start"}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 disabled={!hydrated}
                 onClick={() => reset(itemId, safeDefault)}
-                className="rounded-lg border border-[#d8ccb8] bg-white px-3 py-2 text-sm font-extrabold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+                className="rounded-lg border border-[#d8ccb8] bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
               >
                 Reset
               </button>

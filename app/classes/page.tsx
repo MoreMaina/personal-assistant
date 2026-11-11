@@ -67,28 +67,40 @@ function localDateString() {
   return `${year}-${month}-${day}`;
 }
 
+function ordinalSuffix(day: number): string {
+  if (day % 100 >= 11 && day % 100 <= 13) return "th";
+  if (day % 10 === 1) return "st";
+  if (day % 10 === 2) return "nd";
+  if (day % 10 === 3) return "rd";
+  return "th";
+}
+
 function formatDate(value?: string) {
   if (!value) return "No due date";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return value;
+  const monthName = date.toLocaleDateString("en-US", { month: "short" });
+  return `${monthName} ${day}${ordinalSuffix(day)}`;
+}
 
-  const [year, month, day] = value.split("-");
-  const monthNames = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ];
+function formatClockTime(value: string): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return value;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return value;
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" })
+    .format(new Date(2000, 0, 1, hours, minutes));
+}
 
-  const monthIndex = Number(month) - 1;
-
-  if (
-    !year ||
-    !day ||
-    monthIndex < 0 ||
-    monthIndex > 11 ||
-    !Number.isFinite(Number(day))
-  ) {
-    return value;
-  }
-
-  return `${Number(day)} ${monthNames[monthIndex]} ${year}`;
+function formatTimeRange(start?: string, end?: string): string {
+  if (!start) return "Time not set";
+  return `${formatClockTime(start)}${end ? ` - ${formatClockTime(end)}` : ""}`;
 }
 
 function recurrenceSignature(
@@ -313,6 +325,7 @@ export default function ClassesPage() {
 
   useEffect(() => {
     let lastTrigger: HTMLElement | null = null;
+    let activeActionMenu: HTMLDetailsElement | null = null;
 
     const getMenus = () =>
       Array.from(
@@ -324,7 +337,6 @@ export default function ClassesPage() {
     const getPanel = (menu: HTMLDetailsElement): HTMLElement | null => {
       const trigger = menu.querySelector(":scope > summary");
       const panel = trigger?.nextElementSibling;
-
       return panel instanceof HTMLElement ? panel : null;
     };
 
@@ -332,11 +344,52 @@ export default function ClassesPage() {
       getPanel(menu)?.removeAttribute("style");
     };
 
+    const positionActionMenu = (menu: HTMLDetailsElement) => {
+      if (!menu.open || menu.dataset.smartMenu !== "actions") return;
+      const trigger = menu.querySelector(":scope > summary");
+      const panel = getPanel(menu);
+      if (!(trigger instanceof HTMLElement) || !panel) return;
+
+      const rect = trigger.getBoundingClientRect();
+      panel.style.position = "fixed";
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.margin = "0";
+      panel.style.maxHeight = `${Math.max(120, window.innerHeight - 24)}px`;
+      panel.style.overflowY = "auto";
+
+      const width = Math.min(
+        Math.max(panel.getBoundingClientRect().width, 176),
+        window.innerWidth - 24,
+      );
+      panel.style.width = `${width}px`;
+      const height = Math.min(panel.scrollHeight, window.innerHeight - 24);
+      const below = window.innerHeight - rect.bottom - 8;
+      const above = rect.top - 8;
+      const flipUp = height > below && above > below;
+      const top = flipUp
+        ? Math.max(12, rect.top - height - 8)
+        : Math.min(window.innerHeight - height - 12, rect.bottom + 8);
+      const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+      panel.style.top = `${top}px`;
+      panel.style.left = `${left}px`;
+    };
+
+    const updateActiveMenu = () => {
+      if (activeActionMenu?.open) positionActionMenu(activeActionMenu);
+    };
+
+    const clearAllPositions = () => {
+      for (const menu of getMenus()) clearPanelPosition(menu);
+      activeActionMenu = null;
+    };
+
     const closeAllMenus = () => {
       for (const menu of getMenus()) {
         if (menu.open) menu.open = false;
         clearPanelPosition(menu);
       }
+      activeActionMenu = null;
     };
 
     const handleToggle = (event: Event) => {
@@ -344,12 +397,11 @@ export default function ClassesPage() {
       if (
         !(menu instanceof HTMLDetailsElement) ||
         !menu.hasAttribute("data-smart-menu")
-      ) {
-        return;
-      }
+      ) return;
 
       if (!menu.open) {
         clearPanelPosition(menu);
+        if (activeActionMenu === menu) activeActionMenu = null;
         return;
       }
 
@@ -362,8 +414,11 @@ export default function ClassesPage() {
 
       const trigger = menu.querySelector(":scope > summary");
       lastTrigger = trigger instanceof HTMLElement ? trigger : null;
-
       clearPanelPosition(menu);
+      if (menu.dataset.smartMenu === "actions") {
+        activeActionMenu = menu;
+        window.requestAnimationFrame(() => positionActionMenu(menu));
+      }
     };
 
     const handleOutsidePointer = (event: PointerEvent) => {
@@ -399,6 +454,8 @@ export default function ClassesPage() {
       lastTrigger?.focus();
     };
 
+    window.addEventListener("resize", updateActiveMenu);
+    window.addEventListener("scroll", updateActiveMenu, true);
     document.addEventListener("toggle", handleToggle, true);
     document.addEventListener("pointerdown", handleOutsidePointer, true);
     document.addEventListener("click", handleMenuAction);
@@ -409,6 +466,9 @@ export default function ClassesPage() {
       document.removeEventListener("pointerdown", handleOutsidePointer, true);
       document.removeEventListener("click", handleMenuAction);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updateActiveMenu);
+      window.removeEventListener("scroll", updateActiveMenu, true);
+      clearAllPositions();
     };
   }, []);
 
@@ -559,7 +619,7 @@ export default function ClassesPage() {
 
   function renderClassActions(item: ClassItem) {
     return (
-      <details data-smart-menu className="relative shrink-0">
+      <details data-smart-menu="actions" className="relative shrink-0">
         <summary
           aria-label={`More actions for ${item.name}`}
           title={`More actions for ${item.name}`}
@@ -567,22 +627,12 @@ export default function ClassesPage() {
         >
           <span aria-hidden="true">⋯</span>
         </summary>
-        <div
-          data-smart-menu-panel
-          className="calendar-class-menu__panel absolute right-0 top-full z-30 mt-1 min-w-40 rounded-xl border p-1.5"
-        >
-          <button
-            type="button"
-            onClick={() => openClassForm(item)}
-            className="w-full rounded-lg px-3 py-2.5 text-left text-sm"
-          >
+        <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-40 p-1.5">
+          <p className="context-menu__heading">Class Actions</p>
+          <button type="button" onClick={() => openClassForm(item)} data-menu-action="edit" className="context-menu__action">
             Edit class
           </button>
-          <button
-            type="button"
-            onClick={() => handleClassDelete(item)}
-            className="w-full rounded-lg px-3 py-2.5 text-left text-sm"
-          >
+          <button type="button" onClick={() => handleClassDelete(item)} data-menu-action="delete" className="context-menu__action context-menu__action--destructive">
             Delete class
           </button>
         </div>
@@ -1228,7 +1278,7 @@ export default function ClassesPage() {
                           {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}
                         </p>
                       </header>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {dayClasses.map((item) => (
                           <article
                             key={item.id}
@@ -1240,12 +1290,12 @@ export default function ClassesPage() {
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-[var(--primary-dark)]">
-                                  {item.start}–{item.end}
-                                </p>
-                                <p className="mt-1 break-words text-sm font-semibold text-[var(--ink)]">
+                              <div className="min-w-0 flex-1">
+                                <p className="calendar-class-record__title break-words">
                                   {item.name}
+                                </p>
+                                <p className="calendar-class-record__time">
+                                  {formatTimeRange(item.start, item.end)}
                                 </p>
                                 <p className="mt-1 text-xs text-[var(--muted)]">
                                   {item.type}
@@ -1298,7 +1348,7 @@ export default function ClassesPage() {
 
                 <div className="pt-1">
                   <div className="mb-1 flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-semibold">{selectedClassOverviewDay}</h4>
+                    <h4 className="text-sm font-semibold">{selectedClassOverviewDay.slice(0, 3)}</h4>
                     <span className="text-xs text-[var(--muted)]">
                       {sortedClasses.filter((item) => item.day === selectedClassOverviewDay).length} classes
                     </span>
@@ -1318,12 +1368,12 @@ export default function ClassesPage() {
                                 : ""
                             }`}
                           >
-                            <p className="w-24 shrink-0 text-xs font-semibold text-[var(--primary-dark)]">
-                              {item.start}–{item.end}
-                            </p>
                             <div className="min-w-0 flex-1">
-                              <p className="break-words text-sm font-semibold text-[var(--ink)]">
+                              <p className="calendar-class-record__title break-words">
                                 {item.name}
+                              </p>
+                              <p className="calendar-class-record__time">
+                                {formatTimeRange(item.start, item.end)}
                               </p>
                               <p className="mt-0.5 text-xs text-[var(--muted)]">
                                 {item.type}
@@ -1629,10 +1679,8 @@ export default function ClassesPage() {
                         {recurrenceSummary(item.recurrence)}
                       </p>
                     )}
-                    <p className="mt-1 text-sm font-medium text-[var(--primary)]">
-                      {item.startTime
-                        ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ""}`
-                        : "Time not set"}
+                    <p className="mt-1 text-sm font-medium text-[var(--ink-soft)]">
+                      {formatTimeRange(item.startTime, item.endTime)}
                     </p>
                     {item.location && (
                       <p className="mt-2 text-sm text-[var(--ink-soft)]">
@@ -1646,21 +1694,23 @@ export default function ClassesPage() {
                     )}
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    <details data-smart-menu className="relative">
+                    <details data-smart-menu="actions" className="relative">
                       <summary
                         aria-label={`More actions for ${item.title}`}
                         className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                       >
                         <span aria-hidden="true">⋮</span>
                       </summary>
-                      <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                      <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-48 p-1">
+                        <p className="context-menu__heading">Event Actions</p>
                         <button
                           type="button"
                           onClick={(clickEvent) => {
                             clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                             openPlannerForm("event", item);
                           }}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                          data-menu-action="edit"
+                          className="context-menu__action"
                         >
                           {item.recurrence ? "Edit series" : "Edit event"}
                         </button>
@@ -1670,7 +1720,8 @@ export default function ClassesPage() {
                             clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                             handleDeleteItem(item);
                           }}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                          data-menu-action="delete"
+                          className="context-menu__action context-menu__action--destructive"
                         >
                           {item.recurrence ? "Delete series" : "Delete event"}
                         </button>
@@ -2024,21 +2075,23 @@ export default function ClassesPage() {
                   </div>
 
                   <div className="flex shrink-0 gap-2">
-                    <details data-smart-menu className="relative">
+                    <details data-smart-menu="actions" className="relative">
                       <summary
                         aria-label={`More actions for ${item.title}`}
                         className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                       >
                         <span aria-hidden="true">⋮</span>
                       </summary>
-                      <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-44 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                      <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-44 p-1">
+                        <p className="context-menu__heading">Task Actions</p>
                         <button
                           type="button"
                           onClick={(clickEvent) => {
                             clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                             openPlannerForm("task", item);
                           }}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                          data-menu-action="edit"
+                          className="context-menu__action"
                         >
                           Edit task
                         </button>
@@ -2048,7 +2101,8 @@ export default function ClassesPage() {
                             clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                             handleDeleteItem(item);
                           }}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                          data-menu-action="delete"
+                          className="context-menu__action context-menu__action--destructive"
                         >
                           Delete task
                         </button>

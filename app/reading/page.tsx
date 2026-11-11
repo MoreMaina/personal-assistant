@@ -2090,7 +2090,7 @@ export default function ReadingPage() {
                             <span className="block truncate text-sm font-medium text-[var(--ink)]">
                               {essay.title}
                             </span>
-                            <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                            <span className="workspace-page__essay-status mt-0.5">
                               {essay.status}
                             </span>
                             <span className="mt-1 block text-[11px] leading-relaxed text-[var(--muted)]">
@@ -2266,7 +2266,7 @@ export default function ReadingPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="text-base font-semibold text-[var(--ink)]">
+                                <h2 className="workspace-page__essay-title text-base font-bold">
                                   <Link
                                     href={`/reading/essay/${essay.id}`}
                                     className="reading-row__title-link"
@@ -2274,7 +2274,7 @@ export default function ReadingPage() {
                                     {essay.title}
                                   </Link>
                                 </h2>
-                                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)]">
+                                <span className="workspace-page__essay-status">
                                   {essay.status}
                                 </span>
                               </div>

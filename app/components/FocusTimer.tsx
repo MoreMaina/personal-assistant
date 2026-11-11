@@ -255,7 +255,7 @@ export default function FocusTimer() {
   }
 
   return (
-    <div className="fixed bottom-24 right-3 z-[80] sm:bottom-6 sm:right-6">
+    <div className="focus-timer fixed bottom-24 right-3 z-[80] sm:bottom-6 sm:right-6">
       {!open ? (
         <button
           type="button"
@@ -273,7 +273,7 @@ export default function FocusTimer() {
       ) : (
         <section
           aria-label="Shared Pomodoro timer"
-          className="w-[min(21rem,calc(100vw-1.5rem))] rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 text-[#26352a] shadow-2xl"
+          className="focus-timer__panel w-[min(21rem,calc(100vw-1.5rem))] rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 text-[#26352a] shadow-2xl"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -296,7 +296,7 @@ export default function FocusTimer() {
           </div>
 
           <p
-            className="my-5 text-center text-5xl font-extrabold tabular-nums tracking-tight text-[#23412f]"
+            className="focus-timer__clock my-5 text-center text-5xl font-bold tabular-nums tracking-tight text-[#23412f]"
             aria-label={timeLabel + " remaining"}
           >
             {timeLabel}
@@ -327,11 +327,8 @@ export default function FocusTimer() {
             </span>
           </div>
 
-          <p className="mt-3 text-xs font-semibold leading-5 text-stone-500">
-            25-minute focus sessions, 5-minute short breaks, and a
-            15-minute long break after every four completed focus sessions.
-            The timer continues across app pages and browser reloads on this
-            device. It does not mark Study, Reading, or Project work complete.
+          <p className="mt-3 text-xs font-medium leading-5 text-stone-500">
+            Focus for 25 minutes, take a 5-minute short break, and take a 15-minute break after four focus sessions. This timer runs across pages and reloads on this device; it does not record completed Study, Reading, or Project work.
           </p>
 
           {completionMessage && (

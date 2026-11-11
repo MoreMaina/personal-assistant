@@ -1,33 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6efe2;
-  --surface: #fffaf1;
-  --surface-soft: #efe4d1;
+  /* Legacy semantic aliases now resolve to Palette 6 everywhere. */
+  --background: var(--p6-page);
+  --surface: var(--p6-surface);
+  --surface-soft: var(--p6-surface-subtle);
 
-  --primary: #23412f;
-  --primary-dark: #1a2e24;
-  --primary-soft: #dce8d8;
+  --primary: var(--p6-primary);
+  --primary-dark: var(--p6-primary-hover);
+  --primary-soft: var(--p6-surface-selected);
 
-  --accent: #d96b48;
-  --accent-dark: #b65337;
-  --accent-soft: #f3ddd2;
+  --accent: var(--p6-accent-coral);
+  --accent-dark: #98583f;
+  --accent-soft: var(--p6-accent-warm);
 
-  --yellow: #e6b84f;
-  --yellow-soft: #f5e6c1;
+  --yellow: #d8a83d;
+  --yellow-soft: #fff4d6;
 
-  --blue: #718ba2;
-  --blue-soft: #e3eaf0;
+  --blue: #66899a;
+  --blue-soft: var(--p6-info-bg);
 
-  --ink: #29342d;
-  --ink-soft: #4a5d54;
-  --muted: #69756d;
+  --ink: var(--p6-text);
+  --ink-soft: var(--p6-text-secondary);
+  --muted: var(--p6-text-secondary);
 
-  --border: #d8ccb8;
+  --border: var(--p6-border-decorative);
 
-  --shadow: 0 4px 0 var(--primary-dark);
-  --shadow-small: 0 3px 0 var(--primary-dark);
-  --shadow-soft: 0 4px 0 rgba(26, 46, 36, 0.09);
+  --shadow: var(--p6-elevation-card);
+  --shadow-small: var(--p6-elevation-interactive);
+  --shadow-soft: var(--p6-elevation-card);
 
   --radius-sm: 12px;
   --radius-md: 16px;
@@ -140,24 +141,23 @@
 
 html {
   min-height: 100%;
-  background: var(--background);
+  background: var(--p6-page);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(255, 250, 241, 0.9),
-      transparent 32%
-    ),
-    var(--background);
-  color: var(--ink);
+  background: var(--p6-page);
+  color: var(--p6-text);
   font-family: var(--font-body);
   font-size: 16px;
-  font-weight: 600;
-  line-height: 1.6;
+  font-weight: 400;
+  line-height: var(--p6-line-body);
+}
+
+.app-frame,
+.app-content {
+  background: var(--p6-page);
 }
 
 h1,
@@ -737,7 +737,7 @@ a.rounded-xl:active {
 
 /* Consistent tactile controls */
 .app-content button:not(.topbar__icon-button) {
-  min-height: 44px;
+  min-height: 48px;
   border: 2px solid var(--primary-dark);
   border-radius: 16px;
   box-shadow: 0 3px 0 var(--primary-dark);
@@ -5028,6 +5028,543 @@ body:has(.reading-detail-page) .mobile-nav__content--active {
   .app-content .study-page *,
   .app-content .workspace-page *,
   .app-content .reading-detail-page * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+/* Palette 6 global consistency batch: remove legacy tactile borders and beige canvas. */
+html,
+body,
+.app-frame,
+.app-content {
+  background: var(--p6-page) !important;
+  color: var(--p6-text);
+}
+
+.app-content button:not(.topbar__icon-button) {
+  min-height: 48px;
+  border-width: 1px !important;
+  border-color: var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  box-shadow: none !important;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.25;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  transform: none !important;
+  transition: background-color var(--p6-motion-base) var(--p6-ease-standard),
+    border-color var(--p6-motion-base) var(--p6-ease-standard),
+    color var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+.app-content button.action-primary--forest,
+.app-content button.action-primary--terracotta,
+.app-content button.action-primary--sage,
+.app-content button.btn--primary {
+  min-height: 44px !important;
+  padding: 0.625rem 1rem !important;
+  border: 1px solid var(--p6-primary-hover) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.app-content button.action-primary--forest:hover:not(:disabled),
+.app-content button.action-primary--terracotta:hover:not(:disabled),
+.app-content button.action-primary--sage:hover:not(:disabled),
+.app-content button.btn--primary:hover:not(:disabled) {
+  border-color: var(--p6-primary-hover) !important;
+  background: var(--p6-primary-hover) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content button.action-primary--forest:active:not(:disabled),
+.app-content button.action-primary--terracotta:active:not(:disabled),
+.app-content button.action-primary--sage:active:not(:disabled),
+.app-content button.btn--primary:active:not(:disabled) {
+  background: #004b53 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content input:not([type="checkbox"]):not([type="radio"]),
+.app-content textarea,
+.app-content select {
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+  font-size: 1rem !important;
+}
+
+.app-content input[type="checkbox"],
+.app-content input[type="radio"] {
+  accent-color: var(--p6-primary);
+}
+
+/* Reusable context-menu surface: white, borderless, soft elevation. */
+.app-content button.card-menu__trigger,
+.app-content button.calendar-class-menu__trigger,
+.app-content summary.calendar-class-menu__trigger,
+.app-content details[data-smart-menu="actions"] > summary {
+  min-width: 48px;
+  min-height: 48px;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.card-menu__panel,
+.context-menu-panel {
+  position: fixed;
+  z-index: 1000;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+  color: var(--p6-text) !important;
+}
+
+.card-menu__panel {
+  top: var(--card-menu-top, 12px) !important;
+  left: var(--card-menu-left, 12px) !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 230px;
+  max-height: var(--card-menu-max-height, calc(100dvh - 24px));
+  padding: 8px;
+}
+
+.card-menu__heading,
+.context-menu__heading {
+  margin: 4px 10px 8px;
+  color: var(--p6-text-secondary) !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.app-content button.card-menu__action,
+.app-content button.card-menu__cancel,
+.app-content button.context-menu__action {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+  text-align: left;
+  font-size: 0.92rem;
+  font-weight: var(--p6-weight-medium) !important;
+}
+
+.app-content button.card-menu__action:hover,
+.app-content button.context-menu__action:hover {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+
+.app-content button.card-menu__action--destructive,
+.app-content button.context-menu__action--destructive {
+  color: var(--p6-error-text) !important;
+}
+
+.app-content button.card-menu__action--destructive:hover,
+.app-content button.context-menu__action--destructive:hover {
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+.context-menu__action::before {
+  display: inline-flex;
+  width: 1.25rem;
+  flex: 0 0 1.25rem;
+  justify-content: center;
+  color: var(--p6-primary);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.context-menu__action[data-menu-action="edit"]::before { content: "✎"; }
+.context-menu__action[data-menu-action="delete"]::before,
+.context-menu__action[data-menu-action="cancel"]::before { content: "⌫"; color: var(--p6-error-text); }
+.context-menu__action[data-menu-action="restore"]::before { content: "↶"; }
+
+.app-content button.card-menu__backdrop {
+  z-index: 990;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: rgba(26, 43, 47, 0.22) !important;
+  box-shadow: none !important;
+}
+
+/* Study semantic surfaces: map every remaining legacy status colour to P6. */
+.app-content .study-page [class*="bg-[#dce8d8]"] {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-selected) !important;
+}
+.app-content .study-page [class*="bg-[#31573f]"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+.app-content .study-page [class*="border-[#23412f]"],
+.app-content .study-page [class*="border-[#557c61]"],
+.app-content .study-page [class*="border-[#d8ccb8]"],
+.app-content .study-page [class*="border-[#e4dac9]"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+.app-content .study-page [class*="text-[#23412f]"] { color: var(--p6-primary) !important; }
+.app-content .study-page [class*="text-[#1a2b2f]"] { color: var(--p6-text) !important; }
+.app-content .study-page [class*="bg-amber-50"],
+.app-content .study-page [class*="bg-amber-100"] {
+  border-color: #ead6a4 !important;
+  background: var(--p6-warning-bg) !important;
+  color: var(--p6-warning-text) !important;
+}
+.app-content .study-page [class*="bg-amber-900"],
+.app-content .study-page [class*="bg-amber-950"] {
+  border-color: #ead6a4 !important;
+  background: var(--p6-warning-bg) !important;
+  color: var(--p6-warning-text) !important;
+}
+.app-content .study-page [class*="bg-blue-50"] {
+  border-color: #c6dfe6 !important;
+  background: var(--p6-info-bg) !important;
+  color: var(--p6-info-text) !important;
+}
+.app-content .study-page [class*="bg-emerald-50"],
+.app-content .study-page [class*="bg-emerald-100"] {
+  border-color: #c4dfd1 !important;
+  background: var(--p6-success-bg) !important;
+  color: var(--p6-success-text) !important;
+}
+.app-content .study-page [class*="bg-emerald-700"],
+.app-content .study-page [class*="bg-emerald-800"],
+.app-content .study-page [class*="bg-emerald-900"] {
+  border-color: var(--p6-primary-hover) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+.app-content .study-page [class*="bg-rose-50"],
+.app-content .study-page [class*="bg-rose-100"] {
+  border-color: #e9c4bf !important;
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+.app-content .study-page [class*="bg-stone-50"],
+.app-content .study-page [class*="bg-stone-100"] {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text-secondary) !important;
+}
+.app-content .study-page [class*="bg-stone-300"] {
+  background: var(--p6-disabled-bg) !important;
+  color: var(--p6-text-disabled) !important;
+}
+.app-content .study-page [class*="border-amber-"],
+.app-content .study-page [class*="border-blue-"],
+.app-content .study-page [class*="border-emerald-"],
+.app-content .study-page [class*="border-rose-"],
+.app-content .study-page [class*="border-stone-"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+.app-content .study-page [class*="text-amber-"] { color: var(--p6-warning-text) !important; }
+.app-content .study-page [class*="text-blue-"] { color: var(--p6-info-text) !important; }
+.app-content .study-page [class*="text-emerald-"] { color: var(--p6-success-text) !important; }
+.app-content .study-page [class*="text-rose-"] { color: var(--p6-error-text) !important; }
+.app-content .study-page [class*="text-stone-"] { color: var(--p6-text-secondary) !important; }
+.app-content .study-page [class*="ring-[#dce8d8]"] { --tw-ring-color: var(--p6-focus) !important; }
+.app-content .study-page [class*="shadow-"] { box-shadow: none !important; }
+
+.app-content .study-page .study-empty-info {
+  border: 1px solid #c6dfe6 !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-info-bg) !important;
+  color: var(--p6-info-text) !important;
+}
+
+/* One compact Study metadata banner with vertical dividers (Option 3). */
+.app-content .study-page .study-page__summary-banner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .study-page .study-page__summary-item {
+  position: relative;
+  min-width: 0;
+  padding: 1rem 1.25rem;
+  background: transparent !important;
+  overflow-wrap: anywhere;
+}
+.app-content .study-page .study-page__summary-item + .study-page__summary-item {
+  border-left: 1px solid var(--p6-border-decorative);
+}
+.app-content .study-page .study-page__summary-label {
+  margin: 0;
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-label) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.3;
+}
+.app-content .study-page .study-page__summary-value {
+  margin: 0.3rem 0 0;
+  color: var(--p6-text) !important;
+  font-size: clamp(1.05rem, 1rem + 0.35vw, 1.3rem) !important;
+  font-weight: var(--p6-weight-bold) !important;
+  line-height: 1.3;
+}
+
+/* Workspace: clean tabs, bold titles, quiet essay stats and status pills. */
+.app-content .workspace-page [aria-label="Workspace section"] {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  gap: 0.5rem !important;
+}
+.app-content .workspace-page [aria-label="Workspace section"] button {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .workspace-page [aria-label="Workspace section"] button[aria-pressed="true"] {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+.app-content .workspace-page [id^="book-"] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  padding: 1rem 1.125rem !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .workspace-page .reading-row__title-link {
+  color: var(--p6-text) !important;
+  font-weight: var(--p6-weight-bold) !important;
+}
+.app-content .workspace-page [id^="book-"] + [id^="book-"] {
+  margin-top: 1.5rem !important;
+}
+.app-content .calendar-page article[id^="calendar-item-"] + article[id^="calendar-item-"] {
+  margin-top: 1.5rem !important;
+}
+.app-content .workspace-page [id^="essay-"] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  padding: 1.25rem !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .workspace-page .workspace-page__essay-title,
+.app-content .workspace-page [id^="essay-"] h2 {
+  color: var(--p6-text) !important;
+  font-weight: var(--p6-weight-bold) !important;
+}
+.app-content .workspace-page .workspace-page__essay-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  border: 1px solid #b9d9d3 !important;
+  border-radius: var(--p6-radius-pill) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  padding: 0.25rem 0.65rem;
+  font-size: var(--p6-font-metadata) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+}
+.app-content .workspace-page .reading-numbered-shelf__row {
+  min-height: 4.5rem;
+  padding-block: 1rem !important;
+  border-bottom: 1px solid var(--p6-border-decorative);
+}
+.app-content .workspace-page .reading-numbered-shelf__row [class*="text-[11px]"],
+.app-content .workspace-page [id^="essay-"] [class*="text-[11px]"] {
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-metadata) !important;
+}
+
+/* Classes: de-nest class records and give the course name priority. */
+.app-content .calendar-page .calendar-class-record {
+  border: 0 !important;
+  border-bottom: 1px solid var(--p6-border-decorative) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0.875rem 0.25rem !important;
+  box-shadow: none !important;
+}
+.app-content .calendar-page .calendar-class-record:last-child {
+  border-bottom: 0 !important;
+}
+.app-content .calendar-page .calendar-class-record__title {
+  color: var(--p6-text) !important;
+  font-size: 1rem !important;
+  font-weight: var(--p6-weight-bold) !important;
+}
+.app-content .calendar-page .calendar-class-record__time {
+  margin-top: 0.25rem;
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-supporting) !important;
+  font-weight: var(--p6-weight-medium) !important;
+}
+.app-content .calendar-page [aria-label="Choose class day"] button[aria-pressed="false"] {
+  border-color: transparent !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .calendar-page [aria-label="Choose class day"] button[aria-pressed="true"] {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Book detail: form fields are soft-filled; saving actions are secondary. */
+.app-content .reading-detail-page textarea {
+  min-height: 6rem;
+  border: 1px solid transparent !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+.app-content .reading-detail-page textarea:focus {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-surface) !important;
+}
+.app-content .reading-detail-page form label + label {
+  margin-top: 1rem;
+}
+.app-content .reading-detail-page button.reading-detail-page__secondary-action {
+  min-height: 44px !important;
+  border: 1px solid var(--p6-primary) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: #ffffff !important;
+  color: var(--p6-primary) !important;
+  padding: 0.625rem 1rem !important;
+  box-shadow: none !important;
+}
+.app-content .reading-detail-page button.reading-detail-page__secondary-action:hover:not(:disabled) {
+  border-color: var(--p6-primary-hover) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+}
+.app-content .reading-detail-page .reading-detail-page__save-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.app-content .reading-detail-page .reading-detail-page__finished-guidance strong {
+  color: var(--p6-text) !important;
+  font-weight: var(--p6-weight-bold) !important;
+}
+.app-content .reading-detail-page .reading-detail-page__finished-guidance-exception {
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-supporting) !important;
+}
+
+/* Timers share the same light controls and teal action colour. */
+.app-content .item-work-timer,
+.app-content .focus-timer__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+  color: var(--p6-text) !important;
+}
+.app-content .item-work-timer__clock,
+.app-content .focus-timer__clock {
+  color: var(--p6-primary) !important;
+  font-variant-numeric: tabular-nums;
+}
+.app-content .item-work-timer__clock:hover {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-surface-selected) !important;
+}
+.app-content .item-work-timer button[class*="bg-[#23412f]"],
+.app-content .focus-timer button[class*="bg-[#23412f]"] {
+  border: 1px solid var(--p6-primary-hover) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer button[class*="bg-[#23412f]"]:hover,
+.app-content .focus-timer button[class*="bg-[#23412f]"]:hover {
+  background: var(--p6-primary-hover) !important;
+}
+.app-content .focus-timer {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* CardMenu is rendered in a body portal, outside .app-content. */
+.card-menu__panel button.card-menu__action,
+.card-menu__panel button.card-menu__cancel {
+  min-height: 48px !important;
+}
+
+@media (max-width: 48rem) {
+  .app-content .study-page .study-page__summary-banner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-content .study-page .study-page__summary-item {
+    padding: 0.875rem 1rem;
+  }
+  .app-content .study-page .study-page__summary-item + .study-page__summary-item {
+    border-left: 0;
+    border-top: 1px solid var(--p6-border-decorative);
+  }
+}
+
+@media (max-width: 900px) {
+  .app-content {
+    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+  .app-content main,
+  .app-content .page-shell {
+    scroll-margin-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+  .app-content [class*="overflow-y-auto"],
+  .app-content [class*="overflow-auto"] {
+    scroll-padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-content *,
+  .card-menu__panel,
+  .context-menu-panel {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;

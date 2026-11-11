@@ -1031,7 +1031,9 @@ export default function CalendarOverview({
                               ? "bg-[var(--primary-dark)]"
                               : kind === "event"
                                 ? "bg-[#946200]"
-                                : "bg-[var(--accent-dark)]"
+                                : kind === "google"
+                                  ? "bg-[#6750a4]"
+                                  : "bg-[var(--accent-dark)]"
                           }`}
                         />
                       ))}
@@ -1209,21 +1211,23 @@ export default function CalendarOverview({
 
                     <div className="flex shrink-0 flex-wrap gap-2">
                       {entry.kind === "class" && entry.classItem && (
-                        <details data-smart-menu className="relative">
+                        <details data-smart-menu="actions" className="relative">
                           <summary
                             aria-label={`More actions for ${entry.title}`}
                             className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                           >
                             <span aria-hidden="true">⋮</span>
                           </summary>
-                          <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                          <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-48 p-1">
+                            <p className="context-menu__heading">Class Actions</p>
                             <button
                               type="button"
                               onClick={(clickEvent) => {
                                 clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                 changeClassCancellation(entry);
                               }}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                              data-menu-action={entry.cancelled ? "restore" : "cancel"}
+                              className={`context-menu__action ${entry.cancelled ? "" : "context-menu__action--destructive"}`}
                             >
                               {entry.cancelled ? "Restore session" : "Cancel session"}
                             </button>
@@ -1232,21 +1236,23 @@ export default function CalendarOverview({
                       )}
 
                       {entry.kind === "event" && entry.eventItem && (
-                        <details data-smart-menu className="relative">
+                        <details data-smart-menu="actions" className="relative">
                           <summary
                             aria-label={`More actions for ${entry.title}`}
                             className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                           >
                             <span aria-hidden="true">⋮</span>
                           </summary>
-                          <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                          <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-48 p-1">
+                            <p className="context-menu__heading">Event Actions</p>
                             <button
                               type="button"
                               onClick={(clickEvent) => {
                                 clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                 onEditEvent(entry.eventItem!);
                               }}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                              data-menu-action="edit"
+                              className="context-menu__action"
                             >
                               {entry.eventItem.recurrence ? "Edit series" : "Edit event"}
                             </button>
@@ -1256,7 +1262,8 @@ export default function CalendarOverview({
                                 clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                 onDeleteItem(entry.eventItem!);
                               }}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                              data-menu-action="delete"
+                              className="context-menu__action context-menu__action--destructive"
                             >
                               {entry.eventItem.recurrence ? "Delete series" : "Delete event"}
                             </button>
@@ -1266,21 +1273,23 @@ export default function CalendarOverview({
 
                       {entry.kind === "task" && entry.task && (
                         <>
-                          <details data-smart-menu className="relative">
+                          <details data-smart-menu="actions" className="relative">
                             <summary
                               aria-label={`More actions for ${entry.title}`}
                               className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                             >
                               <span aria-hidden="true">⋮</span>
                             </summary>
-                            <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-44 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                            <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-44 p-1">
+                              <p className="context-menu__heading">Task Actions</p>
                               <button
                                 type="button"
                                 onClick={(clickEvent) => {
                                   clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                   onEditTask(entry.task!);
                                 }}
-                                className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                                data-menu-action="edit"
+                                className="context-menu__action"
                               >
                                 Edit task
                               </button>
@@ -1290,7 +1299,8 @@ export default function CalendarOverview({
                                   clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                   onDeleteItem(entry.task!);
                                 }}
-                                className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                                data-menu-action="delete"
+                                className="context-menu__action context-menu__action--destructive"
                               >
                                 Delete task
                               </button>

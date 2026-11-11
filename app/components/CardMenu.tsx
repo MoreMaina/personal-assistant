@@ -28,8 +28,9 @@ export default function CardMenu({
   const [mounted, setMounted] = useState(false);
 
   const [position, setPosition] = useState({
-    top: 0,
+    top: 12,
     left: 12,
+    maxHeight: 320,
   });
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -48,24 +49,21 @@ export default function CardMenu({
       if (!trigger) return;
 
       const rect = trigger.getBoundingClientRect();
-      const menuWidth = 210;
+      const menuWidth = Math.min(230, window.innerWidth - 24);
+      const naturalHeight = panelRef.current?.scrollHeight ?? 240;
+      const viewportLimit = Math.max(120, window.innerHeight - 24);
+      const height = Math.min(naturalHeight, viewportLimit);
+      const below = window.innerHeight - rect.bottom - 8;
+      const above = rect.top - 8;
+      const flipUp = height > below && above > below;
+      const maxHeight = Math.max(120, Math.min(viewportLimit, flipUp ? above : below));
+      const measuredHeight = Math.min(height, maxHeight);
+      const top = flipUp
+        ? Math.max(12, rect.top - measuredHeight - 8)
+        : Math.min(window.innerHeight - measuredHeight - 12, rect.bottom + 8);
+      const left = Math.max(12, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 12));
 
-      const left = Math.max(
-        12,
-        Math.min(
-          rect.right - menuWidth,
-          window.innerWidth - menuWidth - 12,
-        ),
-      );
-
-      let top = rect.bottom + 8;
-
-      // Keep the menu visible near the bottom of the screen.
-      if (top + 240 > window.innerHeight) {
-        top = Math.max(12, rect.top - 248);
-      }
-
-      setPosition({ top, left });
+      setPosition({ top, left, maxHeight });
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -91,6 +89,7 @@ export default function CardMenu({
   const menuStyle = {
     "--card-menu-top": `${position.top}px`,
     "--card-menu-left": `${position.left}px`,
+    "--card-menu-max-height": `${position.maxHeight}px`,
   } as CSSProperties;
 
   const menu =
@@ -236,6 +235,26 @@ export default function CardMenu({
                       <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
                     </svg>
                   )}
+
+                  {!action.destructive &&
+                    !/^(restart|pause|resume|export|share)\b/i.test(action.label) &&
+                    !/^view \/ edit notes$/i.test(action.label) &&
+                    !/^edit\b/i.test(action.label) && (
+                      <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 4.75A1.75 1.75 0 0 1 7.75 3H19v17H7.75A1.75 1.75 0 0 0 6 21.75Z" />
+                        <path d="M6 18.5A2.5 2.5 0 0 1 8.5 16H19" />
+                      </svg>
+                    )}
 
                   <span>{action.label}</span>
                 </button>

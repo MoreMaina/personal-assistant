@@ -4277,35 +4277,27 @@ function movePlanningItemTo(
           }
         />
 
-        <div className="study-page__daily-summary mb-5 flex flex-wrap items-end gap-4">
-          <div className="rounded-xl bg-[#efe4d1] px-4 py-2.5">
-            <p className="text-xs font-extrabold uppercase tracking-wider text-stone-500">
-              Study day
-            </p>
-            <p className="text-xl font-semibold text-[#1a2b2f]">
+        <div className="study-page__summary-banner mb-5">
+          <div className="study-page__summary-item">
+            <p className="study-page__summary-label">Study day</p>
+            <p className="study-page__summary-value">
               {today ? formatStudyDateLabel(today) : "Loading…"}
             </p>
           </div>
-
-          <div className="rounded-xl bg-[#efe4d1] px-4 py-2.5">
-            <p className="text-xs font-extrabold uppercase tracking-wider text-stone-500">
-              Daily budget
-            </p>
-            <p className="text-xl font-extrabold text-[#23412f]">
+          <div className="study-page__summary-item">
+            <p className="study-page__summary-label">Daily budget</p>
+            <p className="study-page__summary-value">
               {state.settings.daily_budget_min} min
             </p>
           </div>
-
-          <div className="rounded-xl bg-[#efe4d1] px-4 py-2.5">
-            <p className="text-xs font-extrabold uppercase tracking-wider text-stone-500">
-              Trial status
-            </p>
-            <p className="text-sm font-extrabold text-[#23412f]">
+          <div className="study-page__summary-item">
+            <p className="study-page__summary-label">Trial</p>
+            <p className="study-page__summary-value">
               {state.settings.trial_start_date
                 ? `${formatStudyDateLabel(state.settings.trial_start_date)}${
                     state.settings.trial_end_date
-                      ? ` → ${formatStudyDateLabel(state.settings.trial_end_date)}`
-                        : ""
+                      ? ` – ${formatStudyDateLabel(state.settings.trial_end_date)}`
+                      : ""
                   }`
                 : "Not started"}
             </p>
@@ -5414,7 +5406,7 @@ function movePlanningItemTo(
         <SectionHeading
           eyebrow="04 · Retrieval"
           title="Due reviews"
-          detail="Attempt each selected question without looking at its expected-answer criteria. Red ends a review immediately. Incomplete work keeps the same review ID, stage, and selected questions."
+          detail="Answer from memory; a red result ends the review. Incomplete work keeps its saved review and selected questions."
         />
 
       <ItemWorkTimer
@@ -5424,9 +5416,8 @@ function movePlanningItemTo(
       />
             
         {dueReviews.length === 0 ? (
-          <p className="rounded-2xl bg-white p-4 text-sm font-semibold text-stone-600">
-            No review is due today ({today}). A passed gate
-            creates Review 1 automatically.
+          <p className="study-empty-info rounded-2xl p-4 text-sm font-medium">
+            No review is due today ({today ? formatStudyDateLabel(today) : "today"}). A passed gate creates Review 1 automatically.
           </p>
         ) : (
           <div className="space-y-5">
@@ -5449,7 +5440,7 @@ function movePlanningItemTo(
                       {topic?.title ?? review.topic_id} · Stage {review.stage}
                       {review.event_kind === "retry" ? " · Retry" : ""}
                       {" · "}
-                      {review.current_due_date}
+                      {formatStudyDateLabel(review.current_due_date)}
                     </option>
                   );
                 })}
@@ -5467,7 +5458,7 @@ function movePlanningItemTo(
                       <p className="mt-1 text-xs font-semibold text-stone-500">
                         Review {selectedReview.id} · Stage{" "}
                         {selectedReview.stage} · Due{" "}
-                        {selectedReview.current_due_date}
+                        {formatStudyDateLabel(selectedReview.current_due_date)}
                       </p>
                     </div>
                     <span
