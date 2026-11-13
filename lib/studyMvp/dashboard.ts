@@ -401,7 +401,18 @@ export function buildDailyPlannerTasks(
 
   // Mixed practice is scheduled Monday-Friday. Sunday is a rest day,
   // while Saturday is reserved for the sampler.
-  if (day >= 1 && day <= 5) {
+  const mixedPracticeCompletedToday = (state.daily_plan_history ?? []).some(
+    (snapshot) =>
+      snapshot.date === date &&
+      snapshot.plan.items.some((item) => item.kind === "mixed_practice") &&
+      (state.daily_plan_executions ?? []).some(
+        (execution) =>
+          execution.plan_snapshot_id === snapshot.id &&
+          execution.completed_section_ids.includes("mixed_practice"),
+      ),
+  );
+
+  if (day >= 1 && day <= 5 && !mixedPracticeCompletedToday) {
     const mixedTarget =
       day <= 3
         ? state.settings.mixed_practice_target_mon_wed

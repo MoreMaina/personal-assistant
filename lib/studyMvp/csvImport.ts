@@ -588,8 +588,10 @@ export function importTopicCatalogText(
         id: availableId("course", idFactory, usedIds),
         name: spec.name,
         code: parsedRows.find((row) => normalizedKey(row.courseCode) === code)!.courseCode,
-        color: "#557C8A",
+        color: "#006D77",
         created_at: now,
+        academic_year: state.settings.active_academic_year ?? null,
+        academic_semester: state.settings.active_academic_semester ?? null,
       };
       courses.push(course);
       courseByCode.set(code, course);

@@ -78,11 +78,109 @@ function recordArray(
     .filter((item): item is RecordValue => item !== undefined);
 }
 
-function studyArray(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value.slice(0, MAX_RECORDS)
-    .map(safeRecord)
-    .filter((item): item is RecordValue => item !== undefined);
+function buildCurrentStudyContext(value: unknown, available: boolean) {
+  if (!available) {
+    return {
+      catalogueStatus: "unavailable" as const,
+      courses: [],
+      units: [],
+      lectures: [],
+    };
+  }
+
+  const source = isRecord(value) ? value : {};
+  const rawCourses = Array.isArray(source.courses) ? source.courses : [];
+  const activeCourses = rawCourses.filter(
+    (course): course is RecordValue =>
+      isRecord(course) &&
+      !course.archived_at &&
+      typeof course.id === "string" &&
+      typeof course.name === "string" &&
+      Boolean(course.name.trim()),
+  );
+
+  const courseById = new Map(
+    activeCourses.map((course) => [
+      String(course.id),
+      {
+        id: String(course.id),
+        name: String(course.name).trim().slice(0, MAX_STRING),
+        code: typeof course.code === "string"
+          ? course.code.trim().slice(0, 40)
+          : undefined,
+      },
+    ] as const),
+  );
+
+  const rawUnits = Array.isArray(source.units) ? source.units : [];
+  const activeUnits = rawUnits.filter(
+    (unit): unit is RecordValue =>
+      isRecord(unit) &&
+      typeof unit.id === "string" &&
+      typeof unit.name === "string" &&
+      typeof unit.course_id === "string" &&
+      courseById.has(String(unit.course_id)),
+  );
+
+  const unitById = new Map(
+    activeUnits.map((unit) => {
+      const course = courseById.get(String(unit.course_id))!;
+      return [
+        String(unit.id),
+        {
+          id: String(unit.id),
+          name: String(unit.name).trim().slice(0, MAX_STRING),
+          code: typeof unit.code === "string"
+            ? unit.code.trim().slice(0, 40)
+            : undefined,
+          courseId: course.id,
+          courseName: course.name,
+        },
+      ] as const;
+    }),
+  );
+
+  const rawTopics = Array.isArray(source.topics) ? source.topics : [];
+  const topicUnitById = new Map<string, string>(
+    rawTopics
+      .filter(
+        (topic): topic is RecordValue =>
+          isRecord(topic) &&
+          typeof topic.id === "string" &&
+          typeof topic.unit_id === "string" &&
+          unitById.has(String(topic.unit_id)),
+      )
+      .map((topic) => [String(topic.id), String(topic.unit_id)] as const),
+  );
+
+  const rawLectures = Array.isArray(source.lectures) ? source.lectures : [];
+  const lectures = rawLectures
+    .filter((lecture): lecture is RecordValue => isRecord(lecture))
+    .flatMap((lecture) => {
+      const unitId =
+        typeof lecture.unit_id === "string"
+          ? lecture.unit_id
+          : typeof lecture.topic_id === "string"
+            ? topicUnitById.get(lecture.topic_id)
+            : undefined;
+      const unit = unitId ? unitById.get(unitId) : undefined;
+      if (!unit) return [];
+
+      return [{
+        date: safeScalar(lecture.date),
+        kind: safeScalar(lecture.kind),
+        unitName: unit.name,
+        courseName: unit.courseName,
+      }];
+    })
+    .slice(0, MAX_RECORDS);
+
+  return {
+    catalogueStatus: "current" as const,
+    courses: [...courseById.values()].slice(0, MAX_RECORDS),
+    units: [...unitById.values()].slice(0, MAX_RECORDS),
+    lectures,
+  };
 }
 
 
@@ -253,9 +351,9 @@ function summarizeTasks(
 export function buildAssistantContext(
   snapshot: AppSnapshot,
   currentDate = new Date().toISOString().slice(0, 10),
+  currentStudyState: unknown = null,
+  studyCatalogueAvailable = false,
 ) {
-  const rawStudy = parseJson(snapshot["personal-assistant-study-v2"]);
-  const studySource = isRecord(rawStudy) ? rawStudy : {};
   const currentSemesterRaw = snapshot["personal-assistant-current-semester"];
   const parsedSemester = parseJson(currentSemesterRaw);
   const currentSemester =
@@ -287,13 +385,10 @@ export function buildAssistantContext(
     books: recordArray(snapshot, "personal-assistant-books"),
     readingSessions: recordArray(snapshot, "personal-assistant-reading-sessions"),
     essays: recordArray(snapshot, "personal-assistant-essays"),
-    study: {
-      programs: studyArray(studySource.programs),
-      semesters: studyArray(studySource.semesters),
-      courses: studyArray(studySource.courses),
-      units: studyArray(studySource.units),
-      lectures: studyArray(studySource.lectures),
-    },
+    study: buildCurrentStudyContext(
+      currentStudyState,
+      studyCatalogueAvailable,
+    ),
   };
 
   return {
@@ -341,7 +436,14 @@ export function selectRelevantAssistantContext(
   }
 
   if (isWeeklyReviewQuestion(question)) {
-    return { ...context, contextScope: "full weekly review" };
+    // Academic program and semester are not useful in a weekly recap. More
+    // importantly, do not expose those legacy fields from the old app snapshot.
+    const weeklyContext = Object.fromEntries(
+      Object.entries(context).filter(
+        ([key]) => key !== "currentSemester" && key !== "scheduledClasses",
+      ),
+    );
+    return { ...weeklyContext, contextScope: "full weekly review" };
   }
 
   const asksBroadOverview =
@@ -389,7 +491,9 @@ export function selectRelevantAssistantContext(
   }
 
   if (needsStudy) {
-    selected.currentSemester = context.currentSemester;
+    if (/\bsemester\b/i.test(question) && context.currentSemester !== null) {
+      selected.currentSemester = context.currentSemester;
+    }
     selected.scheduledClasses = context.scheduledClasses;
     selected.study = context.study;
     scopes.push("study");

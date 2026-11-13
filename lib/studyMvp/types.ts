@@ -147,6 +147,8 @@ export type TaskEventSubjectType =
   | "mixed_practice"
   | "sampler";
 
+export type AcademicSemester = 1 | 2 | 3;
+
 export interface Course {
   id: EntityId;
   name: string;
@@ -154,6 +156,9 @@ export interface Course {
   color: string;
   created_at: ISODateTime;
   archived_at?: ISODateTime | null;
+  /** Null or absent means Unassigned; old courses are never auto-migrated. */
+  academic_year?: number | null;
+  academic_semester?: AcademicSemester | null;
 }
 
 export interface Unit {
@@ -374,6 +379,10 @@ export interface EngineChangeRecord {
 
 export interface StudySettings {
   timezone: string;
+
+  /** The one globally active period used for newly added/imported courses. */
+  active_academic_year?: number | null;
+  active_academic_semester?: AcademicSemester | null;
 
   study_days: number[];
   rest_day: number;

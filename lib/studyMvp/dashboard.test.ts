@@ -5,6 +5,7 @@ import {
   buildStudyDailyPlan,
 } from "./dashboard";
 import { createEmptyStudyState } from "./storage";
+import { appendDailyPlanSnapshot, completeDailyPlanSection } from "./dailyPlanHistory";
 import type {
   RetrievalTask,
   ReviewEvent,
@@ -563,6 +564,29 @@ describe("weekday mixed practice and Saturday sampler scheduling", () => {
       }
       expect(mixed.targetDurationMin).toBe(testCase.target);
     }
+  });
+
+  it("does not re-add mixed practice after the saved section was completed", () => {
+    const date = "2026-10-26";
+    const state = fixtureState();
+    state.review_events[0] = {
+      ...state.review_events[0],
+      intended_due_date: "2026-10-27",
+      current_due_date: "2026-10-27",
+    };
+    const plan = buildStudyDailyPlan(state, date).plan;
+    expect(plan.items.some((item) => item.kind === "mixed_practice")).toBe(true);
+
+    const saved = appendDailyPlanSnapshot(state, plan, "2026-10-26T08:00:00.000+03:00");
+    const completed = completeDailyPlanSection(
+      saved.state,
+      saved.snapshot.id,
+      "mixed_practice",
+      "2026-10-26T09:00:00.000+03:00",
+    );
+
+    const additionalTasks = buildDailyPlannerTasks(completed, date).tasks;
+    expect(additionalTasks.some((task) => task.kind === "mixed_practice")).toBe(false);
   });
 
   it("schedules Saturday sampler without mixed practice and schedules neither on Sunday", () => {

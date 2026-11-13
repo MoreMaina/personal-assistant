@@ -958,6 +958,34 @@ export function assertStudyStateIntegrity(
         `Course "${course.id}" archived_at must be a valid ISO 8601 timestamp with a timezone.`,
       );
     }
+
+    const academicYear = course.academic_year ?? null;
+    const academicSemester = course.academic_semester ?? null;
+    if (
+      (academicYear !== null &&
+        (!Number.isSafeInteger(academicYear) || academicYear < 1)) ||
+      (academicSemester !== null && ![1, 2, 3].includes(academicSemester)) ||
+      ((academicYear === null) !== (academicSemester === null))
+    ) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        `Course "${course.id}" must have both a valid academic year and semester, or remain Unassigned.`,
+      );
+    }
+  }
+
+  const activeAcademicYear = state.settings.active_academic_year ?? null;
+  const activeAcademicSemester = state.settings.active_academic_semester ?? null;
+  if (
+    (activeAcademicYear !== null &&
+      (!Number.isSafeInteger(activeAcademicYear) || activeAcademicYear < 1)) ||
+    (activeAcademicSemester !== null && ![1, 2, 3].includes(activeAcademicSemester)) ||
+    ((activeAcademicYear === null) !== (activeAcademicSemester === null))
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "The active academic period must contain both a positive year and Semester 1, 2, or 3, or be unset.",
+    );
   }
   
   for (const event of state.task_events) {
@@ -1245,6 +1273,8 @@ export function createDefaultSettings(
 ): StudySettings {
   return {
     timezone,
+    active_academic_year: null,
+    active_academic_semester: null,
 
     study_days: [1, 2, 3, 4, 5, 6],
     rest_day: 0,

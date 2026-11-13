@@ -83,6 +83,35 @@ describe("topic catalog CSV/TSV import", () => {
     expect(result.state.task_events).toHaveLength(0);
   });
 
+  it("inherits the active period for new courses but does not move existing matches", () => {
+    const activeState = state();
+    activeState.settings.active_academic_year = 3;
+    activeState.settings.active_academic_semester = 2;
+    const input = makeCsv([row()]);
+
+    const first = importTopicCatalogText(activeState, input, options());
+    expect(first.ok).toBe(true);
+    expect(first.state.courses[0]).toMatchObject({
+      academic_year: 3,
+      academic_semester: 2,
+    });
+
+    const nextPeriodState = {
+      ...first.state,
+      settings: {
+        ...first.state.settings,
+        active_academic_year: 4,
+        active_academic_semester: 1 as const,
+      },
+    };
+    const second = importTopicCatalogText(nextPeriodState, input, options());
+    expect(second.ok).toBe(true);
+    expect(second.state.courses[0]).toMatchObject({
+      academic_year: 3,
+      academic_semester: 2,
+    });
+  });
+
   it("detects pasted tab-separated spreadsheet rows", () => {
     const headers = TOPIC_CSV_HEADERS.join("\t");
     const cells = TOPIC_CSV_HEADERS.map((header) => String(row()[header] ?? ""));

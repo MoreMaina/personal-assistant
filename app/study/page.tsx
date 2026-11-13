@@ -105,19 +105,8 @@ function formatStudyDateLabel(value: string): string {
     return value;
   }
 
-  const suffix =
-    day % 100 >= 11 && day % 100 <= 13
-      ? "th"
-      : day % 10 === 1
-        ? "st"
-        : day % 10 === 2
-          ? "nd"
-          : day % 10 === 3
-            ? "rd"
-            : "th";
-
   const monthLabel = date.toLocaleDateString("en-US", { month: "short" });
-  return `${monthLabel} ${day}${suffix}`;
+  return `${monthLabel} ${day}`;
 }
 
 function downloadFile(
@@ -2538,10 +2527,30 @@ function MixedPracticeSection({
             />
           )}
 
-          <div className="mt-6 border-t border-[#e4dac9] pt-5">
-            <p className="text-sm font-semibold text-stone-600">
+          <div className="mt-6 border-t border-[var(--border)] pt-5">
+            <p className="text-sm font-semibold text-[var(--p6-text-secondary)]">
               {guidedPracticeStatusMessage}
             </p>
+            <ul aria-label="Mixed-practice readiness" className="mt-3 space-y-2 text-sm">
+              <li>
+                <strong>{allAllocationsRecorded ? "Ready" : "Pending"}:</strong>{" "}
+                {allAllocationsRecorded
+                  ? "Actual minutes have been recorded for every planned mixed-practice block."
+                  : "Record the planned actual minutes for every mixed-practice block."}
+              </li>
+              <li>
+                <strong>{allGuidedQuestionsCompleted ? "Ready" : canCompleteWithoutQuestions ? "Recorded limitation" : "Pending"}:</strong>{" "}
+                {allGuidedQuestionsCompleted
+                  ? "Every frozen selected question has an attempt recorded."
+                  : canCompleteWithoutQuestions
+                    ? "No eligible questions were available for one or more blocks; this limitation will be saved."
+                    : blockingGuidedSelection?.selectionIssue === "missing-questions"
+                      ? "Restore the original frozen question selection before continuing."
+                      : blockingGuidedSelection?.selectionIssue === "allocation-too-short"
+                        ? "Increase the planned time or reduce question estimates."
+                        : "Complete the selected questions before closing this section."}
+              </li>
+            </ul>
             <button
               type="button"
               disabled={
@@ -3111,6 +3120,16 @@ const hasRecordedTodaysWork =
     plannedSectionIds.find(
       (sectionId) => !completedSectionIds.has(sectionId),
     ) ?? null;
+
+  const completedPlannedSections = plannedSectionIds.filter(
+    (sectionId) => completedSectionIds.has(sectionId),
+  ).length;
+  const remainingPlannedSections = Math.max(
+    0,
+    plannedSectionIds.length - completedPlannedSections,
+  );
+  const unresolvedPlanDecisions =
+    latestTodaysPlan?.plan.unresolved_decisions.length ?? 0;
 
   const todayPlanComplete = Boolean(
     latestTodaysPlan &&
@@ -4899,7 +4918,7 @@ function movePlanningItemTo(
               <p className="text-sm font-bold text-[var(--p6-primary)]">Today</p>
               <h2 className="mt-1 text-xl font-bold">Today's plan is complete</h2>
               <p className="mt-2 text-sm text-[var(--p6-text-secondary)]">
-                All {plannedSectionIds.length} planned sections are complete. Your work is saved.
+                {completedPlannedSections} of {plannedSectionIds.length} planned sections complete · {remainingPlannedSections} remaining · {unresolvedPlanDecisions} unresolved decisions. Your work is saved.
               </p>
             </div>
             <button

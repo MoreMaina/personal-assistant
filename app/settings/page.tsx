@@ -22,7 +22,9 @@ import {
 } from "@/lib/studyStorage";
 
 import { defaultIdFactory } from "@/lib/studyMvp/reviewEngine";
+import { setActiveAcademicPeriod } from "@/lib/studyMvp/academicPeriod";
 import {
+  TOPIC_CSV_HEADERS,
   exportTopicCatalogCsv,
   importTopicCatalogText,
   type TopicImportDiagnostic,
@@ -43,7 +45,6 @@ export default function GeneralSettingsPage() {
     syncConflict: studySyncConflict,
     problem: studyProblem,
     persist: persistStudyState,
-    persistCourseDeletion: persistStudyCourseDeletion,
   } = useCloudStudyState();
 
   const [catalogImportText, setCatalogImportText] = useState("");
@@ -252,6 +253,21 @@ export default function GeneralSettingsPage() {
       });
   }
 
+  function downloadCatalogTemplate() {
+    const csv = `${TOPIC_CSV_HEADERS.join(",")}\r\n`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "study-topic-catalog-template.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setCatalogImportError("");
+    setCatalogImportMessage("Blank topic-catalog template downloaded.");
+  }
+
   function downloadCatalogCsv() {
     if (!studyState || studyLoadingError || studySyncConflict) {
       setCatalogImportError(
@@ -338,6 +354,32 @@ export default function GeneralSettingsPage() {
         setSelectedSemesterId(currentFixed ? String(currentFixed.id) : "");
       }
 
+      if (!studyState || studyLoadingError || studySyncConflict) {
+        setError("Study data is not ready. Resolve the loading or sync issue before changing the active period.");
+        return;
+      }
+
+      const activeSemester =
+        chosen ?? (getCurrentSemesterId() === null
+          ? fixed[0]
+          : fixed.find((semester) => semester.id === getCurrentSemesterId()));
+      const semesterNumber = activeSemester?.name.match(/^semester\s*([1-3])$/i);
+      if (!semesterNumber) {
+        setError("Choose Semester 1, 2, or 3 before saving the active period.");
+        return;
+      }
+
+      const nextStudyState = setActiveAcademicPeriod(
+        studyState,
+        year,
+        Number(semesterNumber[1]) as 1 | 2 | 3,
+        new Date().toISOString(),
+      );
+      if (!persistStudyState(nextStudyState, `Active academic period set to Year ${year}, Semester ${semesterNumber[1]}.`)) {
+        setError("The active academic period could not be saved to Study cloud storage.");
+        return;
+      }
+
       setStudyYear(String(year));
       setSaved(true);
     } catch {
@@ -416,7 +458,7 @@ export default function GeneralSettingsPage() {
               <div className="space-y-1">
                 <h3 className="font-bold">Current semester</h3>
                 <p className="text-sm leading-relaxed text-[var(--ink-soft)]">
-                  Choose one of the three semesters. New semester creation is not available here.
+                  This is the global active period for new and imported courses. Existing courses stay Unassigned or in their saved period until you change them in Course Management.
                 </p>
               </div>
               <label htmlFor="current-semester" className="block text-sm font-extrabold">
@@ -457,7 +499,6 @@ export default function GeneralSettingsPage() {
               syncConflict={Boolean(studySyncConflict)}
               problem={studyProblem || undefined}
               persist={persistStudyState}
-              persistCourseDeletion={persistStudyCourseDeletion}
             />
           </div>
         </details>
@@ -491,9 +532,10 @@ export default function GeneralSettingsPage() {
   </h2>
 
   <p className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">
-    Import courses, units, topics and tasks. Preview validates
-    the catalog without saving changes. Applying an import
-    validates it again against the latest Study data.
+    Import courses, units, topics and retrieval tasks. Preview validates the catalogue without saving changes; Apply validates it again against the latest Study state. New courses inherit the active academic period, while existing matched courses keep their current period.
+  </p>
+  <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+    Required columns: course_code, course_name, unit_code, unit_name, topic_number, topic_title, learning_objective and objective_type. Optional columns: prerequisite_topic_numbers, topic_importance, consolidation_estimated_duration_min, task_prompt, expected_answer_criteria, task_type, task_purpose, estimated_duration_min and task_active. Use one row per retrieval task; repeat the topic columns when a topic has multiple tasks. Existing course codes are matched without moving their period.
   </p>
 
   {studyLoadingError && (
@@ -575,6 +617,14 @@ export default function GeneralSettingsPage() {
         className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-bold"
       >
         Cancel
+      </button>
+
+      <button
+        type="button"
+        onClick={downloadCatalogTemplate}
+        className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-sm font-bold"
+      >
+        Download blank CSV template
       </button>
 
       <button
