@@ -165,6 +165,81 @@ describe("local snapshot read safety", () => {
 
 
 const CLASSES_KEY = "personal-assistant-classes";
+const CANCELLED_CLASSES_KEY = "cancelled-class-sessions";
+
+describe("Classes cloud snapshot compatibility", () => {
+  it("registers and recognizes timetable and cancelled-session data", () => {
+    const classData = JSON.stringify([
+      {
+        id: 1,
+        name: "Economics",
+        type: "Lecture",
+        day: "Monday",
+        start: "10:00",
+        end: "11:00",
+      },
+    ]);
+    const cancelledData = JSON.stringify({
+      "2026-10-26": [1],
+    });
+
+    expect(SYNCED_STORAGE_KEYS).toContain(CLASSES_KEY);
+    expect(SYNCED_STORAGE_KEYS).toContain(CANCELLED_CLASSES_KEY);
+
+    const snapshot = normalizeSnapshot({
+      [CLASSES_KEY]: classData,
+      [CANCELLED_CLASSES_KEY]: cancelledData,
+    });
+
+    expect(snapshot[CLASSES_KEY]).toBe(classData);
+    expect(snapshot[CANCELLED_CLASSES_KEY]).toBe(cancelledData);
+    expect(snapshotHasUserData(snapshot)).toBe(true);
+  });
+
+  it("restores the timetable and cancelled sessions from a cloud snapshot", () => {
+    const classData = JSON.stringify([
+      {
+        id: 1,
+        name: "Economics",
+        type: "Lecture",
+        day: "Monday",
+        start: "10:00",
+        end: "11:00",
+      },
+    ]);
+    const cancelledData = JSON.stringify({
+      "2026-10-26": [1],
+    });
+    const storage = new Map();
+    const original = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "localStorage",
+    );
+
+    try {
+      vi.stubGlobal("localStorage", {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key),
+      });
+
+      applySnapshot({
+        [CLASSES_KEY]: classData,
+        [CANCELLED_CLASSES_KEY]: cancelledData,
+      });
+
+      expect(storage.get(CLASSES_KEY)).toBe(classData);
+      expect(storage.get(CANCELLED_CLASSES_KEY)).toBe(cancelledData);
+    } finally {
+      vi.unstubAllGlobals();
+      if (original) {
+        Object.defineProperty(globalThis, "localStorage", original);
+      } else {
+        Reflect.deleteProperty(globalThis, "localStorage");
+      }
+    }
+  });
+});
 
 describe("snapshot apply rollback", () => {
   const previousSnapshot: AppSnapshot = {

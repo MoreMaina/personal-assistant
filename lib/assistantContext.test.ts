@@ -135,16 +135,19 @@ describe("buildAssistantContext", () => {
     expect(JSON.stringify(selected)).not.toContain("Research project");
   });
 
-  it("selects study context when the question is about courses or units", () => {
+  it("selects current Study MVP courses and units for study questions", () => {
     const context = buildAssistantContext({
       "personal-assistant-projects": JSON.stringify([
         { id: "project-1", name: "Research project", status: "active" },
       ]),
+      "personal-assistant-current-semester": JSON.stringify("Semester 1"),
       "personal-assistant-study-v2": JSON.stringify({
-        courses: [{ id: "course-1", name: "Computer Science" }],
-        units: [{ id: "unit-1", name: "Data Structures" }],
+        courses: [{ id: "old-course", name: "Deleted legacy course" }],
       }),
-    });
+    }, "2026-11-12", {
+      courses: [{ id: "course-1", name: "Computer Science", code: "CS101", archived_at: null }],
+      units: [{ id: "unit-1", course_id: "course-1", name: "Data Structures" }],
+    }, true);
 
     const selected = selectRelevantAssistantContext(
       context,
@@ -153,13 +156,15 @@ describe("buildAssistantContext", () => {
 
     expect(selected.contextScope).toBe("study");
     expect(selected).toHaveProperty("study");
-    expect(selected).toHaveProperty("currentSemester");
+    expect(selected).toHaveProperty("currentSemester", "Semester 1");
     expect(selected).not.toHaveProperty("projects");
+    expect(JSON.stringify(selected)).toContain("Computer Science");
     expect(JSON.stringify(selected)).toContain("Data Structures");
+    expect(JSON.stringify(selected)).not.toContain("Deleted legacy course");
     expect(JSON.stringify(selected)).not.toContain("Research project");
   });
 
-  it("preserves the full context for an explicit weekly review", () => {
+  it("uses current active Study courses in weekly reviews and omits legacy program and semester details", () => {
     const context = buildAssistantContext({
       "personal-assistant-projects": JSON.stringify([
         { id: "project-1", name: "Research project", status: "active" },
@@ -167,13 +172,34 @@ describe("buildAssistantContext", () => {
       "personal-assistant-books": JSON.stringify([
         { id: "book-1", title: "A reading book", currentPage: 42 },
       ]),
-    });
+      "personal-assistant-current-semester": JSON.stringify("Semester 1"),
+      "personal-assistant-study-v2": JSON.stringify({
+        programs: [{ id: "program-old", name: "BPharm" }],
+        semesters: [{ id: "semester-old", name: "Semester 1" }],
+        courses: [{ id: "old-course", name: "Pharmaceutics III" }],
+      }),
+    }, "2026-11-12", {
+      courses: [
+        { id: "course-current", name: "Current Pharmacy Course", code: "PHA101", archived_at: null },
+        { id: "course-archived", name: "Archived Pharmacy Course", code: "PHA099", archived_at: "2026-10-01T10:00:00.000Z" },
+      ],
+      units: [
+        { id: "unit-current", course_id: "course-current", name: "Current Unit" },
+        { id: "unit-archived", course_id: "course-archived", name: "Archived Unit" },
+      ],
+      topics: [{ id: "topic-current", unit_id: "unit-current" }],
+      lectures: [
+        { id: "lecture-current", unit_id: "unit-current", date: "2026-11-10", kind: "lecture" },
+        { id: "lecture-archived", unit_id: "unit-archived", date: "2026-11-10", kind: "lecture" },
+      ],
+    }, true);
 
     expect(isWeeklyReviewQuestion("Summarize my week")).toBe(true);
     expect(isWeeklyReviewQuestion("Review my week")).toBe(true);
     expect(isWeeklyReviewQuestion("What tasks should I focus on today?")).toBe(false);
 
     const selected = selectRelevantAssistantContext(context, "Summarize my week");
+    const serialized = JSON.stringify(selected);
 
     expect(selected.contextScope).toBe("full weekly review");
     expect(selected).toHaveProperty("taskSummary");
@@ -181,6 +207,32 @@ describe("buildAssistantContext", () => {
     expect(selected).toHaveProperty("study");
     expect(selected).toHaveProperty("books");
     expect(selected).toHaveProperty("projects");
+    expect(selected).not.toHaveProperty("currentSemester");
+    expect(serialized).toContain("Current Pharmacy Course");
+    expect(serialized).toContain("Current Unit");
+    expect(serialized).not.toContain("Pharmaceutics III");
+    expect(serialized).not.toContain("Archived Pharmacy Course");
+    expect(serialized).not.toContain("Archived Unit");
+    expect(serialized).not.toContain("BPharm");
+    expect(serialized).not.toContain("Semester 1");
+  });
+
+  it("does not fall back to stale legacy courses when current Study data are unavailable", () => {
+    const context = buildAssistantContext({
+      "personal-assistant-study-v2": JSON.stringify({
+        programs: [{ id: "program-old", name: "BPharm" }],
+        semesters: [{ id: "semester-old", name: "Semester 1" }],
+        courses: [{ id: "old-course", name: "Deleted legacy course" }],
+      }),
+    }, "2026-11-12", null, false);
+
+    const selected = selectRelevantAssistantContext(context, "Summarize my week");
+    const serialized = JSON.stringify(selected);
+
+    expect((selected.study as { catalogueStatus: string }).catalogueStatus).toBe("unavailable");
+    expect(serialized).not.toContain("Deleted legacy course");
+    expect(serialized).not.toContain("BPharm");
+    expect(serialized).not.toContain("Semester 1");
   });
 
   it("keeps general productivity advice separate from personal records", () => {

@@ -49,7 +49,9 @@ export function getClasses(): ClassItem[] {
           typeof record.name === "string" &&
           typeof record.day === "string" &&
           typeof record.start === "string" &&
-          typeof record.end === "string"
+          typeof record.end === "string" &&
+          (record.studyUnitId === undefined ||
+            typeof record.studyUnitId === "string")
         );
       }),
   );
@@ -80,6 +82,101 @@ export function addClass(
   ]);
 
   return createdClass;
+}
+
+/** Update the editable details of an existing weekly class. */
+export function updateClass(
+  classId: number,
+  updates: Omit<ClassItem, "id">,
+): ClassItem[] {
+  const current = getClasses();
+  let found = false;
+
+  const next = current.map((item) => {
+    if (item.id !== classId) return item;
+    found = true;
+    const updated = { ...item, ...updates, id: classId };
+    if (!updates.studyUnitId) delete updated.studyUnitId;
+    return updated;
+  });
+
+  if (!found) throw new Error(`Class "${classId}" was not found.`);
+
+  saveClasses(next);
+  return next;
+}
+
+/** Delete a weekly class and remove its cancelled-session references. */
+export function deleteClass(classId: number): ClassItem[] {
+  const current = getClasses();
+  const next = current.filter((item) => item.id !== classId);
+
+  if (next.length === current.length) {
+    throw new Error(`Class "${classId}" was not found.`);
+  }
+
+  saveClasses(next);
+
+  const sessions = getCancelledSessions();
+  let sessionsChanged = false;
+
+  for (const [date, ids] of Object.entries(sessions)) {
+    const remaining = ids.filter((id) => id !== classId);
+    if (remaining.length === ids.length) continue;
+    sessionsChanged = true;
+    if (remaining.length > 0) sessions[date] = remaining;
+    else delete sessions[date];
+  }
+
+  if (sessionsChanged) {
+    localStorage.setItem(CANCELLED_KEY, JSON.stringify(sessions));
+  }
+
+  return next;
+}
+
+
+/** Link or unlink a class using a stable Study Unit ID. */
+export function updateClassStudyUnit(
+  classId: number,
+  studyUnitId?: string,
+): ClassItem[] {
+  const current = getClasses();
+  let found = false;
+
+  const next = current.map((item) => {
+    if (item.id !== classId) return item;
+    found = true;
+
+    const updated = { ...item };
+    const normalizedId = studyUnitId?.trim();
+
+    if (normalizedId) updated.studyUnitId = normalizedId;
+    else delete updated.studyUnitId;
+
+    return updated;
+  });
+
+  if (!found) throw new Error(`Class "${classId}" was not found.`);
+
+  saveClasses(next);
+  return next;
+}
+
+/** Remove only stale Study Unit links after a course is permanently deleted. */
+export function unlinkClassesFromStudyUnits(unitIds: readonly string[]): void {
+  if (typeof window === "undefined" || unitIds.length === 0) return;
+  const deletedIds = new Set(unitIds);
+  const current = getClasses();
+  let changed = false;
+  const next = current.map((item) => {
+    if (!item.studyUnitId || !deletedIds.has(item.studyUnitId)) return item;
+    changed = true;
+    const updated = { ...item };
+    delete updated.studyUnitId;
+    return updated;
+  });
+  if (changed) saveClasses(next);
 }
 
 function getCancelledSessions(): Record<string, number[]> {

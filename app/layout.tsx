@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { Fredoka, Nunito } from "next/font/google";
 
 import "./globals.css";
 import Navigation from "./components/Navigation";
 import CloudSync from "./components/CloudSync";
+import { ItemWorkTimerProvider } from "./components/ItemWorkTimer";
 
 const fredoka = Fredoka({
   subsets: ["latin"],
@@ -15,7 +17,7 @@ const fredoka = Fredoka({
 const nunito = Nunito({
   subsets: ["latin"],
   variable: "--font-body",
-  weight: ["600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -41,28 +43,34 @@ export default function RootLayout({
       <body
         className={`${fredoka.variable} ${nunito.variable}`}
       >
-        <Navigation />
+        <Suspense fallback={null}>
+          <Navigation />
+        </Suspense>
 
-        <CloudSync />
+        <Suspense fallback={null}>
+          <CloudSync />
+        </Suspense>
 
-        <div className="app-frame">
-          <header className="topbar">
-            <Link
-              href="/"
-              className="topbar__brand"
-              aria-label="Personal Assistant home"
-            >
-              <span className="topbar__brand-mark" aria-hidden="true">PA</span>
-              <span>Personal Assistant</span>
-            </Link>
-          </header>
+        <ItemWorkTimerProvider>
+          <div className="app-frame">
+            <header className="topbar">
+              <Link
+                href="/"
+                className="topbar__brand"
+                aria-label="Personal Assistant home"
+              >
+                <span className="topbar__brand-mark" aria-hidden="true">PA</span>
+                <span>Personal Assistant</span>
+              </Link>
+            </header>
 
-          <main className="app-content">
-            <div className="page-shell">
-              {children}
-            </div>
-          </main>
-        </div>
+            <main className="app-content">
+              <div className="page-shell">
+                {children}
+              </div>
+            </main>
+          </div>
+        </ItemWorkTimerProvider>
       </body>
     </html>
   );

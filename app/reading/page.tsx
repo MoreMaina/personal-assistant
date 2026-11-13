@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CardMenu from "@/app/components/CardMenu";
 
 import {
   FormEvent,
   useEffect,
-  useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -15,14 +17,15 @@ import {
   Book,
   Essay,
   getBooks,
-  deleteBookAndSessions,
   getEssays,
-  getReadingSessions,
   saveReadingSession,
   saveEssays,
   updateBook,
   updateEssay,
 } from "@/lib/readingStorage";
+import { getCombinedActivitySessions } from "@/lib/activity/queries";
+import { toReadingActivitySession } from "@/lib/activity/adapters/readingSession";
+import type { ActivitySession } from "@/lib/activity/types";
 import ProjectsPanel from "@/app/components/ProjectsPanel";
 
 type Tab = "books" | "essays" | "projects";
@@ -84,7 +87,18 @@ function formatDuration(
     .padStart(2, "0")}`;
 }
 
+const READING_BOOK_ACTIVITY_KEY_PREFIX = "pa:v1:reading:book:";
+
+function getReadingBookActivitySessions(): ActivitySession[] {
+  return getCombinedActivitySessions().filter((session) =>
+    session.activityKey.startsWith(READING_BOOK_ACTIVITY_KEY_PREFIX),
+  );
+}
+
 export default function ReadingPage() {
+  const router = useRouter();
+  const [workflowBookId, setWorkflowBookId] = useState<number | null>(null);
+  const [workflowEssayId, setWorkflowEssayId] = useState<number | null>(null);
   const [tab, setTab] =
     useState<Tab>("books");
 
@@ -102,10 +116,12 @@ export default function ReadingPage() {
 
   const [showBookForm, setShowBookForm] =
     useState(false);
+  const bookFormRef = useRef<HTMLFormElement>(null);
   const [editingBookId, setEditingBookId] = useState<number | null>(null);
 
   const [showEssayForm, setShowEssayForm] =
     useState(false);
+  const essayFormRef = useRef<HTMLFormElement>(null);
   const [editingEssayId, setEditingEssayId] = useState<number | null>(null);
   const [exportTarget, setExportTarget] = useState<{
     title: string;
@@ -113,6 +129,13 @@ export default function ReadingPage() {
     content: string;
   } | null>(null);
   const [exportFeedback, setExportFeedback] = useState("");
+  const [deleteEssaysError, setDeleteEssaysError] = useState("");
+
+  useEffect(() => {
+    if (!exportFeedback) return;
+    const timeout = window.setTimeout(() => setExportFeedback(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [exportFeedback]);
   const [exportShowManualCopy, setExportShowManualCopy] = useState(false);
   const [exportCopyContent, setExportCopyContent] = useState("");
 
@@ -152,10 +175,7 @@ export default function ReadingPage() {
   const [clock, setClock] =
     useState(0);
 
-  const [sessions, setSessions] =
-    useState(
-      getReadingSessions(),
-    );
+  const [sessions, setSessions] = useState<ActivitySession[]>([]);
 
   const [launchHandled, setLaunchHandled] =
     useState(false);
@@ -167,10 +187,37 @@ export default function ReadingPage() {
     useState<number | null>(null);
 
   useEffect(() => {
+    if (!showBookForm && !showEssayForm) return;
+    function handleOutsidePointer(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (bookFormRef.current?.contains(target) || essayFormRef.current?.contains(target)) return;
+      if (showBookForm) {
+        setEditingBookId(null);
+        setTitle("");
+        setAuthor("");
+        setCategory("Pleasure");
+        setTotalPages("");
+        setShowBookForm(false);
+      }
+      if (showEssayForm) {
+        setEditingEssayId(null);
+        setEssayTitle("");
+        setEssayAuthor("");
+        setEssaySource("");
+        setShowEssayForm(false);
+      }
+    }
+    document.addEventListener("pointerdown", handleOutsidePointer, true);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer, true);
+  }, [showBookForm, showEssayForm]);
+
+  useEffect(() => {
     const loadedBooks = getBooks();
     const loadedEssays = getEssays();
     setBooks(loadedBooks);
     setEssays(loadedEssays);
+    setSessions(getReadingBookActivitySessions());
     setCollapsedBookIds(new Set(loadedBooks.map((book) => book.id)));
     setCollapsedEssayIds(new Set(loadedEssays.map((essay) => essay.id)));
     setClock(Date.now());
@@ -240,6 +287,8 @@ export default function ReadingPage() {
   }, []);
 
   function changeTab(nextTab: Tab) {
+    setWorkflowBookId(null);
+    setWorkflowEssayId(null);
     setTab(nextTab);
     const url = new URL(window.location.href);
 
@@ -295,38 +344,7 @@ export default function ReadingPage() {
         "Finished",
     );
 
-  const minutesThisWeek =
-    useMemo(() => {
-      if (!clock) {
-        return 0;
-      }
 
-      const oneWeekAgo =
-        clock -
-        7 *
-          24 *
-          60 *
-          60 *
-          1000;
-
-      return sessions
-        .filter(
-          (session) =>
-            new Date(
-              session.startedAt,
-            ).getTime() >=
-            oneWeekAgo,
-        )
-        .reduce(
-          (total, session) =>
-            total +
-            session.minutes,
-          0,
-        );
-    }, [
-      sessions,
-      clock,
-    ]);
 
   const handleAddBook = (
     event: FormEvent<HTMLFormElement>,
@@ -392,78 +410,6 @@ export default function ReadingPage() {
     setShowBookForm(false);
   }
 
-  function startEditingBook(book: Book) {
-    setEditingBookId(book.id);
-    setTitle(book.title);
-    setAuthor(book.author);
-    setCategory(book.category);
-    setTotalPages(String(book.totalPages));
-    setShowBookForm(true);
-  }
-
-  function handleDeleteBook(book: Book) {
-    const confirmed = window.confirm(
-      `Delete "${book.title}" and its saved reading-session history? This cannot be undone.`,
-    );
-    if (!confirmed) return;
-
-    try {
-      const remainingSessions = deleteBookAndSessions(book.id);
-      setBooks((current) => current.filter((item) => item.id !== book.id));
-      setSessions(remainingSessions);
-
-      if (activeBookId === book.id) {
-        setActiveBookId(null);
-        setStartedAt(null);
-      }
-
-      if (editingBookId === book.id) resetBookForm();
-    } catch {
-      window.alert("The book could not be deleted. Please check browser storage and try again.");
-    }
-  }
-
-  function handleRestartBook(book: Book) {
-    const confirmed = window.confirm(
-      `Restart "${book.title}" from page 0? Your previous reading sessions will be kept.`,
-    );
-    if (!confirmed) return;
-
-    const updated: Book = {
-      ...book,
-      currentPage: 0,
-      status: "Reading",
-    };
-
-    updateBook(updated);
-    setBooks((current) =>
-      current.map((item) => item.id === book.id ? updated : item),
-    );
-
-    if (activeBookId === book.id) {
-      setStartedAt(new Date().toISOString());
-
-    }
-  }
-
-  function getBookMenuActions(book: Book) {
-    return [
-      {
-        label: "Edit book",
-        onSelect: () => startEditingBook(book),
-      },
-      {
-        label: "Restart reading",
-        onSelect: () => handleRestartBook(book),
-      },
-      {
-        label: "Delete book",
-        destructive: true,
-        onSelect: () => handleDeleteBook(book),
-      },
-    ];
-  }
-
   const handleAddEssay = (
     event: FormEvent<HTMLFormElement>,
   ) => {
@@ -507,80 +453,6 @@ export default function ReadingPage() {
     setShowEssayForm(false);
   }
 
-  function startEditingEssay(essay: Essay) {
-    setEditingEssayId(essay.id);
-    setEssayTitle(essay.title);
-    setEssayAuthor(essay.author);
-    setEssaySource(essay.source);
-    setShowEssayForm(true);
-  }
-
-  function handleRestartEssay(essay: Essay) {
-    const confirmed = window.confirm(
-      `Restart "${essay.title}"? Saved observations and memory reflections will be kept, but its reading timers and workflow stage will reset.`,
-    );
-    if (!confirmed) return;
-
-    const updated: Essay = {
-      ...essay,
-      status: "To read",
-      firstPassStartedAt: undefined,
-      firstPassCompletedAt: undefined,
-      firstPassSeconds: undefined,
-      secondPassStartedAt: undefined,
-      secondPassCompletedAt: undefined,
-      secondPassSeconds: undefined,
-      secondPassStep: 0,
-      reflectionStartedAt: undefined,
-      reflectionCompletedAt: undefined,
-      reflectionSeconds: undefined,
-      // Keep saved marks, reflections, and the existing criticism-unlock record.
-    };
-
-    updateEssay(updated);
-    setEssays((current) =>
-      current.map((item) => item.id === updated.id ? updated : item),
-    );
-  }
-
-  function handleDeleteEssay(essay: Essay) {
-    const confirmed = window.confirm(
-      `Permanently delete "${essay.title}" and its saved marks and reflections? This cannot be undone.`,
-    );
-    if (!confirmed) return;
-
-    const remaining = essays.filter((item) => item.id !== essay.id);
-    try {
-      saveEssays(remaining);
-      setEssays(remaining);
-      if (editingEssayId === essay.id) resetEssayForm();
-    } catch {
-      window.alert("The essay could not be deleted. Please check browser storage and try again.");
-    }
-  }
-
-  function getEssayMenuActions(essay: Essay) {
-    return [
-      {
-        label: "Edit essay",
-        onSelect: () => startEditingEssay(essay),
-      },
-      {
-        label: "Restart essay",
-        onSelect: () => handleRestartEssay(essay),
-      },
-      {
-        label: "Export notes",
-        onSelect: () => { void shareEssayNotes(essay); },
-      },
-      {
-        label: "Delete essay",
-        destructive: true,
-        onSelect: () => handleDeleteEssay(essay),
-      },
-    ];
-  }
-
   function handleDeleteAllEssays() {
     if (essays.length === 0) return;
 
@@ -589,12 +461,14 @@ export default function ReadingPage() {
     );
     if (!confirmed) return;
 
+    setDeleteEssaysError("");
+
     try {
       saveEssays([]);
       setEssays([]);
       if (editingEssayId !== null) resetEssayForm();
     } catch {
-      window.alert(
+      setDeleteEssaysError(
         "The essays could not be deleted. Please check browser storage and try again.",
       );
     }
@@ -859,7 +733,7 @@ export default function ReadingPage() {
 
     setSessions((current) => [
       ...current,
-      session,
+      toReadingActivitySession(session),
     ]);
 
     setActiveBookId(null);
@@ -1316,7 +1190,13 @@ export default function ReadingPage() {
       );
 
       if (book) {
+        setWorkflowBookId(book.id);
         setTab("books");
+        setCollapsedBookIds((current) => {
+          const next = new Set(current);
+          next.delete(book.id);
+          return next;
+        });
         setActiveBookId(
           book.id,
         );
@@ -1357,7 +1237,13 @@ export default function ReadingPage() {
       );
 
       if (essay) {
+        setWorkflowEssayId(essay.id);
         setTab("essays");
+        setCollapsedEssayIds((current) => {
+          const next = new Set(current);
+          next.delete(essay.id);
+          return next;
+        });
 
         if (
           essay.status ===
@@ -1446,22 +1332,18 @@ export default function ReadingPage() {
   ];
 
   return (
-    <main className="min-h-full text-[var(--ink)]">
-      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
-        <header className="mb-8">
-          <p className="stat-label">Reading · Essays · Projects</p>
+    <main className="workspace-page min-h-full text-[var(--ink)]">
+      <div className="workspace-page__container mx-auto max-w-5xl px-5 py-8 sm:px-8">
+        <header className="mb-5">
           <h1 className="mt-1 text-3xl font-semibold tracking-tight">
             Workspace
           </h1>
-          <p className="mt-2 text-[var(--ink-soft)]">
-            Keep your reading and long-term work moving in one place.
-          </p>
         </header>
 
         <div
           role="group"
           aria-label="Workspace section"
-          className="mb-8 grid grid-cols-3 gap-1 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface-soft)] p-1"
+          className="workspace-page__tabs mb-5 grid grid-cols-3 gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-1"
         >
           {(["books", "essays", "projects"] as const).map((option) => (
             <button
@@ -1469,9 +1351,9 @@ export default function ReadingPage() {
               type="button"
               aria-pressed={tab === option}
               onClick={() => changeTab(option)}
-              className={`min-w-0 rounded-xl px-2 py-3 text-sm font-extrabold capitalize transition ${
+              className={`min-w-0 rounded-lg px-2 py-1.5 text-xs font-semibold capitalize transition ${
                 tab === option
-                  ? "bg-[var(--primary)] text-white shadow-[0_3px_0_var(--primary-dark)]"
+                  ? "bg-[var(--primary)] text-white shadow-[0_2px_0_var(--primary-dark)]"
                   : "text-[var(--ink-soft)] hover:bg-[var(--surface)]"
               }`}
             >
@@ -1480,45 +1362,19 @@ export default function ReadingPage() {
           ))}
         </div>
 
+        {tab === "essays" && deleteEssaysError && (
+          <p
+            role="alert"
+            className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-900"
+          >
+            {deleteEssaysError}
+          </p>
+        )}
+
         {tab === "books" && (
           <>
-            <div className="mb-6 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5">
-                <p className="text-sm text-[var(--ink-soft)]">
-                  Currently reading
-                </p>
-
-                <p className="mt-2 text-2xl font-semibold">
-                  {
-                    currentlyReading.length
-                  }
-                </p>
-              </div>
-
-              <div className="rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5">
-                <p className="text-sm text-[var(--ink-soft)]">
-                  Reading this week
-                </p>
-
-                <p className="mt-2 text-2xl font-semibold">
-                  {minutesThisWeek}{" "}
-                  min
-                </p>
-              </div>
-
-              <div className="rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5">
-                <p className="text-sm text-[var(--ink-soft)]">
-                  Finished
-                </p>
-
-                <p className="mt-2 text-2xl font-semibold">
-                  {finished.length}
-                </p>
-              </div>
-            </div>
-
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-[var(--ink)]">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h2 className="text-base font-semibold text-[var(--ink)]">
                 Your books
               </h2>
 
@@ -1529,7 +1385,7 @@ export default function ReadingPage() {
                     true,
                   )
                 }
-                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--forest"
               >
                 + Add book
               </button>
@@ -1537,6 +1393,7 @@ export default function ReadingPage() {
 
             {showBookForm && (
               <form
+                ref={bookFormRef}
                 onSubmit={
                   handleAddBook
                 }
@@ -1640,17 +1497,10 @@ export default function ReadingPage() {
                 </div>
 
                 <div className="mt-5 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={resetBookForm}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-extrabold text-[var(--ink)]"
-                  >
-                    Cancel
-                  </button>
 
                   <button
                     type="submit"
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--forest"
                   >
                     {editingBookId === null ? "Add book" : "Save changes"}
                   </button>
@@ -1658,12 +1508,84 @@ export default function ReadingPage() {
               </form>
             )}
 
-            <section className="mb-8">
-              <h2 className="mb-5 text-xl font-extrabold text-[var(--ink)]">
+
+            {workflowBookId === null && (
+              <section className="reading-numbered-shelf mb-6 rounded-xl bg-[var(--surface)] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-[var(--ink)]">
+                    Books
+                  </h2>
+                  <span className="text-xs text-[var(--muted)]">
+                    {books.length} {books.length === 1 ? "book" : "books"}
+                  </span>
+                </div>
+
+                {books.length === 0 ? (
+                  <p className="py-3 text-sm text-[var(--muted)]">
+                    No books yet. Add a book to get started.
+                  </p>
+                ) : (
+                  <ol className="reading-numbered-shelf__list">
+                    {books.map((book, index) => (
+                      <li key={book.id}>
+                        <Link
+                          href={`/reading/book/${book.id}`}
+                          className="reading-numbered-shelf__row"
+                        >
+                          <span className="reading-numbered-shelf__number">
+                            {index + 1}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-[var(--ink)]">
+                              {book.title}
+                            </span>
+                            <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                              {book.author || "Book"}
+                              {book.totalPages > 0
+                                ? ` · ${book.currentPage} of ${book.totalPages} pages`
+                                : ""}
+                            </span>
+                            <span className="mt-1 block text-[11px] leading-relaxed text-[var(--muted)]">
+                              {book.status === "Want to read"
+                                ? "Next: establish your purpose"
+                                : book.status === "Reading"
+                                  ? "Current stage: first pass"
+                                  : !book.wholeBookReconstruction ||
+                                      ![
+                                        book.wholeBookReconstruction.about,
+                                        book.wholeBookReconstruction.doing,
+                                        book.wholeBookReconstruction.development,
+                                        book.wholeBookReconstruction.changed,
+                                      ].every((value) => value.trim())
+                                    ? "Next: reconstruct the whole from memory"
+                                    : (book.secondPassSections ?? []).some(
+                                          (section) => !section.completed,
+                                        )
+                                      ? "Next: examine selected sections"
+                                      : book.readingDecision
+                                        ? `Decision: ${book.readingDecision}`
+                                        : "Next: choose what to revisit or apply"}
+                            </span>
+                          </span>
+                          <span aria-hidden="true" className="text-sm text-[var(--muted)]">
+                            ›
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            )}
+
+            {workflowBookId !== null && (
+              <div className="reading-workflow-view reading-workflow-view--book">
+            <section className="mb-6">
+              <h2 className="mb-2 text-base font-semibold text-[var(--ink)]">
                 Currently reading
               </h2>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {currentlyReading.map(
                   (book) => {
                     const progress = book.totalPages > 0
@@ -1696,7 +1618,7 @@ export default function ReadingPage() {
                         tabIndex={0}
                         onClick={(event) => {
                           if (shouldToggleReadingCard(event.target)) {
-                            toggleBookCard(book.id);
+                            router.push(`/reading/book/${book.id}`);
                           }
                         }}
                         onKeyDown={(event) => {
@@ -1705,43 +1627,55 @@ export default function ReadingPage() {
                             (event.key === "Enter" || event.key === " ")
                           ) {
                             event.preventDefault();
-                            toggleBookCard(book.id);
+                            router.push(`/reading/book/${book.id}`);
                           }
                         }}
-                        className={`cursor-pointer rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 ${
+                        className={`cursor-pointer rounded-[18px] border-2 border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4 ${
                           searchHighlightBookId === book.id
                             ? "ring-2 ring-[var(--accent)]"
                             : ""
                         }`}
                       >
-                        <div className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-3">
                           <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <p className="text-lg font-extrabold text-[var(--ink)]">
-                                {
-                                  book.title
-                                }
-                              </p>
-
-                              <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                                {
-                                  book.author
-                                }{" "}
-                                ·{" "}
-                                {
-                                  book.category
-                                }
+                            <div className="min-w-0 flex-1">
+                              <Link
+                                href={`/reading/book/${book.id}`}
+                                className="reading-row__title-link line-clamp-2 text-sm font-bold text-[var(--ink)] sm:text-base"
+                              >
+                                {book.title}
+                              </Link>
+                              <p className="mt-1 break-words text-xs text-[var(--ink-soft)] sm:text-sm">
+                                {book.author} · {book.category} · {book.currentPage}/{book.totalPages} pages
                               </p>
                             </div>
-
-                            <div className="flex shrink-0 items-center gap-2">
-                              <span className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-extrabold text-[var(--ink)]">
-                                {book.currentPage}/{book.totalPages}
-                              </span>
-                              <CardMenu
-                                title={`Actions for ${book.title}`}
-                                actions={getBookMenuActions(book)}
-                              />
+                            <div className="shrink-0">
+                              <button
+                                type="button"
+                                className="reading-row__expand"
+                                aria-label={collapsedBookIds.has(book.id) ? `Expand workflow for ${book.title}` : `Collapse workflow for ${book.title}`}
+                                aria-expanded={!collapsedBookIds.has(book.id)}
+                                title={collapsedBookIds.has(book.id) ? "Expand workflow" : "Collapse workflow"}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleBookCard(book.id);
+                                }}
+                              >
+                                <svg
+                                  aria-hidden="true"
+                                  viewBox="0 0 20 20"
+                                  width="15"
+                                  height="15"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className={collapsedBookIds.has(book.id) ? "" : "rotate-180"}
+                                >
+                                  <path d="m5 7.5 5 5 5-5" />
+                                </svg>
+                              </button>
 
                             </div>
                           </div>
@@ -1749,7 +1683,7 @@ export default function ReadingPage() {
                           {!collapsedBookIds.has(book.id) && (
                             <>
                           <div>
-                            <div className="h-3 overflow-hidden rounded-full border border-[var(--border)] bg-[var(--surface-soft)]">
+                            <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]">
                               <div
                                 className="h-full rounded-full bg-[var(--primary)] transition-[width] duration-300"
                                 style={{
@@ -1758,7 +1692,7 @@ export default function ReadingPage() {
                               />
                             </div>
 
-                            <p className="mt-2 text-sm text-slate-500">
+                            <p className="mt-1 text-xs text-[var(--muted)]">
                               {Math.round(
                                 progress,
                               )}
@@ -1793,39 +1727,36 @@ export default function ReadingPage() {
                                     book.id,
                                   )
                                 }
-                                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                                className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--terracotta"
                               >
                                 Start reading
                               </button>
                             )}
 
-                            <input
-                              type="number"
-                              min="0"
-                              max={
-                                book.totalPages
-                              }
-                              value={
-                                book.currentPage
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                updateProgress(
-                                  book,
-                                  Number(
-                                    event
-                                      .target
-                                      .value,
-                                  ),
-                                )
-                              }
-                              className="min-h-11 w-28 rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-2 text-sm font-bold text-[var(--ink)]"
-                            />
-
-                            <span className="text-sm text-[var(--ink-soft)]">
-                              current page
-                            </span>
+                            <details
+                              className="relative"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <summary className="cursor-pointer list-none py-2 text-sm font-bold text-[var(--primary-dark)] underline underline-offset-2">
+                                Edit pages
+                              </summary>
+                              <div className="mt-1 flex items-center gap-2">
+                                <label htmlFor={`book-page-${book.id}`} className="text-xs font-bold text-[var(--muted)]">
+                                  Page
+                                </label>
+                                <input
+                                  id={`book-page-${book.id}`}
+                                  type="number"
+                                  min="0"
+                                  max={book.totalPages}
+                                  value={book.currentPage}
+                                  onChange={(event) =>
+                                    updateProgress(book, Number(event.target.value))
+                                  }
+                                  className="min-h-9 w-20 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 text-sm font-bold text-[var(--ink)]"
+                                />
+                              </div>
+                            </details>
                           </div>
                             </>
                           )}
@@ -1838,7 +1769,7 @@ export default function ReadingPage() {
             </section>
 
             <section>
-              <h2 className="mb-5 text-xl font-extrabold text-[var(--ink)]">
+              <h2 className="mb-3 text-base font-semibold text-[var(--ink)]">
                 Want to read
               </h2>
 
@@ -1851,7 +1782,7 @@ export default function ReadingPage() {
                       tabIndex={0}
                       onClick={(event) => {
                         if (shouldToggleReadingCard(event.target)) {
-                          toggleBookCard(book.id);
+                          router.push(`/reading/book/${book.id}`);
                         }
                       }}
                       onKeyDown={(event) => {
@@ -1860,19 +1791,22 @@ export default function ReadingPage() {
                           (event.key === "Enter" || event.key === " ")
                         ) {
                           event.preventDefault();
-                          toggleBookCard(book.id);
+                          router.push(`/reading/book/${book.id}`);
                         }
                       }}
-                      className={`cursor-pointer flex items-center justify-between gap-3 rounded-[18px] border-2 border-[var(--border)] bg-[var(--surface)] p-4 ${
+                      className={`cursor-pointer flex items-center justify-between gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-3 ${
                         searchHighlightBookId === book.id
                           ? "ring-2 ring-[var(--accent)]"
                           : ""
                       }`}
                     >
                       <div>
-                        <p className="font-medium">
+                        <Link
+                          href={`/reading/book/${book.id}`}
+                          className="reading-row__title-link font-medium"
+                        >
                           {book.title}
-                        </p>
+                        </Link>
 
                         {!collapsedBookIds.has(book.id) && (
                           <p className="mt-1 text-sm text-[var(--ink-soft)]">
@@ -1892,16 +1826,39 @@ export default function ReadingPage() {
                                 current.map((item) => item.id === book.id ? updated : item),
                               );
                             }}
-                            className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                            className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--terracotta"
                           >
                             Start
                           </button>
                         )}
 
-                        <CardMenu
-                          title={`Actions for ${book.title}`}
-                          actions={getBookMenuActions(book)}
-                        />
+                        <button
+                          type="button"
+                          className="reading-row__expand"
+                          aria-label={collapsedBookIds.has(book.id) ? `Expand workflow for ${book.title}` : `Collapse workflow for ${book.title}`}
+                          aria-expanded={!collapsedBookIds.has(book.id)}
+                          title={collapsedBookIds.has(book.id) ? "Expand workflow" : "Collapse workflow"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleBookCard(book.id);
+                          }}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 20 20"
+                            width="15"
+                            height="15"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={collapsedBookIds.has(book.id) ? "" : "rotate-180"}
+                          >
+                            <path d="m5 7.5 5 5 5-5" />
+                          </svg>
+                        </button>
+
                       </div>
                     </div>
                   ),
@@ -1919,7 +1876,7 @@ export default function ReadingPage() {
                       tabIndex={0}
                       onClick={(event) => {
                         if (shouldToggleReadingCard(event.target)) {
-                          toggleBookCard(book.id);
+                          router.push(`/reading/book/${book.id}`);
                         }
                       }}
                       onKeyDown={(event) => {
@@ -1928,7 +1885,7 @@ export default function ReadingPage() {
                           (event.key === "Enter" || event.key === " ")
                         ) {
                           event.preventDefault();
-                          toggleBookCard(book.id);
+                          router.push(`/reading/book/${book.id}`);
                         }
                       }}
                       className={`cursor-pointer rounded-[18px] border-2 border-[var(--border)] bg-[var(--surface)] p-4 ${
@@ -1939,7 +1896,12 @@ export default function ReadingPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-extrabold text-[var(--ink)]">{book.title}</p>
+                          <Link
+                            href={`/reading/book/${book.id}`}
+                            className="reading-row__title-link font-semibold text-[var(--ink)]"
+                          >
+                            {book.title}
+                          </Link>
                           {!collapsedBookIds.has(book.id) && (
                             <p className="mt-1 text-sm text-[var(--ink-soft)]">
                               {book.author} · {book.totalPages} pages · Finished
@@ -1948,10 +1910,33 @@ export default function ReadingPage() {
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
 
-                          <CardMenu
-                            title={`Actions for ${book.title}`}
-                            actions={getBookMenuActions(book)}
-                          />
+                          <button
+                            type="button"
+                            className="reading-row__expand"
+                            aria-label={collapsedBookIds.has(book.id) ? `Expand workflow for ${book.title}` : `Collapse workflow for ${book.title}`}
+                            aria-expanded={!collapsedBookIds.has(book.id)}
+                            title={collapsedBookIds.has(book.id) ? "Expand workflow" : "Collapse workflow"}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleBookCard(book.id);
+                            }}
+                          >
+                            <svg
+                              aria-hidden="true"
+                              viewBox="0 0 20 20"
+                              width="15"
+                              height="15"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className={collapsedBookIds.has(book.id) ? "" : "rotate-180"}
+                            >
+                              <path d="m5 7.5 5 5 5-5" />
+                            </svg>
+                          </button>
+
                         </div>
                       </div>
                     </article>
@@ -1959,27 +1944,18 @@ export default function ReadingPage() {
                 </div>
               </section>
             )}
+              </div>
+            )}
+
           </>
         )}
 
         {tab === "essays" && (
           <>
-            <div className="mb-6 rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold">
-                    Your essay practice
-                  </h2>
-
-                  <p className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">
-                    First pass →
-                    second pass →
-                    memory reflection
-                    → criticism.
-                  </p>
-                </div>
-
-                <div className="flex shrink-0 flex-nowrap items-center gap-2">
+            <div className="mb-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-base font-semibold">Essay practice</h2>
+                <div className="flex shrink-0 items-center gap-1.5">
                   {essays.length > 0 && (
                     <CardMenu
                       title="Essay workspace actions"
@@ -1988,14 +1964,10 @@ export default function ReadingPage() {
                   )}
                   <button
                     type="button"
-                    onClick={() =>
-                      setShowEssayForm(
-                        true,
-                      )
-                    }
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                    onClick={() => setShowEssayForm(true)}
+                    className="inline-flex min-h-9 items-center justify-center rounded-lg border border-[var(--primary-dark)] bg-[var(--primary)] px-2.5 py-1 text-xs font-semibold text-white shadow-[0_2px_0_var(--primary-dark)] action-primary--forest"
                   >
-                    + Add essay
+                    Add essay
                   </button>
                 </div>
               </div>
@@ -2003,6 +1975,7 @@ export default function ReadingPage() {
 
             {showEssayForm && (
               <form
+                ref={essayFormRef}
                 onSubmit={
                   handleAddEssay
                 }
@@ -2075,17 +2048,10 @@ export default function ReadingPage() {
                 </div>
 
                 <div className="mt-5 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={resetEssayForm}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-extrabold text-[var(--ink)]"
-                  >
-                    Cancel
-                  </button>
 
                   <button
                     type="submit"
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--forest"
                   >
                     {editingEssayId === null ? "Add essay" : "Save changes"}
                   </button>
@@ -2093,7 +2059,64 @@ export default function ReadingPage() {
               </form>
             )}
 
-            <div className="space-y-6">
+
+            {workflowEssayId === null && (
+              <section className="reading-numbered-shelf mb-6 rounded-xl bg-[var(--surface)] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-[var(--ink)]">
+                    Essays
+                  </h2>
+                  <span className="text-xs text-[var(--muted)]">
+                    {essays.length} {essays.length === 1 ? "essay" : "essays"}
+                  </span>
+                </div>
+
+                {essays.length === 0 ? (
+                  <p className="py-3 text-sm text-[var(--muted)]">
+                    No essays yet. Add an essay to get started.
+                  </p>
+                ) : (
+                  <ol className="reading-numbered-shelf__list">
+                    {essays.map((essay, index) => (
+                      <li key={essay.id}>
+                        <Link
+                          href={`/reading/essay/${essay.id}`}
+                          className="reading-numbered-shelf__row"
+                        >
+                          <span className="reading-numbered-shelf__number">
+                            {index + 1}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium text-[var(--ink)]">
+                              {essay.title}
+                            </span>
+                            <span className="workspace-page__essay-status mt-0.5">
+                              {essay.status}
+                            </span>
+                            <span className="mt-1 block text-[11px] leading-relaxed text-[var(--muted)]">
+                              {Object.values(essay.marks).filter(
+                                (value) => value.trim().length > 0,
+                              ).length}/4 structural observations
+                              {" · "}
+                              {Object.values(essay.reflection).filter(
+                                (value) => value.trim().length > 0,
+                              ).length}/3 reconstruction responses
+                            </span>
+                          </span>
+                          <span aria-hidden="true" className="text-sm text-[var(--muted)]">
+                            ›
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            )}
+
+            {workflowEssayId !== null && (
+              <div className="reading-workflow-view reading-workflow-view--essay">
+            <div className="space-y-3">
               {essays.length ===
               0 ? (
                 <div className="rounded-[20px] border-2 border-dashed border-[var(--border)] bg-[var(--surface)] p-8 text-center">
@@ -2221,7 +2244,7 @@ export default function ReadingPage() {
                         tabIndex={0}
                         onClick={(event) => {
                           if (shouldToggleReadingCard(event.target)) {
-                            toggleEssayCard(essay.id);
+                            router.push(`/reading/essay/${essay.id}`);
                           }
                         }}
                         onKeyDown={(event) => {
@@ -2230,10 +2253,10 @@ export default function ReadingPage() {
                             (event.key === "Enter" || event.key === " ")
                           ) {
                             event.preventDefault();
-                            toggleEssayCard(essay.id);
+                            router.push(`/reading/essay/${essay.id}`);
                           }
                         }}
-                        className={`cursor-pointer rounded-[20px] border-2 border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 ${
+                        className={`cursor-pointer rounded-[16px] border border-[var(--border)] bg-[var(--surface)] p-3 sm:p-4 ${
                           searchHighlightEssayId === essay.id
                             ? "ring-2 ring-[var(--accent)]"
                             : ""
@@ -2243,10 +2266,15 @@ export default function ReadingPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="text-xl font-extrabold text-[var(--ink)]">
-                                  {essay.title}
+                                <h2 className="workspace-page__essay-title text-base font-bold">
+                                  <Link
+                                    href={`/reading/essay/${essay.id}`}
+                                    className="reading-row__title-link"
+                                  >
+                                    {essay.title}
+                                  </Link>
                                 </h2>
-                                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-soft)] px-3 py-1 text-xs font-bold text-[var(--ink-soft)]">
+                                <span className="workspace-page__essay-status">
                                   {essay.status}
                                 </span>
                               </div>
@@ -2256,10 +2284,33 @@ export default function ReadingPage() {
                               </p>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
-                              <CardMenu
-                                title={`Actions for ${essay.title}`}
-                                actions={getEssayMenuActions(essay)}
-                              />
+                              <button
+                                type="button"
+                                className="reading-row__expand"
+                                aria-label={collapsedEssayIds.has(essay.id) ? `Expand workflow for ${essay.title}` : `Collapse workflow for ${essay.title}`}
+                                aria-expanded={!collapsedEssayIds.has(essay.id)}
+                                title={collapsedEssayIds.has(essay.id) ? "Expand workflow" : "Collapse workflow"}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleEssayCard(essay.id);
+                                }}
+                              >
+                                <svg
+                                  aria-hidden="true"
+                                  viewBox="0 0 20 20"
+                                  width="15"
+                                  height="15"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className={collapsedEssayIds.has(essay.id) ? "" : "rotate-180"}
+                                >
+                                  <path d="m5 7.5 5 5 5-5" />
+                                </svg>
+                              </button>
+
 
                             </div>
                           </div>
@@ -2301,7 +2352,7 @@ export default function ReadingPage() {
                                     essay,
                                   )
                                 }
-                                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--terracotta"
                               >
                                 Start first
                                 pass
@@ -2346,7 +2397,7 @@ export default function ReadingPage() {
                                       essay,
                                     )
                                   }
-                                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--terracotta"
                                 >
                                   Start
                                   second
@@ -2360,7 +2411,7 @@ export default function ReadingPage() {
                                       essay,
                                     )
                                   }
-                                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)]"
+                                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] action-primary--forest"
                                 >
                                   Finish
                                   first
@@ -2463,7 +2514,7 @@ export default function ReadingPage() {
                                     disabled={
                                       !currentPromptValue.trim()
                                     }
-                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] disabled:opacity-40"
+                                    className="inline-flex min-h-11 items-center justify-center rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-2 text-sm font-extrabold text-white shadow-[0_3px_0_var(--primary-dark)] disabled:opacity-40 action-primary--forest"
                                   >
                                     {step ===
                                     3
@@ -2840,7 +2891,9 @@ export default function ReadingPage() {
                   },
                 )
               )}
-            </div>
+              </div>
+              </div>
+            )}
           </>
         )}
         {tab === "projects" && <ProjectsPanel embedded />}

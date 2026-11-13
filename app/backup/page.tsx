@@ -19,12 +19,43 @@ import {
   saveLocalBackup,
   type AppSnapshot,
 } from "@/lib/supabase/sync";
+import {
+  exportStudyMvpJSON,
+  normalizeLegacyDailyPlanExecutions,
+} from "@/lib/studyMvp/storage";
+import type { StudyMvpState } from "@/lib/studyMvp/types";
+import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
 type BackupRow = {
   id: number;
   created_at: string;
   data: unknown;
 };
+
+type StudyBackupRow = {
+  id: number | string;
+  created_at: string;
+  revision: number | string;
+  state: unknown;
+};
+
+type ImportedBackupPreview = {
+  fileName: string;
+  savedAt: string | null;
+  exportedAt: string | null;
+  snapshot: AppSnapshot;
+  sections: string[];
+};
+
+type BackupDisplayLimit = 3 | 5 | 10 | 20 | 50 | "all";
+
+function parseBackupDisplayLimit(value: string): BackupDisplayLimit {
+  if (value === "all") return "all";
+  const parsed = Number(value);
+  return ([3, 5, 10, 20, 50] as number[]).includes(parsed)
+    ? (parsed as Exclude<BackupDisplayLimit, "all">)
+    : 3;
+}
 
 const BACKUP_FORMAT = "personal-assistant-backup";
 const BACKUP_VERSION = 1;
@@ -124,10 +155,68 @@ function downloadRecoveryCopy(
 }
 
 export default function BackupRecoveryPage() {
+  const {
+    state: studyState,
+    loadingError: studyLoadingError,
+    cloudSyncStatus: studyCloudSyncStatus,
+    syncConflict: studySyncConflict,
+  } = useCloudStudyState();
+  const [studyExportMessage, setStudyExportMessage] =
+    useState<string | null>(null);
+  function exportStudyDataAndHistory() {
+    if (!studyState || studyLoadingError || studySyncConflict) {
+      setStudyExportMessage(
+        "Study data is not ready to export. Resolve any loading or sync conflict first.",
+      );
+      return;
+    }
+
+    try {
+      const date = new Date().toISOString().slice(0, 10);
+      const content = exportStudyMvpJSON(studyState);
+      const blob = new Blob([content], {
+        type: "application/json;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `${
+        studyCloudSyncStatus === "migration"
+          ? "study-mvp-recovery"
+          : "study-mvp-backup"
+      }-${date}.json`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      setStudyExportMessage(
+        "Study data and event history downloaded.",
+      );
+    } catch (error) {
+      setStudyExportMessage(
+        `Could not export Study data: ${describeError(error)}`,
+      );
+    }
+  }
   const [backups, setBackups] =
     useState<BackupRow[]>([]);
+  const [studyBackups, setStudyBackups] =
+    useState<StudyBackupRow[]>([]);
+  const [studyBackupDisplayLimit, setStudyBackupDisplayLimit] =
+    useState<BackupDisplayLimit>(3);
+  const [appBackupDisplayLimit, setAppBackupDisplayLimit] =
+    useState<BackupDisplayLimit>(3);
+  const [studyBackupsLoading, setStudyBackupsLoading] =
+    useState(true);
+  const [studyBackupsError, setStudyBackupsError] =
+    useState("");
   const [recoveryCopies, setRecoveryCopies] =
     useState<LocalStorageRecoveryCopy[]>([]);
+  const [filePreview, setFilePreview] =
+    useState<ImportedBackupPreview | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [working, setWorking] =
@@ -135,6 +224,27 @@ export default function BackupRecoveryPage() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const visibleStudyBackups =
+    studyBackupDisplayLimit === "all"
+      ? studyBackups
+      : studyBackups.slice(0, studyBackupDisplayLimit);
+  const visibleAppBackups =
+    appBackupDisplayLimit === "all"
+      ? backups
+      : backups.slice(0, appBackupDisplayLimit);
+
+  useEffect(() => {
+    if (!message) return;
+    const timeout = window.setTimeout(() => setMessage(""), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [message]);
+
+  useEffect(() => {
+    if (!studyExportMessage) return;
+    const timeout = window.setTimeout(() => setStudyExportMessage(null), 6000);
+    return () => window.clearTimeout(timeout);
+  }, [studyExportMessage]);
 
   const refreshBackups = useCallback(async () => {
     setLoading(true);
@@ -188,9 +298,65 @@ export default function BackupRecoveryPage() {
     }
   }, []);
 
+    const refreshStudyBackups = useCallback(async () => {
+    setStudyBackupsLoading(true);
+    setStudyBackupsError("");
+
+    try {
+      const supabase = createClient();
+
+      const {
+        data: authResult,
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        throw authError;
+      }
+
+      const user = authResult.user;
+
+      if (!user) {
+        throw new Error(
+          "Please sign in again to view Study history.",
+        );
+      }
+
+      const {
+        data: backupRows,
+        error: backupError,
+      } = await supabase
+        .from("user_study_mvp_state_backups")
+        .select("id, created_at, revision, state")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(50);
+
+      if (backupError) {
+        throw backupError;
+      }
+
+      setStudyBackups(
+        (backupRows ?? []) as StudyBackupRow[],
+      );
+    } catch (caughtError) {
+      setStudyBackupsError(
+        "Could not load Study backup history. " +
+          describeError(caughtError),
+      );
+    } finally {
+      setStudyBackupsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void refreshBackups();
   }, [refreshBackups]);
+
+    useEffect(() => {
+    void refreshStudyBackups();
+  }, [refreshStudyBackups]);
 
   const refreshRecoveryCopies = useCallback(() => {
     try {
@@ -448,6 +614,7 @@ export default function BackupRecoveryPage() {
 
     setError("");
     setMessage("");
+    setFilePreview(null);
 
     try {
       const parsed: unknown =
@@ -476,18 +643,79 @@ export default function BackupRecoveryPage() {
         );
       }
 
-      await restoreSnapshot(
-        payload.snapshot,
-        "the backup file " + file.name,
+      const snapshot = normalizeSnapshot(payload.snapshot);
+      const sections = Object.keys(snapshot).sort();
+
+      if (sections.length === 0) {
+        throw new Error(
+          "This file contains no recognized app data and cannot be restored.",
+        );
+      }
+
+      setFilePreview({
+        fileName: file.name,
+        savedAt: typeof payload.savedAt === "string"
+          ? payload.savedAt
+          : null,
+        exportedAt: typeof payload.exportedAt === "string"
+          ? payload.exportedAt
+          : null,
+        snapshot,
+        sections,
+      });
+
+      setMessage(
+        "Backup file validated. Nothing has been restored yet.",
       );
     } catch (caughtError) {
+      setFilePreview(null);
       setError(
-        "Could not read that backup file. " +
+        "Could not preview that backup file. " +
           describeError(caughtError),
       );
     }
   }
 
+    function downloadStudyHistoryBackup(
+    backup: StudyBackupRow,
+  ): void {
+    try {
+      const state = normalizeLegacyDailyPlanExecutions(
+        backup.state as StudyMvpState,
+      );
+
+      const content = exportStudyMvpJSON(state);
+      const blob = new Blob([content], {
+        type: "application/json;charset=utf-8",
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download =
+        `study-mvp-history-revision-${backup.revision}-` +
+        `${backup.created_at.slice(0, 10)}.json`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1000);
+
+      setStudyExportMessage(
+        `Study cloud backup revision ${backup.revision} downloaded.`,
+      );
+    } catch (caughtError) {
+      setStudyExportMessage(
+        "Could not download this Study backup. " +
+          describeError(caughtError),
+      );
+    }
+  }
+  
   const restoreIsRunning = working === "restore";
 
   return (
@@ -525,8 +753,172 @@ export default function BackupRecoveryPage() {
           {error}
         </div>
       )}
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" aria-label="Study backup and history">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Study data and history</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Export Study records or download earlier Study versions</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
+  <h2 className="text-lg font-extrabold text-[#23412f]">
+    Export a separate Study copy
+  </h2>
 
-      <section className="rounded-2xl bg-[var(--surface)] p-5">
+  <p className="mt-2 text-sm text-stone-600">
+    Download your Study state and event history as a JSON backup.
+    This is separate from the full-app backup below.
+  </p>
+  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+  <div className="rounded-xl bg-stone-50 p-4">
+    <p className="text-sm font-extrabold text-[#23412f]">
+      Storage key
+    </p>
+    <code className="mt-2 block break-all text-xs font-semibold text-stone-600">
+      personal-assistant-study-mvp-v1
+    </code>
+  </div>
+
+  <div className="rounded-xl bg-stone-50 p-4">
+    <p className="text-sm font-extrabold text-[#23412f]">
+      Storage location
+    </p>
+    <p className="mt-2 text-sm font-semibold text-stone-600">
+      Cloud-backed Study state with a local recovery copy.
+    </p>
+  </div>
+</div>
+
+  {studyLoadingError && (
+    <p className="mt-3 text-sm text-red-700" role="alert">
+      Study data could not be loaded:{" "}
+      {describeError(studyLoadingError)}
+    </p>
+  )}
+
+  {studySyncConflict && (
+    <p className="mt-3 text-sm text-amber-800" role="alert">
+      Resolve the Study cloud-sync conflict before exporting.
+    </p>
+  )}
+
+  {studyExportMessage && (
+    <p className="mt-3 text-sm text-stone-600" role="status">
+      {studyExportMessage}
+    </p>
+  )}
+
+  <button
+    type="button"
+    onClick={exportStudyDataAndHistory}
+    disabled={
+      !studyState ||
+      Boolean(studyLoadingError) ||
+      Boolean(studySyncConflict)
+    }
+    className="mt-4 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    Export Study data and history
+  </button>
+        <div className="mt-6 border-t border-stone-200 pt-5">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h3 className="text-lg font-extrabold text-[#23412f]">
+          Previous Study versions
+        </h3>
+        <p className="mt-1 text-sm text-stone-600">
+          Choose how many recent versions to display.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-sm font-semibold text-stone-600">
+          Show
+          <select
+            aria-label="Study backup versions to show"
+            value={String(studyBackupDisplayLimit)}
+            onChange={(event) => setStudyBackupDisplayLimit(parseBackupDisplayLimit(event.target.value))}
+            className="min-h-12 rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold"
+          >
+            <option value="3">Latest 3</option>
+            <option value="5">Latest 5</option>
+            <option value="10">Latest 10</option>
+            <option value="20">Latest 20</option>
+            <option value="50">Latest 50</option>
+            <option value="all">All loaded</option>
+          </select>
+        </label>
+        <button
+        type="button"
+        onClick={() => void refreshStudyBackups()}
+        disabled={studyBackupsLoading || working !== null}
+        className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm font-bold text-stone-700 disabled:opacity-50"
+      >
+        {studyBackupsLoading ? "Loading…" : "Refresh history"}
+        </button>
+      </div>
+    </div>
+
+    {studyBackupsError && (
+      <p className="mt-3 text-sm text-red-700" role="alert">
+        {studyBackupsError}
+      </p>
+    )}
+
+    {studyBackupsLoading ? (
+      <p className="mt-4 text-sm text-stone-600">
+        Loading previous Study versions…
+      </p>
+    ) : studyBackups.length === 0 ? (
+      <p className="mt-4 rounded-xl border border-dashed border-stone-300 p-4 text-sm text-stone-600">
+        No previous Study versions have been recorded yet.
+        They will appear here after cloud Study data changes.
+      </p>
+    ) : (
+      <div className="mt-4 space-y-3">
+        <p className="text-xs font-semibold text-stone-500">
+          Showing {visibleStudyBackups.length} of {studyBackups.length} available versions.
+        </p>
+        {visibleStudyBackups.map((backup) => (
+          <article
+            key={String(backup.id)}
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50 p-4"
+          >
+            <div>
+              <p className="font-extrabold text-[#23412f]">
+                {formatDate(backup.created_at)}
+              </p>
+              <p className="mt-1 text-sm text-stone-600">
+                Revision {backup.revision} · Backup #{backup.id}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={working !== null}
+              onClick={() => downloadStudyHistoryBackup(backup)}
+              className="rounded-xl border border-emerald-800 bg-emerald-800 px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+            >
+              Download Study copy
+            </button>
+          </article>
+        ))}
+      </div>
+    )}
+  </div>
+        </div>
+      </details>
+
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" open>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Download or restore app data</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Download a copy or restore a file; restoring replaces cloud data</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
         <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
           Portable backup
         </p>
@@ -574,19 +966,108 @@ export default function BackupRecoveryPage() {
             />
           </label>
 
+          {filePreview && (
+            <div
+              className="mt-4 space-y-3 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--background)] p-4"
+              role="region"
+              aria-label="Backup file preview"
+            >
+              <div>
+                <h4 className="font-extrabold text-[var(--primary-dark)]">
+                  Backup preview
+                </h4>
+                <p className="mt-1 break-words text-sm font-bold">
+                  File: {filePreview.fileName}
+                </p>
+              </div>
+
+              {filePreview.savedAt && (
+                <p className="text-sm text-[var(--ink-soft)]">
+                  Snapshot saved: {formatDate(filePreview.savedAt)}
+                </p>
+              )}
+
+              {filePreview.exportedAt && (
+                <p className="text-sm text-[var(--ink-soft)]">
+                  File exported: {formatDate(filePreview.exportedAt)}
+                </p>
+              )}
+
+              <div>
+                <p className="text-sm font-extrabold">
+                  Recognized data sections ({filePreview.sections.length})
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {filePreview.sections.map((section) => (
+                    <li
+                      key={section}
+                      className="max-w-full break-all rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-semibold"
+                    >
+                      {section}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="text-sm font-bold text-[var(--accent-dark)]">
+                Preview only. Restoring replaces your current cloud data.
+                The existing restore confirmation and backup safeguards still apply.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={working !== null}
+                  onClick={() => {
+                    if (!filePreview) return;
+                    void restoreSnapshot(
+                      filePreview.snapshot,
+                      "the backup file " + filePreview.fileName,
+                    );
+                  }}
+                  className="rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary)] px-4 py-3 font-extrabold text-white disabled:opacity-50"
+                >
+                  Continue to restore
+                </button>
+
+                <button
+                  type="button"
+                  disabled={working !== null}
+                  onClick={() => {
+                    setFilePreview(null);
+                    setError("");
+                    setMessage("Backup preview cancelled. No data was restored.");
+                  }}
+                  className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-3 font-extrabold disabled:opacity-50"
+                >
+                  Cancel preview
+                </button>
+              </div>
+            </div>
+          )}
+
           <p className="mt-3 text-sm font-bold text-[var(--muted)]">
             Restoring replaces cloud data on your signed-in
             devices. The previous cloud version is saved
             first.
           </p>
         </div>
-      </section>
+        </div>
+      </details>
 
-      <section className="rounded-2xl bg-[var(--surface)] p-5">
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Local recovery copies</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Browser-only raw data; download it before clearing browser storage</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
-              Local recovery copies
+              Preserved browser data
             </p>
 
             <h2 className="mt-1 text-2xl">
@@ -672,13 +1153,22 @@ export default function BackupRecoveryPage() {
             ))}
           </div>
         )}
-      </section>
+        </div>
+      </details>
 
-      <section className="rounded-2xl bg-[var(--surface)] p-5">
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Automatic cloud history</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Browse earlier snapshots; restoring replaces current app data</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
-              Automatic cloud history
+              Saved app versions
             </p>
 
             <h2 className="mt-1 text-2xl">
@@ -692,14 +1182,32 @@ export default function BackupRecoveryPage() {
             </p>
           </div>
 
-          <button
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-[var(--ink-soft)]">
+              Show
+              <select
+                aria-label="Automatic cloud history versions to show"
+                value={String(appBackupDisplayLimit)}
+                onChange={(event) => setAppBackupDisplayLimit(parseBackupDisplayLimit(event.target.value))}
+                className="min-h-12 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--ink)]"
+              >
+                <option value="3">Latest 3</option>
+                <option value="5">Latest 5</option>
+                <option value="10">Latest 10</option>
+                <option value="20">Latest 20</option>
+                <option value="50">Latest 50</option>
+                <option value="all">All loaded</option>
+              </select>
+            </label>
+            <button
             type="button"
             onClick={() => void refreshBackups()}
             disabled={loading || working !== null}
             className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface-soft)] px-3 py-2 font-extrabold text-[var(--primary)] disabled:opacity-50"
           >
             {loading ? "Loading…" : "↻ Refresh"}
-          </button>
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -720,7 +1228,10 @@ export default function BackupRecoveryPage() {
           </div>
         ) : (
           <div className="mt-5 space-y-3">
-            {backups.map((backup) => {
+            <p className="text-xs font-bold text-[var(--muted)]">
+              Showing {visibleAppBackups.length} of {backups.length} available versions.
+            </p>
+            {visibleAppBackups.map((backup) => {
               const snapshot =
                 normalizeSnapshot(backup.data);
 
@@ -798,7 +1309,8 @@ export default function BackupRecoveryPage() {
             })}
           </div>
         )}
-      </section>
+        </div>
+      </details>
 
       <p className="text-sm font-bold text-[var(--muted)]">
         Backup history is associated with your signed-in

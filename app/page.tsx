@@ -12,6 +12,8 @@ import {
 } from "@/lib/today-engine";
 
 import { getTodayData } from "@/lib/today-data";
+import { createEmptyStudyState } from "@/lib/studyMvp/storage";
+import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 import { loadAIPreferences } from "@/lib/assistantPreferences";
 import {
   getCalendarItems,
@@ -74,7 +76,11 @@ function getTaskHref(
   const taskId =
     task.id.toString();
 
-  if (task.type === "study") {
+    if (task.type === "study") {
+    if (taskId.startsWith("study-review-")) {
+      return "/study";
+    }
+
     const lectureId =
       taskId.replace(
         "study-",
@@ -96,7 +102,7 @@ function getTaskHref(
           "",
         );
 
-      return `/reading?bookId=${bookId}`;
+      return `/reading/book/${bookId}`;
     }
 
     if (
@@ -110,7 +116,7 @@ function getTaskHref(
           "",
         );
 
-      return `/reading?essayId=${essayId}`;
+      return `/reading/essay/${essayId}`;
     }
 
     return "/reading";
@@ -142,37 +148,68 @@ export default function TodayPage() {
   const [dailyPlan, setDailyPlan] = useState("");
   const [isPlanning, setIsPlanning] = useState(false);
   const [planError, setPlanError] = useState("");
+    const {
+    state: studyState,
+    cloudSyncStatus,
+    loadingError: studyLoadingError,
+    problem: studyProblem,
+  } = useCloudStudyState();
 
-  useEffect(() => {
+  const emptyStudyState = useMemo(
+    () =>
+      createEmptyStudyState({
+        now: "2026-01-01T00:00:00.000Z",
+        timezone: "UTC",
+      }),
+    [],
+  );
+
+  const canUseStudyState =
+    studyState !== null &&
+    ["ready", "synced", "syncing"].includes(cloudSyncStatus);
+
+  const todayStudyState = canUseStudyState
+    ? studyState
+    : emptyStudyState;
+
+  const studyUnavailableMessage =
+    cloudSyncStatus === "loading"
+      ? "Connecting to your Study workspace. Study tasks will appear when the connection is ready."
+      : cloudSyncStatus === "migration"
+        ? "Your existing browser Study data has not yet been migrated. Open Study to review and approve migration before Today can display Study tasks."
+        : cloudSyncStatus === "conflict"
+          ? studyProblem ||
+            "Your browser and cloud Study records differ. Resolve the difference in Study before continuing."
+          : cloudSyncStatus === "error"
+            ? studyLoadingError ||
+              studyProblem ||
+              "Study storage needs attention. Study tasks are temporarily unavailable."
+            : "";
+
+    useEffect(() => {
     function refreshToday() {
-      const current =
-        new Date();
+      const current = new Date();
 
       setNow(current);
 
-      const data =
-        getTodayData(current);
-
-      setFixedEvents(
-        data.fixedEvents,
+      const data = getTodayData(
+        todayStudyState,
+        current,
       );
 
+      setFixedEvents(data.fixedEvents);
       setTasks(data.tasks);
     }
 
     refreshToday();
 
-    const interval =
-      window.setInterval(
-        refreshToday,
-        30_000,
-      );
+    const interval = window.setInterval(
+      refreshToday,
+      30_000,
+    );
 
     function handleVisibilityChange() {
-      if (
-        document.visibilityState ===
-        "visible"
-      ) {
+      if (document.visibilityState === "visible") {
         refreshToday();
       }
     }
@@ -183,16 +220,14 @@ export default function TodayPage() {
     );
 
     return () => {
-      window.clearInterval(
-        interval,
-      );
+      window.clearInterval(interval);
 
       document.removeEventListener(
         "visibilitychange",
         handleVisibilityChange,
       );
     };
-  }, []);
+  }, [todayStudyState]);
 
   const freeWindows =
     useMemo(() => {
@@ -362,8 +397,10 @@ export default function TodayPage() {
         String(tomorrowStart.getDate()).padStart(2, "0"),
       ].join("-");
 
-      const tomorrowData = getTodayData(tomorrowStart);
-
+      const tomorrowData = getTodayData(
+  todayStudyState,
+  tomorrowStart,
+);
       const calendarItems = getCalendarItems();
       const calendarEvents = calendarItems.filter(
         (item): item is CalendarEvent => item.type === "event",
@@ -772,8 +809,8 @@ export default function TodayPage() {
 
   if (!now) {
     return (
-      <main>
-        <div className="rounded-[24px] border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-8 text-center shadow-[0_4px_0_var(--primary-dark)]">
+      <main className="today-page">
+        <div className="today-page__loading rounded-[24px] border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-8 text-center shadow-[0_4px_0_var(--primary-dark)]">
           <h1 className="text-2xl">
             Getting today ready...
           </h1>
@@ -788,13 +825,13 @@ export default function TodayPage() {
   }
 
   return (
-    <main>
-      <div className="mb-8">
+    <main className="today-page">
+      <div className="today-page__header mb-8">
         <p className="text-sm font-extrabold uppercase tracking-[0.08em] text-[var(--muted)]">
           Today
         </p>
 
-        <h1 className="mt-2 text-3xl sm:text-4xl lg:text-5xl">
+        <h1 className="mt-2 text-2xl sm:text-3xl lg:text-4xl">
           {new Intl.DateTimeFormat(
             "en-US",
             {
@@ -806,24 +843,35 @@ export default function TodayPage() {
         </h1>
 
         <p className="mt-3 text-[var(--ink-soft)]">
-          Your day, reduced to
-          the next useful thing.
+          Focus on what&apos;s next.
         </p>
       </div>
 
+            {studyUnavailableMessage && (
+        <p
+          role={
+            cloudSyncStatus === "loading"
+              ? "status"
+              : "alert"
+          }
+          className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--ink-soft)]"
+        >
+          {studyUnavailableMessage}
+        </p>
+      )}
+      
       <section
         aria-labelledby="daily-plan-heading"
-        className="card mb-6 bg-[var(--surface)] p-5 sm:p-6"
+        className="card today-page__card mb-6 bg-[var(--surface)] p-4 sm:p-5"
       >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="stat-label">AI planning</p>
-            <h2 id="daily-plan-heading" className="mt-1 text-2xl">
+            <h2 id="daily-plan-heading" className="mt-1 text-xl sm:text-2xl">
               Plan my day
             </h2>
             <p className="mt-2 text-[var(--ink-soft)]">
-              Plan today and tomorrow around your classes, deadlines and free windows.
-              Planning hours are 7 AM–10 PM; overnight gaps are excluded. Nothing will be changed automatically.
+              Auto-schedule around your classes.
             </p>
           </div>
 
@@ -831,7 +879,7 @@ export default function TodayPage() {
             type="button"
             disabled={isPlanning}
             onClick={() => void handleGenerateDailyPlan()}
-            className="inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-5 py-3 font-black text-[var(--primary-dark)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60"
+            className="plan-generate-button inline-flex min-h-[48px] shrink-0 items-center justify-center rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-5 py-3 font-black text-[var(--primary-dark)] transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 action-primary--terracotta"
           >
             {isPlanning
               ? "Planning your day..."
@@ -854,7 +902,7 @@ export default function TodayPage() {
         )}
 
         {dailyPlan && (
-          <div className="mt-5 rounded-[16px] border-2 border-[var(--border)] bg-white/60 p-4 sm:p-5">
+          <div className="mt-4 rounded-[16px] border-2 border-[var(--border)] bg-white/60 p-3 sm:p-4">
             <p className="mb-2 text-sm font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
               Your suggested plan
             </p>
@@ -865,20 +913,22 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="card bg-[var(--surface)] p-6 sm:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+      <section className="card today-page__card today-page__right-now bg-[var(--surface)] p-4 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <p className="stat-label">
               Right now
             </p>
 
-            <h2 className="mt-2 break-words text-2xl sm:text-3xl">
+            <h2 className="mt-2 break-words text-xl sm:text-2xl">
               {recommendation
                 ? recommendation.task.title
                 : "Nothing urgent"}
             </h2>
             {recommendation?.task.type === "study" &&
-              recommendation.task.unitName && (
+              recommendation.task.unitName &&
+              recommendation.task.unitName.trim().toLocaleLowerCase() !==
+                recommendation.task.title.trim().toLocaleLowerCase() && (
                 <p className="mt-1 break-words text-sm text-[var(--ink-soft)]">
                   {recommendation.task.unitName}
                 </p>
@@ -886,7 +936,7 @@ export default function TodayPage() {
           </div>
 
           {recommendation && (
-            <span className="rounded-full border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-3 py-1 text-sm font-extrabold text-[var(--primary-dark)]">
+            <span className="shrink-0 whitespace-nowrap rounded-full border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] px-2.5 py-1 text-xs font-bold text-[var(--primary-dark)]">
               {getTypeLabel(
                 recommendation
                   .task.type,
@@ -897,13 +947,13 @@ export default function TodayPage() {
 
         {recommendation ? (
           <>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[16px] bg-[var(--primary-soft)] p-4">
+            <div className="today-page__metrics mt-4 grid grid-cols-3 gap-1.5 sm:gap-3">
+              <div className="min-w-0 rounded-[12px] bg-[var(--primary-soft)] p-2 sm:p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary)]">
                   Time
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary)]">
+                <div className="mt-1 min-w-0 break-words font-[var(--font-heading)] text-base font-semibold leading-tight tracking-tight text-[var(--primary)] sm:text-xl sm:font-bold">
                   {formatDuration(
                     recommendation
                       .task
@@ -912,12 +962,12 @@ export default function TodayPage() {
                 </div>
               </div>
 
-              <div className="rounded-[16px] bg-[var(--accent-soft)] p-4">
+              <div className="min-w-0 rounded-[12px] bg-[var(--accent-soft)] p-2 sm:p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--accent-dark)]">
-                  Window
+                  Free time
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--accent-dark)]">
+                <div className="mt-1 min-w-0 break-words font-[var(--font-heading)] text-base font-semibold leading-tight tracking-tight text-[var(--accent-dark)] sm:text-xl sm:font-bold">
                   {formatDuration(
                     recommendation
                       .window
@@ -926,12 +976,12 @@ export default function TodayPage() {
                 </div>
               </div>
 
-              <div className="rounded-[16px] bg-[var(--yellow-soft)] p-4">
+              <div className="min-w-0 rounded-[12px] bg-[var(--yellow-soft)] p-2 sm:p-3">
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--primary-dark)]">
-                  Start
+                  Starts
                 </div>
 
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary-dark)]">
+                <div className="mt-1 min-w-0 break-words font-[var(--font-heading)] text-base font-semibold leading-tight tracking-tight text-[var(--primary-dark)] sm:text-xl sm:font-bold">
                   {formatTime(
                     recommendation
                       .window
@@ -941,15 +991,16 @@ export default function TodayPage() {
               </div>
             </div>
 
-            <div className="mt-6 rounded-[16px] border-2 border-[var(--border)] bg-white/60 p-4">
+            <div className="today-page__reason mt-4 rounded-[12px] border-2 border-[var(--border)] bg-white/60 p-3">
               <p className="text-sm font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
                 Why this?
               </p>
 
               <p className="mt-1 text-[var(--ink-soft)]">
                 {
-                  recommendation
-                    .explanation
+                  recommendation.explanation
+                    .replace(/^It is\b/, "It's")
+                    .replace(/\s+\+\s+/, ", and ")
                 }
               </p>
             </div>
@@ -958,13 +1009,13 @@ export default function TodayPage() {
               href={getTaskHref(
                 recommendation.task,
               )}
-              className="mt-6 inline-flex min-h-[52px] items-center justify-center rounded-[16px] border-2 border-[var(--accent-dark)] bg-[var(--accent)] px-6 text-base font-black uppercase tracking-[0.03em] text-white shadow-[0_4px_0_var(--accent-dark)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-none"
+              className="right-now-start-button mt-4 inline-flex min-h-[48px] items-center justify-center rounded-[16px] border-2 border-[var(--accent-dark)] bg-[var(--accent)] px-5 text-base font-black uppercase tracking-[0.03em] text-white shadow-[0_4px_0_var(--accent-dark)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-none"
             >
               Start
             </Link>
           </>
         ) : (
-          <div className="mt-6 rounded-[16px] bg-[var(--primary-soft)] p-5">
+          <div className="mt-4 rounded-[12px] bg-[var(--primary-soft)] p-4">
             <p className="font-semibold text-[var(--ink-soft)]">
               Nothing fits your
               current schedule.
@@ -975,14 +1026,10 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="mt-8">
-        <div className="mb-4">
-          <p className="stat-label">
+      <section className="today-page__up-next mt-6">
+        <div className="mb-3">
+          <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">
             Up next
-          </p>
-
-          <h2 className="mt-1 text-2xl">
-            Other good options
           </h2>
         </div>
 
@@ -995,23 +1042,21 @@ export default function TodayPage() {
                   href={getTaskHref(
                     task,
                   )}
-                  className="card flex items-center justify-between gap-4 bg-[var(--surface)] p-5 transition hover:-translate-y-1"
+                  className="card flex items-center justify-between gap-4 bg-[var(--surface)] p-4 sm:p-5 transition hover:-translate-y-1"
                 >
                   <div className="min-w-0">
-                    <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">
-                      {getTypeLabel(
-                        task.type,
-                      )}{" "}
-                      ·{" "}
-                      {formatDuration(
-                        task.durationMinutes,
-                      )}
+                    <div className="up-next__metadata text-xs text-[var(--muted)]">
+                      <span className="up-next__type">{getTypeLabel(task.type)}</span>
+                      <span className="font-normal"> · {formatDuration(task.durationMinutes)}</span>
                     </div>
 
-                    <h3 className="mt-1 break-words text-xl">
+                    <h3 className="mt-1 break-words text-lg sm:text-xl">
                       {task.title}
                     </h3>
-                    {task.type === "study" && task.unitName && (
+                    {task.type === "study" &&
+                      task.unitName &&
+                      task.unitName.trim().toLocaleLowerCase() !==
+                        task.title.trim().toLocaleLowerCase() && (
                       <p className="mt-1 break-words text-sm text-[var(--ink-soft)]">
                         {task.unitName}
                       </p>
@@ -1034,16 +1079,11 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section className="mt-8">
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <section className="today-page__schedule mt-6">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="stat-label">
+            <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">
               Your day
-            </p>
-
-            <h2 className="mt-1 text-2xl">
-              What the day looks
-              like
             </h2>
           </div>
 
@@ -1060,15 +1100,15 @@ export default function TodayPage() {
           </div>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-2">
           {dayTimeline.map((item) =>
             item.kind === "class" ? (
               <div
                 key={item.id}
-                className="rounded-[16px] border-2 border-[var(--primary-dark)] bg-[var(--primary)] p-4 text-[var(--surface)] shadow-[0_3px_0_var(--primary-dark)]"
+                className="rounded-[12px] border-2 border-[var(--primary-dark)] bg-[var(--primary)] p-3 text-[var(--surface)] shadow-[0_3px_0_var(--primary-dark)]"
               >
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] opacity-75">Class</div>
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold">{item.title}</div>
+                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold sm:text-xl">{item.title}</div>
                 <div className="mt-1 text-sm font-bold opacity-80">
                   {formatTime(item.startAt)} — {formatTime(item.endAt)}
                 </div>
@@ -1076,10 +1116,10 @@ export default function TodayPage() {
             ) : (
               <div
                 key={item.id}
-                className="rounded-[16px] border-2 border-[var(--border)] bg-[var(--surface)] p-4"
+                className="timeline-free-slot rounded-[12px] border-2 border-dashed border-[var(--primary-dark)] bg-[var(--surface)] p-3"
               >
                 <div className="text-xs font-extrabold uppercase tracking-[0.06em] text-[var(--muted)]">Free time</div>
-                <div className="mt-1 font-[var(--font-heading)] text-xl font-bold text-[var(--primary)]">
+                <div className="mt-1 font-[var(--font-heading)] text-lg font-bold text-[var(--primary)] sm:text-xl">
                   {formatTime(item.startAt)} — {formatTime(item.endAt)}
                 </div>
                 <div className="mt-1 text-sm font-bold text-[var(--ink-soft)]">

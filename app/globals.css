@@ -1,33 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6efe2;
-  --surface: #fffaf1;
-  --surface-soft: #efe4d1;
+  /* Legacy semantic aliases now resolve to Palette 6 everywhere. */
+  --background: var(--p6-page);
+  --surface: var(--p6-surface);
+  --surface-soft: var(--p6-surface-subtle);
 
-  --primary: #23412f;
-  --primary-dark: #1a2e24;
-  --primary-soft: #dce8d8;
+  --primary: var(--p6-primary);
+  --primary-dark: var(--p6-primary-hover);
+  --primary-soft: var(--p6-surface-selected);
 
-  --accent: #d96b48;
-  --accent-dark: #b65337;
-  --accent-soft: #f3ddd2;
+  --accent: var(--p6-accent-coral);
+  --accent-dark: #98583f;
+  --accent-soft: var(--p6-accent-warm);
 
-  --yellow: #e6b84f;
-  --yellow-soft: #f5e6c1;
+  --yellow: #d8a83d;
+  --yellow-soft: #fff4d6;
 
-  --blue: #718ba2;
-  --blue-soft: #e3eaf0;
+  --blue: #66899a;
+  --blue-soft: var(--p6-info-bg);
 
-  --ink: #29342d;
-  --ink-soft: #4a5d54;
-  --muted: #69756d;
+  --ink: var(--p6-text);
+  --ink-soft: var(--p6-text-secondary);
+  --muted: var(--p6-text-secondary);
 
-  --border: #d8ccb8;
+  --border: var(--p6-border-decorative);
 
-  --shadow: 0 4px 0 var(--primary-dark);
-  --shadow-small: 0 3px 0 var(--primary-dark);
-  --shadow-soft: 0 4px 0 rgba(26, 46, 36, 0.09);
+  --shadow: var(--p6-elevation-card);
+  --shadow-small: var(--p6-elevation-interactive);
+  --shadow-soft: var(--p6-elevation-card);
 
   --radius-sm: 12px;
   --radius-md: 16px;
@@ -37,6 +38,101 @@
 
   --font-heading: "Fredoka", system-ui, sans-serif;
   --font-body: "Nunito", system-ui, sans-serif;
+
+  /* Palette 6: semantic color, type, control, rhythm, and motion tokens. */
+  --p6-page: #edf6f9;
+  --p6-surface: #ffffff;
+  --p6-surface-subtle: #f4f9fa;
+  --p6-surface-selected: #e3f2f0;
+  --p6-mint: #83c5be;
+  --p6-text: #1a2b2f;
+  --p6-text-secondary: #52666b;
+  --p6-text-muted: #52666b;
+  --p6-text-disabled: #52666b;
+  --p6-border-decorative: #d5e1e4;
+  --p6-border-strong: #b6c9ce;
+  --p6-border-control: #74858b;
+  --p6-focus: #006d77;
+  --p6-primary: #006d77;
+  --p6-primary-hover: #005b63;
+  --p6-accent-warm: #ffddd2;
+  --p6-accent-warm-text: #1a2b2f;
+  --p6-accent-coral: #e29578;
+  --p6-success-text: #185c42;
+  --p6-success-bg: #e7f3ec;
+  --p6-warning-text: #694600;
+  --p6-warning-bg: #fff4d6;
+  --p6-error-text: #b42318;
+  --p6-error-bg: #fcebe8;
+  --p6-info-text: #005b63;
+  --p6-info-bg: #e3f1f4;
+  --p6-disabled-bg: #e5ecee;
+
+  --p6-sidebar-top: #004d55;
+  --p6-sidebar-mid: #00454c;
+  --p6-sidebar-bottom: #003840;
+
+  /* Display type is fluid; reading text remains a fixed 1rem. */
+  --p6-font-page-title: clamp(1.625rem, 1.35rem + 1.2vw, 2rem);
+  --p6-font-section-title: clamp(1.375rem, 1.28rem + 0.5vw, 1.5rem);
+  --p6-font-card-title: 1.125rem;
+  --p6-font-body: 1rem;
+  --p6-font-input: 1rem;
+  --p6-font-supporting: 0.875rem;
+  --p6-font-label: 0.8125rem;
+  --p6-font-metadata: 0.75rem;
+  --p6-weight-regular: 400;
+  --p6-weight-medium: 500;
+  --p6-weight-semibold: 600;
+  --p6-weight-bold: 700;
+  --p6-line-heading: 1.2;
+  --p6-line-body: 1.55;
+  --p6-line-compact: 1.35;
+
+  /* Every tappable control has a 48px minimum target. */
+  --p6-control-md: 3rem;
+  --p6-control-lg: 3.25rem;
+
+  /* Spacing compresses on small screens; reading rhythm does not. */
+  --p6-space-1: 0.25rem;
+  --p6-space-2: 0.5rem;
+  --p6-space-3: 0.75rem;
+  --p6-space-4: 1rem;
+  --p6-space-6: 1.5rem;
+  --p6-space-8: 2rem;
+  --p6-space-12: 3rem;
+  --p6-space-16: 4rem;
+  --p6-space-section: clamp(2rem, 1.2rem + 2vw, 3rem);
+  --p6-space-gutter: clamp(1rem, 0.5rem + 2vw, 2rem);
+  --p6-space-card-pad: clamp(1rem, 0.75rem + 1vw, 1.5rem);
+  --p6-space-body: 1rem;
+  --p6-space-heading-body: 0.75rem;
+  --p6-gap-button-group: 0.75rem;
+  --p6-gap-icon-label: 0.5rem;
+  --p6-gap-text-control: 1.5rem;
+  --p6-gap-card-action: 1rem;
+  --p6-measure-body: 65ch;
+  --p6-measure-card: 50ch;
+
+  --p6-radius-sm: 0.5rem;
+  --p6-radius-md: 0.75rem;
+  --p6-radius-lg: 1rem;
+  --p6-radius-xl: 1.5rem;
+  --p6-radius-pill: 999px;
+
+  --p6-elevation-flat: none;
+  --p6-elevation-card: 0 1px 2px rgba(26, 43, 47, 0.04), 0 4px 12px rgba(26, 43, 47, 0.06);
+  --p6-elevation-dropdown: 0 2px 6px rgba(26, 43, 47, 0.06), 0 12px 28px rgba(26, 43, 47, 0.12);
+  --p6-elevation-modal: 0 8px 20px rgba(26, 43, 47, 0.10), 0 24px 56px rgba(26, 43, 47, 0.18);
+  --p6-elevation-interactive: 0 1px 2px rgba(26, 43, 47, 0.08), 0 3px 8px rgba(26, 43, 47, 0.07);
+
+  --p6-motion-fast: 100ms;
+  --p6-motion-base: 150ms;
+  --p6-motion-slow: 200ms;
+  --p6-motion-emphasis: 300ms;
+  --p6-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --p6-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --p6-ease-exit: cubic-bezier(0.4, 0, 1, 1);
 }
 
 * {
@@ -45,24 +141,23 @@
 
 html {
   min-height: 100%;
-  background: var(--background);
+  background: var(--p6-page);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(
-      circle at top right,
-      rgba(255, 250, 241, 0.9),
-      transparent 32%
-    ),
-    var(--background);
-  color: var(--ink);
+  background: var(--p6-page);
+  color: var(--p6-text);
   font-family: var(--font-body);
   font-size: 16px;
-  font-weight: 600;
-  line-height: 1.6;
+  font-weight: 400;
+  line-height: var(--p6-line-body);
+}
+
+.app-frame,
+.app-content {
+  background: var(--p6-page);
 }
 
 h1,
@@ -375,11 +470,12 @@ a {
 .app-utilities__action:hover:not(:disabled){background:var(--primary-soft)}
 .app-utilities__action:disabled{cursor:not-allowed;opacity:.55}
 .app-utilities__shortcut{margin-left:auto;color:var(--muted);font-size:10px;white-space:nowrap}
-.app-utilities__sync{display:flex;align-items:flex-start;gap:10px;margin-top:4px;padding:11px 12px;border-radius:12px;background:var(--surface-soft);color:var(--ink-soft);font-size:12px;font-weight:800;line-height:1.4}
+.app-utilities__sync-row{padding:2px 8px 0}
+.app-utilities__sync{display:inline-flex;width:max-content;max-width:100%;min-height:28px;align-items:center;gap:7px;margin:0;padding:4px 9px;border:1px solid var(--border);border-radius:999px;background:transparent;color:var(--muted);font-size:11px;font-weight:700;line-height:1.2;box-shadow:none;pointer-events:none}
 .app-utilities__sync svg{flex-shrink:0}
-.app-utilities__sync--synced{background:var(--primary-soft);color:var(--primary-dark)}
-.app-utilities__sync--error,.app-utilities__sync--conflict{background:var(--accent-soft);color:var(--accent-dark)}
-.app-utilities__sync-message{margin:7px 8px;color:var(--accent-dark);font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.app-utilities__sync--synced{border-color:var(--border);background:transparent;color:var(--muted)}
+.app-utilities__sync--error,.app-utilities__sync--conflict{border-color:var(--accent-soft);background:transparent;color:var(--accent-dark)}
+.app-utilities__sync-message{margin:4px 9px 0;color:var(--accent-dark);font-size:11px;line-height:1.4;overflow-wrap:anywhere}
 .app-utilities__divider{height:1px;margin:8px 4px;background:var(--border)}
 .app-utilities__signout{color:var(--accent-dark)}
 @media(max-width:720px){.app-utilities__panel{position:fixed;top:60px;right:8px;width:min(360px,calc(100vw - 16px));max-height:calc(100dvh - 76px);border-radius:18px}}
@@ -468,8 +564,6 @@ button.rounded-lg,
 button.rounded-xl,
 a.rounded-lg,
 a.rounded-xl {
-  font-size: 16px;
-  font-weight: 900;
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,
@@ -644,7 +738,7 @@ a.rounded-xl:active {
 
 /* Consistent tactile controls */
 .app-content button:not(.topbar__icon-button) {
-  min-height: 44px;
+  min-height: 48px;
   border: 2px solid var(--primary-dark);
   border-radius: 16px;
   box-shadow: 0 3px 0 var(--primary-dark);
@@ -1169,8 +1263,8 @@ button.card-menu__cancel {
 .ai-copilot__welcome { max-width:700px; margin:auto; padding-block:20px; text-align:center; }
 .ai-copilot__welcome h2 { margin:0 0 8px; font-size:1.25rem; }
 .ai-copilot__welcome p { max-width:560px; margin:0 auto; line-height:1.6; opacity:.78; }
-.ai-copilot__suggestions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:24px; }
-.ai-copilot__suggestion { min-width:0; border:1px solid #e5ded4; border-radius:12px; background:#fff; color:inherit; padding:12px; text-align:left; line-height:1.4; cursor:pointer; }
+.ai-copilot__suggestions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:16px; }
+.ai-copilot__suggestion { min-width:0; border:1px solid #e5ded4; border-radius:10px; background:#fff; color:inherit; padding:10px; text-align:left; line-height:1.4; font-size:.92rem; cursor:pointer; }
 .ai-copilot__suggestion:hover { background:#f8f4ed; }
 .ai-copilot__message { max-width:min(88%,760px); border:1px solid #e5ded4; border-radius:14px; padding:10px 12px; }
 .ai-copilot__message--user { align-self:flex-end; background:#edf4e9; border-color:#d8e4d2; }
@@ -1207,7 +1301,7 @@ button.card-menu__cancel {
 .ai-copilot__error { margin:0 18px 14px; color:#9f2929; font-size:.9rem; }
 .ai-copilot__form { border-top:1px solid #ece5db; padding:16px; }
 .ai-copilot__label { display:block; margin-bottom:7px; font-size:.83rem; font-weight:650; }
-.ai-copilot__form textarea { display:block; width:100%; min-height:84px; resize:vertical; border:1px solid #dcd3c8; border-radius:11px; background:#fff; color:#25231f; padding:11px 12px; font:inherit; line-height:1.5; }
+.ai-copilot__form textarea { display:block; width:100%; min-height:72px; resize:vertical; border:1px solid #dcd3c8; border-radius:11px; background:#fff; color:#25231f; padding:10px 11px; font:inherit; line-height:1.5; }
 .ai-copilot__form textarea:focus-visible, .ai-copilot__suggestion:focus-visible, .ai-copilot__send:focus-visible, .ai-copilot__voice-button:focus-visible, .ai-copilot__message-action:focus-visible { outline:2px solid #54724e; outline-offset:2px; }
 .ai-copilot__voice-controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:12px 0 6px; }
 .ai-copilot__voice-button, .ai-copilot__message-action { min-height:44px; border:1px solid #dcd3c8; border-radius:10px; background:#fff; color:#25231f; padding:9px 12px; font:inherit; font-size:.88rem; font-weight:650; cursor:pointer; }
@@ -1258,7 +1352,8 @@ button.card-menu__cancel {
 @media (max-width:520px) {
   .ai-copilot__header { gap:8px; }
   .ai-copilot__badge { padding:5px 8px; font-size:.72rem; }
-  .ai-copilot__suggestions { grid-template-columns:1fr; }
+  .ai-copilot__suggestions { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:16px; }
+  .ai-copilot__suggestion { padding:9px 8px; font-size:.84rem; }
   .ai-copilot__form { padding:12px; }
 }
 
@@ -1291,4 +1386,4268 @@ button.card-menu__cancel {
   .app-content .ai-copilot__panel .ai-copilot__message--assistant {
     max-width: 94%;
   }
+}
+
+
+/* Compact mobile navigation and let the top bar scroll away. */
+@media (max-width: 720px) {
+  .topbar {
+    position: static;
+    top: auto;
+    z-index: auto;
+    min-height: 52px;
+    padding: 6px 12px;
+    backdrop-filter: none;
+  }
+
+  .topbar__brand {
+    gap: 8px;
+    font-size: 16px;
+  }
+
+  .topbar__brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+  }
+
+  .page-shell {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-nav {
+    gap: 1px;
+    padding: 3px 6px max(3px, env(safe-area-inset-bottom));
+    border-top-width: 1px;
+  }
+
+  .mobile-nav__item,
+  .mobile-nav__item--active {
+    display: flex;
+    min-width: 0;
+    min-height: 46px;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 1px;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    box-shadow: none;
+    font-size: 10px;
+  }
+
+  .mobile-nav__item:active {
+    transform: none;
+  }
+
+  .mobile-nav__content {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 3px 6px;
+    border-radius: 10px;
+    line-height: 1;
+  }
+
+  .mobile-nav__content--active {
+    background: var(--primary);
+    color: var(--surface);
+    box-shadow: 0 2px 0 var(--primary-dark);
+  }
+
+  .mobile-nav__icon {
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .mobile-nav__label {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 9px;
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+
+/* Focused tactile styling for Today's planning actions. */
+.app-content button.plan-generate-button:not(.topbar__icon-button) {
+  box-shadow: 0 4px 0 var(--primary-dark);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.app-content .plan-generate-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--primary-dark);
+}
+
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+
+.app-content .right-now-start-button {
+  box-shadow: 0 4px 0 var(--accent-dark);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.app-content .right-now-start-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark);
+}
+
+.app-content .right-now-start-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+
+
+/* Compact Calendar management tabs without the raised-button treatment. */
+.app-content button.calendar-management-tab:not(.topbar__icon-button) {
+  min-height: 36px;
+  height: 36px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 9999px;
+  box-shadow: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.app-content button.calendar-management-tab:not(.topbar__icon-button):hover,
+.app-content button.calendar-management-tab:not(.topbar__icon-button):active {
+  transform: none;
+  box-shadow: none;
+}
+
+/* One-line Calendar task titles that expand on tap. */
+.app-content button.calendar-task-title-button:not(.topbar__icon-button) {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  box-shadow: none;
+  font: inherit;
+  font-weight: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-content button.calendar-task-title-button:not(.topbar__icon-button):hover,
+.app-content button.calendar-task-title-button:not(.topbar__icon-button):active {
+  transform: none;
+  box-shadow: none;
+}
+
+
+/* Coordinated mobile UI refinement: compact controls, calm containers, tactile actions. */
+.app-content button.card-menu__trigger {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--primary-dark);
+  box-shadow: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.app-content button.card-menu__trigger:hover {
+  transform: none;
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+.app-content button.card-menu__trigger:active {
+  transform: none;
+  box-shadow: none;
+}
+.card-menu__panel {
+  width: 210px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(26, 46, 36, 0.16);
+}
+.card-menu__heading {
+  margin: 2px 7px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+ .app-content button.card-menu__action {
+  min-height: 40px;
+  gap: 8px;
+  padding: 8px 9px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+button.card-menu__action svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 720px) {
+  .card-menu__panel {
+    position: fixed !important;
+    top: var(--card-menu-top, 12px) !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: var(--card-menu-left, 12px) !important;
+    width: 210px;
+    max-width: calc(100vw - 24px);
+    max-height: min(70dvh, 340px);
+    overflow-y: auto;
+    padding: 8px;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(26, 46, 36, 0.16);
+  }
+  .card-menu__heading {
+    margin-bottom: 7px;
+    font-size: 11px;
+  }
+  .app-content button.card-menu__action {
+    min-height: 42px;
+    font-size: 14px;
+  }
+  button.card-menu__cancel {
+    min-height: 40px;
+    margin-top: 6px;
+  }
+}
+
+/* Passive cards use a quiet neutral shadow; reserve colored depth for actions. */
+.app-content .card {
+  box-shadow: var(--shadow-soft) !important;
+}
+.app-content article.card:hover {
+  transform: none;
+}
+
+details[data-smart-menu] > summary {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: none;
+}
+details[data-smart-menu] > summary:hover,
+details[data-smart-menu] > summary:active {
+  transform: none;
+  background: var(--surface-soft);
+  box-shadow: none;
+}
+div[data-smart-menu-panel] {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface) !important;
+  padding: 4px;
+  box-shadow: 0 8px 22px rgba(26, 46, 36, 0.14);
+}
+div[data-smart-menu-panel] button {
+  min-height: 36px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.app-content button.plan-generate-button:not(.topbar__icon-button) {
+  box-shadow: 0 3px 0 #C9A657;
+}
+.app-content .plan-generate-button:hover:not(:disabled) {
+  box-shadow: 0 5px 0 #C9A657;
+}
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #C9A657;
+}
+.app-content .project-work-action {
+  min-height: 40px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border-radius: 11px;
+  box-shadow: 0 2px 0 var(--accent-dark);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .project-work-action:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 transparent;
+}
+.ai-copilot__suggestion {
+  border-color: #35513a;
+  box-shadow: 0 2px 0 #35513a;
+  background: #fffaf1;
+  transition: background-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+.ai-copilot__suggestion:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 #35513a;
+}
+.ai-copilot__suggestion:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 transparent;
+}
+.ai-copilot__action-menu {
+  background: #fffefa !important;
+  border-color: #dcd3c8;
+  box-shadow: 0 8px 24px rgba(26, 46, 36, 0.16);
+}
+.ai-copilot__action-menu button {
+  min-height: 38px;
+  padding: 7px 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Calendar compact controls and scalable Reading details */
+
+
+/* Calendar compact controls and scalable Reading details */
+
+.app-content .calendar-overview:not(.calendar-overview--expanded) {
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 5px 16px rgba(26, 46, 36, 0.07) !important;
+}
+.app-content .calendar-overview--expanded {
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.app-content .calendar-overview article {
+  border-width: 1px !important;
+  border-color: var(--border) !important;
+}
+.app-content .calendar-overview .grid > button {
+  border-width: 1px !important;
+}
+.app-content .calendar-overview .grid > button[aria-pressed="true"] {
+  border-color: var(--primary-soft) !important;
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+.app-content .calendar-overview [aria-label="Show classes"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+.app-content .calendar-overview [aria-label="Show events"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 #946200 !important;
+}
+.app-content .calendar-overview [aria-label="Show tasks"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 var(--accent-dark) !important;
+}
+.app-content .calendar-overview [role="group"][aria-label="Calendar view"] button[aria-pressed="true"] {
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+.app-content .calendar-overview details[data-smart-menu] > summary {
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 9px !important;
+  background: var(--surface) !important;
+  color: var(--ink-soft) !important;
+  box-shadow: none !important;
+  font-size: 0 !important;
+}
+.app-content .calendar-overview details[data-smart-menu] > summary svg {
+  display: block;
+}
+.app-content .calendar-overview div[data-smart-menu-panel] {
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+  background: var(--surface) !important;
+  box-shadow: 0 8px 18px rgba(26, 46, 36, 0.12) !important;
+}
+.app-content .calendar-overview div[data-smart-menu-panel] button {
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 0 !important;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+.app-content .calendar-overview button.calendar-day-action {
+  min-height: 28px;
+  padding: 5px 8px;
+  border: 0 !important;
+  border-radius: 8px;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+.app-content .calendar-overview button.calendar-day-action--event {
+  box-shadow: 0 3px 0 #946200 !important;
+}
+.app-content .calendar-overview button.calendar-day-action--task {
+  box-shadow: 0 3px 0 var(--accent-dark) !important;
+}
+.app-content .calendar-overview button.calendar-day-action:hover {
+  transform: translateY(-2px);
+}
+.app-content .calendar-overview button.calendar-day-action--event:hover {
+  box-shadow: 0 5px 0 #946200 !important;
+}
+.app-content .calendar-overview button.calendar-day-action--task:hover {
+  box-shadow: 0 5px 0 var(--accent-dark) !important;
+}
+.app-content .calendar-overview button.calendar-day-action:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .calendar-overview button.calendar-today-button {
+  border: 0 !important;
+  box-shadow: 0 3px 0 #4e765a !important;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .calendar-overview button.calendar-today-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 0 #4e765a !important;
+}
+.app-content .calendar-overview button.calendar-today-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Follow the Start button's tactile effect; preserve Start itself. */
+.app-content .btn-primary:not(.right-now-start-button) {
+  border: 0;
+  box-shadow: 0 4px 0 var(--accent-dark);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .btn-primary:not(.right-now-start-button):hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark);
+}
+.app-content .btn-primary:not(.right-now-start-button):active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+.app-content button.plan-generate-button:not(.topbar__icon-button) {
+  border: 0 !important;
+  box-shadow: 0 4px 0 #C9A657 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .plan-generate-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #C9A657 !important;
+}
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .project-work-action {
+  border: 0 !important;
+  box-shadow: 0 4px 0 var(--accent-dark) !important;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .project-work-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark) !important;
+}
+.app-content .project-work-action:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .ai-copilot__suggestion {
+  border: 0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 0 #4e765a !important;
+}
+.app-content .ai-copilot__suggestion:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #4e765a !important;
+}
+.app-content .ai-copilot__suggestion:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Compact, neutral surfaces for book and essay entries. */
+.app-content :is(div, article)[id^="book-"],
+.app-content article[id^="essay-"] {
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 10px 12px !important;
+  background: var(--surface) !important;
+  box-shadow: none !important;
+}
+.app-content :is(div, article)[id^="book-"] .border-2,
+.app-content article[id^="essay-"] .border-2 {
+  border-width: 1px !important;
+  border-color: var(--border) !important;
+}
+
+/* Dedicated reading detail pages and list navigation */
+
+
+/* Dedicated reading detail pages and list navigation */
+
+/* Titles navigate; the small chevron remains the explicit inline-workflow toggle. */
+.app-content .reading-row__title-link {
+  color: var(--ink);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.app-content .reading-row__title-link:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+.app-content .reading-row__title-link:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.app-content button.reading-row__expand {
+  display: grid;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none !important;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.app-content button.reading-row__expand:hover,
+.app-content button.reading-row__expand:active {
+  transform: none;
+  background: var(--surface-soft);
+  color: var(--primary-dark);
+  box-shadow: none !important;
+}
+
+.reading-detail-page {
+  width: min(100%, 780px);
+  margin: 0 auto;
+  padding: 8px 0 32px;
+  color: var(--ink);
+}
+.reading-detail-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 22px;
+  padding: 5px 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.reading-detail-page__back:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.reading-detail-page__eyebrow {
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.reading-detail-page h1 {
+  margin: 0;
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+.reading-detail-page__subtitle {
+  margin-top: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.reading-detail-page__panel {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgba(26, 46, 36, 0.06);
+}
+.reading-detail-page__label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.reading-detail-page__value {
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.reading-detail-page__action {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 0 !important;
+  border-radius: 10px;
+  background: var(--primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 650;
+  text-decoration: none;
+  box-shadow: 0 4px 0 #4e765a;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.reading-detail-page__action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #4e765a;
+}
+.reading-detail-page__action:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+.reading-detail-page__note {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+}
+.reading-detail-page__note h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+.reading-detail-page__note p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 720px) {
+  .reading-detail-page__panel {
+    padding: 13px;
+  }
+}
+
+/* Final tactile parity and centred Calendar switcher */
+
+
+/* Final tactile parity and centred Calendar switcher */
+
+/* Generate plan follows Start's 4px / 6px / pressed-flat movement pattern.
+   Its border uses the same mustard colour as its shadow. */
+.app-content button.plan-generate-button:not(.topbar__icon-button) {
+  border: 2px solid #C9A657 !important;
+  box-shadow: 0 4px 0 #C9A657 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .plan-generate-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #C9A657 !important;
+}
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Make Week / Month genuinely centred and compact. */
+.app-content .calendar-overview [role="group"][aria-label="Calendar view"] {
+  justify-content: center;
+  border: 0;
+}
+.app-content .calendar-overview [role="group"][aria-label="Calendar view"] button {
+  min-height: 24px;
+  padding: 4px 10px;
+  border: 0 !important;
+  border-radius: 999px;
+  font-size: 10px !important;
+  font-weight: 650 !important;
+}
+.app-content .calendar-overview [role="group"][aria-label="Calendar view"] button[aria-pressed="true"] {
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+
+/* Category controls are intentionally tiny, with matching border and shadow colours. */
+.app-content .calendar-overview button[aria-label="Show classes"] {
+  min-height: 21px !important;
+  padding: 2px 5px !important;
+  border: 1px solid #4e765a !important;
+  border-radius: 999px !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+.app-content .calendar-overview button[aria-label="Show events"] {
+  min-height: 21px !important;
+  padding: 2px 5px !important;
+  border: 1px solid #946200 !important;
+  border-radius: 999px !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+.app-content .calendar-overview button[aria-label="Show tasks"] {
+  min-height: 21px !important;
+  padding: 2px 5px !important;
+  border: 1px solid var(--accent-dark) !important;
+  border-radius: 999px !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+.app-content .calendar-overview button[aria-label="Show classes"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+.app-content .calendar-overview button[aria-label="Show events"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 #946200 !important;
+}
+.app-content .calendar-overview button[aria-label="Show tasks"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 var(--accent-dark) !important;
+}
+.app-content .calendar-overview button[aria-label="Show classes"]:active,
+.app-content .calendar-overview button[aria-label="Show events"]:active,
+.app-content .calendar-overview button[aria-label="Show tasks"]:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Keep selected-date and task/event outlines consistent with their shadows. */
+.app-content .calendar-overview .grid > button[aria-pressed="true"] {
+  border-color: #4e765a !important;
+  box-shadow: 0 2px 0 #4e765a !important;
+}
+.app-content .calendar-overview button.calendar-day-action--event {
+  border: 1px solid #946200 !important;
+}
+.app-content .calendar-overview button.calendar-day-action--task {
+  border: 1px solid var(--accent-dark) !important;
+}
+
+
+/* Numbered Reading shelves and workflow containment */
+.reading-numbered-shelf {
+  border: 1px solid color-mix(in srgb, var(--ink) 10%, transparent);
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.035);
+}
+
+.reading-numbered-shelf__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reading-numbered-shelf__list > li + li {
+  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.reading-numbered-shelf__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.65rem 0.35rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition: background-color 140ms ease;
+}
+
+.reading-numbered-shelf__row:hover {
+  background: var(--surface-soft);
+}
+
+.reading-numbered-shelf__number {
+  display: inline-flex;
+  width: 1.7rem;
+  height: 1.7rem;
+  flex: 0 0 1.7rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+
+/* Shared tactile interaction for prominent actions across the app. */
+.app-content .reading-detail-page__action,
+.app-content .btn--primary,
+.app-content .btn-primary,
+.app-content .right-now-start-button,
+.app-content .plan-generate-button,
+.app-content .project-work-action,
+.app-content button[class*="bg-[#23412f]"],
+.app-content button[class*="bg-emerald-700"] {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content .reading-detail-page__action:hover:not(:disabled),
+.app-content button[class*="bg-[#23412f]"]:hover:not(:disabled),
+.app-content button[class*="bg-emerald-700"]:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #4e765a !important;
+}
+.app-content .reading-detail-page__action:active:not(:disabled),
+.app-content button[class*="bg-[#23412f]"]:active:not(:disabled),
+.app-content button[class*="bg-emerald-700"]:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .btn--primary:hover:not(:disabled),
+.app-content .btn-primary:hover:not(:disabled),
+.app-content .right-now-start-button:hover:not(:disabled),
+.app-content .project-work-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark) !important;
+}
+.app-content .btn--primary:active:not(:disabled),
+.app-content .btn-primary:active:not(:disabled),
+.app-content .right-now-start-button:active:not(:disabled),
+.app-content .project-work-action:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .plan-generate-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--primary-dark) !important;
+}
+.app-content .plan-generate-button:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .item-work-tracker__mode {
+  min-height: 34px !important;
+  padding: 6px 12px;
+  border: 0 !important;
+  border-radius: 9px;
+  background: transparent;
+  color: #57534e;
+  box-shadow: none !important;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background 120ms ease, color 120ms ease;
+}
+.app-content .item-work-tracker__mode:hover,
+.app-content .item-work-tracker__mode:active {
+  transform: none !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-tracker__mode--active {
+  background: #23412f !important;
+  color: #fffaf1 !important;
+}
+
+
+/* Calendar and detail-page polish: keep action borders tied to their own palette. */
+.app-content button.btn--primary {
+  min-height: 44px;
+  padding: 9px 16px;
+  border: 0 !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 0 var(--accent-dark) !important;
+  font-weight: 800;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.app-content button.btn--primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--accent-dark) !important;
+}
+.app-content button.btn--primary:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Google uses its own muted violet, alongside the class/event/task filters. */
+.app-content .calendar-overview button[aria-label="Show google"] {
+  min-height: 21px !important;
+  padding: 2px 5px !important;
+  border: 1px solid #6750a4 !important;
+  border-radius: 999px !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+.app-content .calendar-overview button[aria-label="Show google"][aria-pressed="true"] {
+  box-shadow: 0 2px 0 #6750a4 !important;
+}
+.app-content .calendar-overview button[aria-label="Show google"]:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Collapse / Expand is a compact forest-green raised action like the day actions. */
+.app-content .calendar-overview button.calendar-day-action--toggle {
+  min-height: 34px !important;
+  padding: 6px 12px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: 0 3px 0 #4e765a !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.app-content .calendar-overview button.calendar-day-action--toggle:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #e4eee0 !important;
+  box-shadow: 0 5px 0 #4e765a !important;
+}
+.app-content .calendar-overview button.calendar-day-action--toggle:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Keep both reading-detail form actions the same height and baseline. */
+.app-content .reading-detail-page button.reading-detail-page__action {
+  min-height: 44px !important;
+  margin: 0;
+  padding: 10px 16px;
+  border: 0 !important;
+  border-radius: 10px;
+  line-height: 1.2;
+  box-shadow: 0 4px 0 #4e765a !important;
+}
+.app-content .reading-detail-page button.reading-detail-page__action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #4e765a !important;
+}
+.app-content .reading-detail-page button.reading-detail-page__action:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content .reading-detail-page button.reading-detail-page__back {
+  display: inline-flex;
+  min-height: 44px !important;
+  align-items: center;
+  justify-content: center;
+  margin: 0 !important;
+  padding: 10px 16px;
+  border: 1px solid #d5e0d1 !important;
+  border-radius: 10px;
+  background: #f1f5ee !important;
+  color: #35513a !important;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+  text-decoration: none;
+  box-shadow: 0 3px 0 #d5e0d1 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.app-content .reading-detail-page button.reading-detail-page__back:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #e8f0e4 !important;
+  box-shadow: 0 5px 0 #c5d5bf !important;
+  text-decoration: none;
+}
+.app-content .reading-detail-page button.reading-detail-page__back:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Calendar quick actions use their category-coloured depth, not the global dark outline. */
+.app-content .calendar-overview button.calendar-day-action--event,
+.app-content .calendar-overview button.calendar-day-action--task {
+  border: 0 !important;
+}
+
+/* AI prompt suggestions: warm paper surface, fine sage outline, soft green depth. */
+.app-content .ai-copilot__suggestion {
+  border: 1px solid #b8c9b5 !important;
+  border-radius: 12px;
+  background: #fffaf1 !important;
+  color: #23412f;
+  box-shadow: 0 3px 0 #4e765a !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+.app-content .ai-copilot__suggestion:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #f4f7ef !important;
+  box-shadow: 0 5px 0 #4e765a !important;
+}
+.app-content .ai-copilot__suggestion:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 0 0 transparent !important;
+}
+
+
+/* Coordinated primary actions: role-based colours, no black borders. */
+.app-content button.action-primary--terracotta,
+.app-content button.action-primary--forest,
+.app-content button.action-primary--sage,
+.app-content button.action-primary--blue {
+  min-height: 44px !important;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent !important;
+  border-radius: 15px !important;
+  padding: 9px 16px !important;
+  font-weight: 900 !important;
+  letter-spacing: .02em;
+  text-decoration: none;
+  box-shadow: 0 4px 0 transparent !important;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, border-color 120ms ease !important;
+}
+.app-content button.action-primary--terracotta {
+  border-color: var(--accent-dark) !important;
+  background: var(--accent) !important;
+  color: #fff !important;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 var(--accent-dark) !important;
+}
+.app-content button.action-primary--forest {
+  border-color: #23412f !important;
+  background: #31573f !important;
+  color: #fff !important;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 #23412f !important;
+}
+.app-content button.action-primary--sage {
+  border-color: #557c61 !important;
+  background: #dce8d8 !important;
+  color: #23412f !important;
+  text-transform: uppercase;
+  box-shadow: 0 4px 0 #557c61 !important;
+}
+.app-content button.action-primary--blue {
+  min-height: 42px !important;
+  justify-content: flex-start;
+  border-color: #718ba2 !important;
+  background: #e3eaf0 !important;
+  color: #263746 !important;
+  text-align: left;
+  text-transform: none;
+  box-shadow: 0 3px 0 #718ba2 !important;
+}
+.app-content button.action-primary--terracotta:hover:not(:disabled),
+.app-content button.action-primary--forest:hover:not(:disabled),
+.app-content button.action-primary--sage:hover:not(:disabled),
+.app-content button.action-primary--blue:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+}
+.app-content button.action-primary--terracotta:hover:not(:disabled) {
+  background: #e07855 !important;
+  box-shadow: 0 6px 0 var(--accent-dark) !important;
+}
+.app-content button.action-primary--forest:hover:not(:disabled) {
+  background: #3b684b !important;
+  box-shadow: 0 6px 0 #23412f !important;
+}
+.app-content button.action-primary--sage:hover:not(:disabled) {
+  background: #e4eee0 !important;
+  box-shadow: 0 6px 0 #557c61 !important;
+}
+.app-content button.action-primary--blue:hover:not(:disabled) {
+  background: #edf2f6 !important;
+  box-shadow: 0 5px 0 #718ba2 !important;
+}
+.app-content button.action-primary--terracotta:active:not(:disabled),
+.app-content button.action-primary--forest:active:not(:disabled),
+.app-content button.action-primary--sage:active:not(:disabled),
+.app-content button.action-primary--blue:active:not(:disabled) {
+  transform: translateY(4px) !important;
+  box-shadow: 0 0 0 transparent !important;
+}
+.app-content button.action-primary--terracotta:disabled,
+.app-content button.action-primary--forest:disabled,
+.app-content button.action-primary--sage:disabled,
+.app-content button.action-primary--blue:disabled {
+  cursor: not-allowed !important;
+  opacity: .55;
+  transform: none !important;
+}
+
+/* Workspace-style secondary action menus across contextual menu surfaces. */
+.app-content button.card-menu__trigger,
+.app-content details[data-smart-menu] > summary,
+.app-content .ai-copilot__action-menu-trigger {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  background: var(--surface) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: none !important;
+  transition: background-color 120ms ease, border-color 120ms ease !important;
+}
+.app-content button.card-menu__trigger:hover,
+.app-content button.card-menu__trigger:active,
+.app-content details[data-smart-menu] > summary:hover,
+.app-content details[data-smart-menu] > summary:active,
+.app-content .ai-copilot__action-menu-trigger:hover,
+.app-content .ai-copilot__action-menu-trigger:active {
+  transform: none !important;
+  background: var(--surface-soft) !important;
+  box-shadow: none !important;
+}
+.card-menu__panel,
+.app-content div[data-smart-menu-panel],
+.app-content .ai-copilot__action-menu,
+.app-utilities__panel {
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  background: var(--surface) !important;
+  padding: 8px !important;
+  box-shadow: 0 8px 24px rgba(26, 46, 36, .16) !important;
+}
+.card-menu__heading,
+.app-utilities__heading {
+  margin: 2px 7px 6px !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: .06em !important;
+  text-transform: uppercase;
+}
+.app-content button.card-menu__action,
+.app-content button.card-menu__cancel,
+.app-content div[data-smart-menu-panel] button,
+.app-content .ai-copilot__action-menu button,
+.app-utilities__action {
+  display: flex;
+  width: 100%;
+  min-height: 38px !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--primary-dark) !important;
+  padding: 8px 9px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-align: left;
+  text-decoration: none;
+  box-shadow: none !important;
+}
+.app-content button.card-menu__action:hover,
+.app-content div[data-smart-menu-panel] button:hover,
+.app-content .ai-copilot__action-menu button:hover,
+.app-content .app-utilities__action:hover {
+  transform: none !important;
+  border-color: transparent !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: none !important;
+}
+.app-content button.card-menu__action--destructive,
+.app-content div[data-smart-menu-panel] button[class*="text-[var(--accent-dark)]"],
+.app-utilities__signout {
+  color: #b42318 !important;
+}
+.app-utilities__signout:hover {
+  background: #fae8e5 !important;
+  color: #b42318 !important;
+}
+.app-content button.card-menu__action--destructive:hover,
+.app-content div[data-smart-menu-panel] button[class*="text-[var(--accent-dark)]"]:hover {
+  background: #fae8e5 !important;
+  color: #b42318 !important;
+}
+.app-content button.card-menu__cancel {
+  justify-content: center;
+  margin-top: 6px;
+  border: 1px solid var(--border) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink-soft) !important;
+  box-shadow: none !important;
+}
+.app-content .ai-copilot__action-menu button {
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .card-menu__panel {
+    position: fixed !important;
+    top: var(--card-menu-top, 12px) !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: var(--card-menu-left, 12px) !important;
+    width: 210px !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: min(70dvh, 340px) !important;
+    overflow-y: auto !important;
+  }
+  .app-content div[data-smart-menu-panel] {
+    max-width: calc(100vw - 24px);
+    max-height: min(70dvh, 340px);
+    overflow-y: auto;
+  }
+}
+
+/* Calendar highlight rules: pale green marks one selected/default day;
+   the dark date circle is reserved for today and never follows selection. */
+.app-content .calendar-overview .grid > button[aria-pressed="true"] {
+  border-color: var(--primary-soft) !important;
+  background: var(--primary-soft) !important;
+  box-shadow: none !important;
+}
+.app-content .calendar-overview button.calendar-today-button,
+.app-content .calendar-overview button.calendar-day-action--toggle {
+  min-height: 36px !important;
+  padding: 6px 12px !important;
+  font-size: 11px !important;
+  border: 2px solid #557c61 !important;
+  border-radius: 12px !important;
+  background: #dce8d8 !important;
+  color: #23412f !important;
+  box-shadow: 0 4px 0 #557c61 !important;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+}
+.app-content .calendar-overview button.calendar-today-button:hover:not(:disabled),
+.app-content .calendar-overview button.calendar-day-action--toggle:hover:not(:disabled) {
+  transform: translateY(-2px) !important;
+  background: #e4eee0 !important;
+  box-shadow: 0 6px 0 #557c61 !important;
+}
+.app-content .calendar-overview button.calendar-today-button:active:not(:disabled),
+.app-content .calendar-overview button.calendar-day-action--toggle:active:not(:disabled) {
+  transform: translateY(4px) !important;
+  box-shadow: 0 0 0 transparent !important;
+}
+
+/* Course management actions: safe reversible/archive actions and explicit red deletion. */
+.course-management__archive,
+.course-management__restore,
+.course-management__delete {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 800;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.course-management__archive {
+  border: 1px solid #557c61;
+  background: #dce8d8;
+  color: #23412f;
+}
+.course-management__archive:hover:not(:disabled) { background: #e4eee0; }
+.course-management__restore {
+  border: 1px solid #23412f;
+  background: #31573f;
+  color: #fff;
+}
+.course-management__restore:hover:not(:disabled) { background: #3b684b; }
+.course-management__delete {
+  border: 1px solid #b42318;
+  background: #fff;
+  color: #b42318;
+}
+.course-management__delete:hover:not(:disabled) { background: #fae8e5; }
+.course-management__archive:disabled,
+.course-management__restore:disabled,
+.course-management__delete:disabled { cursor: not-allowed; opacity: .5; }
+
+/* ========================================================================
+   Palette 6 pilot — Today only.
+   Other routes keep their existing appearance until migrated individually.
+   ======================================================================== */
+
+body:has(.today-page) {
+  background: var(--p6-page);
+  color: var(--p6-text);
+}
+
+/* Responsive page frame: 16px minimum gutters, 65ch body measure. */
+body:has(.today-page) .page-shell {
+  width: min(
+    calc(100% - var(--p6-space-gutter) - var(--p6-space-gutter)),
+    65rem
+  );
+  padding: var(--p6-space-section) 0 3.5rem;
+}
+
+/* Keep navigation and icon controls comfortably tappable. */
+body:has(.today-page) .sidebar-nav__link,
+body:has(.today-page) .mobile-nav__item,
+body:has(.today-page) .topbar__icon-button,
+body:has(.today-page) .app-utilities__trigger {
+  min-height: var(--p6-control-md);
+}
+
+body:has(.today-page) .topbar__icon-button {
+  min-width: var(--p6-control-md);
+  height: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+body:has(.today-page) .app-utilities__trigger {
+  min-width: var(--p6-control-md);
+  height: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+body:has(.today-page) .topbar {
+  background: rgba(237, 246, 249, 0.96);
+  border-bottom: 1px solid var(--p6-border-decorative);
+}
+
+body:has(.today-page) .topbar__brand {
+  color: var(--p6-text);
+}
+
+body:has(.today-page) .topbar__brand-mark {
+  border: 1px solid var(--p6-primary-hover);
+  background: var(--p6-primary);
+  color: #ffffff;
+}
+
+/* Dark teal sidebar is retained as the app's navigation anchor. */
+body:has(.today-page) .app-sidebar {
+  background: linear-gradient(
+    180deg,
+    var(--p6-sidebar-top) 0%,
+    var(--p6-sidebar-mid) 68%,
+    var(--p6-sidebar-bottom) 100%
+  );
+  color: #ffffff;
+}
+
+body:has(.today-page) .assistant-button {
+  min-height: var(--p6-control-md);
+  height: auto;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: var(--p6-primary-hover);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 35, 40, 0.16);
+}
+
+body:has(.today-page) .assistant-button:hover {
+  transform: translateY(-1px);
+  background: var(--p6-primary);
+  box-shadow: 0 4px 12px rgba(0, 35, 40, 0.2);
+}
+
+body:has(.today-page) .assistant-button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+body:has(.today-page) .assistant-button__mark {
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+body:has(.today-page) .sidebar-nav__link {
+  border: 1px solid transparent;
+  border-radius: var(--p6-radius-md);
+  color: #edf6f9;
+  font-weight: var(--p6-weight-semibold);
+  transition: background-color var(--p6-motion-base) var(--p6-ease-standard), color var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+body:has(.today-page) .sidebar-nav__link:hover {
+  transform: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+body:has(.today-page) .sidebar-nav__link--active {
+  border-color: var(--p6-border-decorative);
+  background: var(--p6-page);
+  color: var(--p6-text);
+  box-shadow: none;
+}
+
+body:has(.today-page) .sidebar-note {
+  border-top-color: rgba(255, 255, 255, 0.2);
+  color: #edf6f9;
+}
+
+body:has(.today-page) .sidebar-note__leaf {
+  color: var(--p6-mint);
+}
+
+body:has(.today-page) .app-utilities__trigger {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: var(--p6-primary-hover);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+body:has(.today-page) .app-utilities__trigger:hover {
+  background: var(--p6-primary);
+}
+
+body:has(.today-page) .app-utilities__panel {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: var(--p6-elevation-dropdown);
+}
+
+/* Mobile navigation follows the same teal-and-paper active-state language. */
+@media (max-width: 48rem) {
+  body:has(.today-page) .page-shell {
+    padding-bottom: 7rem;
+  }
+
+  body:has(.today-page) .mobile-nav {
+    border-top: 1px solid var(--p6-border-decorative);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 -3px 14px rgba(26, 43, 47, 0.05);
+  }
+
+  body:has(.today-page) .mobile-nav__item {
+    color: var(--p6-text-secondary);
+    font-weight: var(--p6-weight-semibold);
+  }
+
+  body:has(.today-page) .mobile-nav__content--active {
+    background: var(--p6-primary);
+    color: #ffffff;
+    box-shadow: none;
+  }
+}
+
+/* Today typography: regular reading text, restrained emphasis, sentence case. */
+.app-content .today-page {
+  color: var(--p6-text);
+  font-family: var(--font-body);
+  font-size: var(--p6-font-body);
+  font-weight: var(--p6-weight-regular);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .today-page h1,
+.app-content .today-page h2,
+.app-content .today-page h3,
+.app-content .today-page h4 {
+  color: var(--p6-text);
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
+  line-height: var(--p6-line-heading);
+  text-transform: none;
+}
+
+.app-content .today-page h1 {
+  font-size: var(--p6-font-page-title);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .today-page h2 {
+  font-size: var(--p6-font-section-title);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .today-page h3,
+.app-content .today-page h4 {
+  font-size: var(--p6-font-card-title);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .today-page p {
+  max-width: var(--p6-measure-body);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .today-page .card p {
+  max-width: var(--p6-measure-card);
+}
+
+.app-content .today-page p + p {
+  margin-top: var(--p6-space-body);
+}
+
+.app-content .today-page h1 + p,
+.app-content .today-page h2 + p,
+.app-content .today-page h3 + p {
+  margin-top: var(--p6-space-heading-body);
+}
+
+.app-content .today-page .text-sm {
+  font-size: var(--p6-font-supporting);
+}
+
+.app-content .today-page .text-xs {
+  font-size: var(--p6-font-metadata);
+  line-height: var(--p6-line-compact);
+}
+
+.app-content .today-page .font-extrabold,
+.app-content .today-page .font-black {
+  font-weight: var(--p6-weight-bold);
+}
+
+.app-content .today-page .font-semibold {
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .today-page .font-bold {
+  font-weight: var(--p6-weight-bold);
+}
+
+.app-content .today-page .uppercase,
+.app-content .today-page [class*="uppercase"] {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.app-content .today-page .stat-label {
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-label);
+  font-weight: var(--p6-weight-semibold);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.app-content .today-page [class*="text-[var(--ink-soft)]"],
+.app-content .today-page [class*="text-[var(--muted)]"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .today-page [class*="text-[var(--primary)]"] {
+  color: var(--p6-primary) !important;
+}
+
+.app-content .today-page [class*="text-[var(--primary-dark)]"] {
+  color: var(--p6-primary-hover) !important;
+}
+
+.app-content .today-page [class*="text-[var(--accent-dark)]"] {
+  color: var(--p6-accent-warm-text) !important;
+}
+
+/* Cards use a quiet outline and layered elevation, never a hard offset shadow. */
+.app-content .today-page .card,
+.app-content .today-page .today-page__loading {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .today-page__card,
+.app-content .today-page__up-next a.card {
+  padding: var(--p6-space-card-pad) !important;
+}
+
+.app-content .today-page__up-next,
+.app-content .today-page__schedule {
+  margin-top: var(--p6-space-section) !important;
+}
+
+.app-content .today-page__up-next .grid {
+  gap: 1rem;
+}
+
+.app-content .today-page__card {
+  margin-bottom: 1rem !important;
+}
+
+.app-content .today-page .today-page__loading {
+  padding: var(--p6-space-8);
+  text-align: center;
+}
+
+.app-content .today-page [class~="border-2"] {
+  border-width: 1px !important;
+  border-color: var(--p6-border-decorative) !important;
+}
+
+.app-content .today-page [class*="border-[var(--primary-dark)]"],
+.app-content .today-page [class*="border-[var(--border)]"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+
+.app-content .today-page [class*="bg-[var(--surface)]"],
+.app-content .today-page [class*="bg-white/60"] {
+  background: var(--p6-surface) !important;
+}
+
+.app-content .today-page [class*="bg-[var(--surface-soft)]"] {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .today-page [class*="bg-[var(--primary-soft)]"] {
+  background: var(--p6-surface-selected) !important;
+}
+
+.app-content .today-page [class*="bg-[var(--accent-soft)]"] {
+  background: var(--p6-accent-warm) !important;
+}
+
+.app-content .today-page [class*="bg-[var(--yellow-soft)]"] {
+  background: var(--p6-info-bg) !important;
+}
+
+.app-content .today-page__metrics > div {
+  border: 0 !important;
+  border-radius: var(--p6-radius-md) !important;
+  box-shadow: none !important;
+  color: var(--p6-text) !important;
+}
+
+.app-content .today-page__metrics > div:nth-child(1) {
+  background: var(--p6-surface-selected) !important;
+}
+
+.app-content .today-page__metrics > div:nth-child(2) {
+  border-inline-start: 0.1875rem solid var(--p6-accent-coral) !important;
+  background: var(--p6-accent-warm) !important;
+}
+
+.app-content .today-page__metrics > div:nth-child(3) {
+  background: var(--p6-info-bg) !important;
+}
+
+.app-content .today-page__metrics > div > div:first-child {
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-label);
+  font-weight: var(--p6-weight-semibold) !important;
+}
+
+.app-content .today-page__metrics > div > div:last-child {
+  color: var(--p6-text) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+}
+
+.app-content .today-page__reason {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-subtle) !important;
+  box-shadow: none !important;
+}
+
+.app-content .today-page__reason > p:first-child {
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-label);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .today-page__up-next a.card {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+  transition: transform var(--p6-motion-base) var(--p6-ease-enter), box-shadow var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+.app-content .today-page__up-next a.card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+.app-content .today-page__schedule .grid > div:not(.timeline-free-slot) {
+  border: 0 !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .today-page__schedule .timeline-free-slot {
+  border: 1px dashed var(--p6-border-strong) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+
+.app-content .today-page__schedule .timeline-free-slot [class*="text-[var(--muted)]"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+/* Controls grow with their labels; touch targets never shrink below 48px. */
+.app-content .today-page button,
+.app-content .today-page a:not(.card) {
+  min-height: var(--p6-control-md);
+}
+
+.app-content .today-page input,
+.app-content .today-page textarea,
+.app-content .today-page select {
+  min-height: var(--p6-control-md);
+  font-size: var(--p6-font-input);
+  border: 1px solid var(--p6-border-control);
+  border-radius: var(--p6-radius-md);
+}
+
+.app-content .today-page .btn--icon,
+.app-content .today-page button[aria-label]:not(.plan-generate-button) {
+  min-width: var(--p6-control-md);
+  min-height: var(--p6-control-md);
+  height: auto;
+  padding: var(--p6-space-2);
+  align-items: center;
+  justify-content: center;
+}
+
+.app-content .today-page .button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--p6-gap-button-group);
+}
+
+/* Primary actions retain a tactile response without dark outlines or hard shadows. */
+.app-content .today-page button.plan-generate-button,
+.app-content .today-page a.right-now-start-button {
+  display: inline-flex;
+  width: auto;
+  max-width: 24rem;
+  min-height: var(--p6-control-lg) !important;
+  height: auto;
+  align-items: center;
+  justify-content: center;
+  gap: var(--p6-gap-icon-label);
+  border: 1px solid var(--p6-primary-hover) !important;
+  border-radius: var(--p6-radius-md) !important;
+  padding: 0.75rem 1.5rem !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  font-family: var(--font-body) !important;
+  font-size: 1rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  letter-spacing: 0 !important;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  text-transform: none !important;
+  box-shadow: var(--p6-elevation-interactive) !important;
+  transition: transform var(--p6-motion-base) var(--p6-ease-enter), background-color var(--p6-motion-base) var(--p6-ease-standard), box-shadow var(--p6-motion-base) var(--p6-ease-standard) !important;
+  cursor: pointer;
+}
+
+.app-content .today-page button.plan-generate-button:hover:not(:disabled),
+.app-content .today-page a.right-now-start-button:hover {
+  transform: translateY(-1px) !important;
+  background: var(--p6-primary-hover) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .today-page button.plan-generate-button:active:not(:disabled),
+.app-content .today-page a.right-now-start-button:active {
+  transform: translateY(0) !important;
+  box-shadow: none !important;
+}
+
+.app-content .today-page button.plan-generate-button:disabled {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-disabled-bg) !important;
+  color: var(--p6-text-disabled) !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
+
+.app-content .today-page :focus-visible {
+  outline: 3px solid var(--p6-focus);
+  outline-offset: 3px;
+}
+
+.app-content .today-page p[role="alert"] {
+  border: 1px solid #e9c4bf;
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+.app-content .today-page p[role="status"] {
+  color: var(--p6-text-secondary);
+}
+
+@media (max-width: 48rem) {
+  .app-content .today-page button.plan-generate-button,
+  .app-content .today-page a.right-now-start-button {
+    width: 100%;
+  }
+
+  .app-content .today-page .button-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-content .today-page .button-row > .primary-cta {
+    width: 100%;
+    max-width: 24rem;
+  }
+
+  .app-content .today-page .today-page__up-next .grid {
+    gap: 0.75rem;
+  }
+
+  .app-content .today-page h1 + p,
+  .app-content .today-page h2 + p,
+  .app-content .today-page h3 + p {
+    margin-top: 0.5rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .app-content .today-page__up-next .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.today-page) .app-sidebar *,
+  .app-content .today-page *,
+  body:has(.today-page) .app-utilities__trigger {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .app-content .today-page a.card:hover,
+  .app-content .today-page button:hover,
+  .app-content .today-page a:hover {
+    transform: none !important;
+  }
+}
+
+/* ========================================================================
+   Palette 6 migration — Calendar + Today typography refinement.
+   Scope is intentionally limited to these two routes.
+   ======================================================================== */
+
+/* Calendar shares the same light app shell and teal navigation anchor as Today. */
+body:has(.calendar-page) {
+  background: var(--p6-page);
+  color: var(--p6-text);
+}
+
+body:has(.calendar-page) .page-shell {
+  width: min(
+    calc(100% - var(--p6-space-gutter) - var(--p6-space-gutter)),
+    65rem
+  );
+  padding: var(--p6-space-section) 0 3.5rem;
+}
+
+body:has(.calendar-page) .topbar {
+  background: rgba(237, 246, 249, 0.96);
+  border-bottom: 1px solid var(--p6-border-decorative);
+}
+
+body:has(.calendar-page) .topbar__brand {
+  color: var(--p6-text);
+}
+
+body:has(.calendar-page) .topbar__brand-mark {
+  border: 1px solid var(--p6-primary-hover);
+  background: var(--p6-primary);
+  color: #ffffff;
+}
+
+body:has(.calendar-page) .app-sidebar {
+  background: linear-gradient(
+    180deg,
+    var(--p6-sidebar-top) 0%,
+    var(--p6-sidebar-mid) 68%,
+    var(--p6-sidebar-bottom) 100%
+  );
+  color: #ffffff;
+}
+
+body:has(.calendar-page) .sidebar-nav__link,
+body:has(.calendar-page) .mobile-nav__item,
+body:has(.calendar-page) .topbar__icon-button,
+body:has(.calendar-page) .app-utilities__trigger,
+body:has(.calendar-page) .assistant-button {
+  min-height: var(--p6-control-md);
+}
+
+body:has(.calendar-page) .topbar__icon-button,
+body:has(.calendar-page) .app-utilities__trigger {
+  min-width: var(--p6-control-md);
+  height: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+body:has(.calendar-page) .sidebar-nav__link {
+  border: 1px solid transparent;
+  border-radius: var(--p6-radius-md);
+  color: #edf6f9;
+  font-weight: var(--p6-weight-semibold);
+  transition: background-color var(--p6-motion-base) var(--p6-ease-standard), color var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+body:has(.calendar-page) .sidebar-nav__link:hover {
+  transform: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+body:has(.calendar-page) .sidebar-nav__link--active {
+  border-color: var(--p6-border-decorative);
+  background: var(--p6-page);
+  color: var(--p6-text);
+  box-shadow: none;
+}
+
+body:has(.calendar-page) .assistant-button,
+body:has(.calendar-page) .app-utilities__trigger {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: var(--p6-primary-hover);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+body:has(.calendar-page) .assistant-button:hover,
+body:has(.calendar-page) .app-utilities__trigger:hover {
+  background: var(--p6-primary);
+}
+
+body:has(.calendar-page) .sidebar-note {
+  border-top-color: rgba(255, 255, 255, 0.2);
+  color: #edf6f9;
+}
+
+body:has(.calendar-page) .sidebar-note__leaf {
+  color: var(--p6-mint);
+}
+
+body:has(.calendar-page) .app-utilities__panel {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: var(--p6-elevation-dropdown);
+}
+
+body:has(.calendar-page) .mobile-nav {
+  border-top: 1px solid var(--p6-border-decorative);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 -3px 14px rgba(26, 43, 47, 0.05);
+}
+
+body:has(.calendar-page) .mobile-nav__item {
+  color: var(--p6-text-secondary);
+  font-weight: var(--p6-weight-semibold);
+}
+
+body:has(.calendar-page) .mobile-nav__content--active {
+  background: var(--p6-primary);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+/* Shared type hierarchy: display headings scale, reading text remains 1rem. */
+.app-content .calendar-page {
+  color: var(--p6-text);
+  font-family: var(--font-body);
+  font-size: var(--p6-font-body);
+  font-weight: var(--p6-weight-regular);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .calendar-page h1,
+.app-content .calendar-page h2,
+.app-content .calendar-page h3,
+.app-content .calendar-page h4 {
+  color: var(--p6-text);
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
+  line-height: var(--p6-line-heading);
+  text-transform: none;
+}
+
+.app-content .calendar-page h1 {
+  font-size: var(--p6-font-page-title);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .calendar-page h2 {
+  font-size: var(--p6-font-section-title);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .calendar-page h3,
+.app-content .calendar-page h4 {
+  font-size: var(--p6-font-card-title);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .calendar-page p {
+  max-width: var(--p6-measure-body);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .calendar-page .text-sm {
+  font-size: var(--p6-font-supporting);
+}
+
+.app-content .calendar-page .text-xs {
+  font-size: var(--p6-font-metadata);
+  line-height: var(--p6-line-compact);
+}
+
+.app-content .calendar-page .font-black,
+.app-content .calendar-page .font-extrabold,
+.app-content .calendar-page .font-bold {
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .calendar-page .font-semibold,
+.app-content .calendar-page .font-medium {
+  font-weight: var(--p6-weight-medium);
+}
+
+.app-content .calendar-page .uppercase,
+.app-content .calendar-page [class*="uppercase"] {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.app-content .calendar-page .stat-label {
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-label);
+  font-weight: var(--p6-weight-semibold);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.app-content .calendar-page [class*="text-[var(--ink)]"],
+.app-content .calendar-page [class*="text-[var(--ink-soft)]"],
+.app-content .calendar-page [class*="text-[var(--muted)]"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .calendar-page [class*="text-[var(--primary)]"],
+.app-content .calendar-page [class*="text-[var(--primary-dark)]"] {
+  color: var(--p6-primary) !important;
+}
+
+.app-content .calendar-page [class*="text-[var(--accent-dark)]"] {
+  color: #8d4f38 !important;
+}
+
+/* Soft cards and controls across calendar, classes, events and tasks. */
+.app-content .calendar-page .card,
+.app-content .calendar-page .calendar-overview,
+.app-content .calendar-page__management > details {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .calendar-page__management {
+  margin-top: var(--p6-space-section) !important;
+}
+
+.app-content .calendar-page__management > details > summary {
+  border-bottom: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-text) !important;
+  padding: 1rem 1.25rem;
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .calendar-page__management > details > summary span {
+  color: var(--p6-text-secondary) !important;
+  font-weight: var(--p6-weight-regular) !important;
+}
+
+.app-content .calendar-page__management .calendar-management-tab[aria-selected="true"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page__management .calendar-management-tab[aria-selected="false"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .calendar-page fieldset {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle);
+}
+
+.app-content .calendar-page legend {
+  color: var(--p6-text);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .calendar-page label {
+  color: var(--p6-text);
+  font-size: var(--p6-font-supporting);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .calendar-page input:not([type="checkbox"]):not([type="radio"]),
+.app-content .calendar-page textarea,
+.app-content .calendar-page select {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--p6-control-md);
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  padding: 0.625rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: var(--p6-font-input) !important;
+  font-weight: var(--p6-weight-regular) !important;
+  line-height: 1.35;
+}
+
+.app-content .calendar-page input[type="checkbox"],
+.app-content .calendar-page input[type="radio"] {
+  accent-color: var(--p6-primary);
+}
+
+.app-content .calendar-page input:disabled,
+.app-content .calendar-page textarea:disabled,
+.app-content .calendar-page select:disabled {
+  background: var(--p6-disabled-bg) !important;
+  color: var(--p6-text-disabled) !important;
+  cursor: not-allowed;
+}
+
+.app-content .calendar-page button {
+  min-height: var(--p6-control-md);
+  font-family: var(--font-body);
+  font-weight: var(--p6-weight-semibold);
+  line-height: 1.2;
+}
+
+.app-content .calendar-page summary {
+  min-height: var(--p6-control-md);
+  cursor: pointer;
+}
+
+.app-content .calendar-page details[data-smart-menu] > summary {
+  display: flex;
+  min-width: var(--p6-control-md);
+  min-height: var(--p6-control-md);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  color: var(--p6-text-secondary);
+}
+
+.app-content .calendar-page [data-smart-menu-panel] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+.app-content .calendar-page [data-smart-menu-panel] button {
+  justify-content: flex-start;
+  border-radius: var(--p6-radius-sm);
+  color: var(--p6-text);
+  text-align: left;
+}
+
+.app-content .calendar-page button.action-primary--forest,
+.app-content .calendar-page button.action-primary--sage,
+.app-content .calendar-page button.calendar-day-action--toggle,
+.app-content .calendar-page button.calendar-today-button {
+  border: 1px solid var(--p6-primary-hover) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: var(--p6-elevation-interactive) !important;
+  padding: 0.75rem 1.125rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.app-content .calendar-page button.action-primary--forest:hover,
+.app-content .calendar-page button.action-primary--sage:hover,
+.app-content .calendar-page button.calendar-day-action--toggle:hover,
+.app-content .calendar-page button.calendar-today-button:hover {
+  background: var(--p6-primary-hover) !important;
+  transform: translateY(-1px);
+}
+
+.app-content .calendar-page button.calendar-day-action--event {
+  border: 1px solid #e5b8a7 !important;
+  background: var(--p6-accent-warm) !important;
+  color: #694331 !important;
+}
+
+.app-content .calendar-page button.calendar-day-action--task {
+  border: 1px solid #a9d5ce !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+}
+
+.app-content .calendar-page button[role="tab"] {
+  min-height: var(--p6-control-md);
+  border-radius: var(--p6-radius-pill);
+}
+
+.app-content .calendar-page button[role="tab"][aria-selected="true"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page button[role="tab"][aria-selected="false"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .calendar-page :focus-visible {
+  outline: 3px solid var(--p6-focus);
+  outline-offset: 3px;
+}
+
+.app-content .calendar-page [role="alert"] {
+  border: 1px solid #e9c4bf;
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+.app-content .calendar-page [role="status"] {
+  border-radius: var(--p6-radius-md);
+}
+
+/* Calendar frame, range navigation and date selection. */
+.app-content .calendar-page .calendar-overview {
+  padding: var(--p6-space-card-pad) !important;
+}
+
+.app-content .calendar-page .calendar-overview--expanded {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--p6-page) !important;
+  box-shadow: none !important;
+  padding: 0.5rem !important;
+}
+
+.app-content .calendar-page .calendar-overview h2,
+.app-content .calendar-page .calendar-overview h3,
+.app-content .calendar-page .calendar-overview h4 {
+  color: var(--p6-text);
+}
+
+.app-content .calendar-page .calendar-overview button {
+  border-color: var(--p6-border-decorative);
+  transition: background-color var(--p6-motion-base) var(--p6-ease-standard), border-color var(--p6-motion-base) var(--p6-ease-standard), transform var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+.app-content .calendar-page .calendar-overview button[class*="border-[var(--border)]"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+
+.app-content .calendar-page .calendar-overview button[class*="border-[var(--primary-soft)]"],
+.app-content .calendar-page .calendar-overview button[class*="bg-[var(--primary-soft)]"] {
+  border-color: var(--p6-mint) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .calendar-overview [role="group"][aria-label="Calendar view"] button[aria-pressed="true"] {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-content .calendar-page .calendar-overview [role="group"][aria-label="Filter calendar categories"] button {
+  min-height: 2.75rem;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-pill);
+  background: var(--p6-surface-subtle);
+  box-shadow: none !important;
+  padding: 0.5rem 0.75rem;
+  color: var(--p6-text-secondary);
+}
+
+.app-content .calendar-page .calendar-overview [role="group"][aria-label="Filter calendar categories"] button[aria-pressed="true"] {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  border-color: var(--p6-mint) !important;
+}
+
+.app-content .calendar-page .calendar-overview [class*="bg-[var(--surface)]"],
+.app-content .calendar-page .calendar-overview [class*="bg-white/60"] {
+  background: var(--p6-surface) !important;
+}
+
+.app-content .calendar-page .calendar-overview [class*="bg-[var(--primary-soft)]"] {
+  background: var(--p6-surface-selected) !important;
+}
+
+.app-content .calendar-page .calendar-overview [class*="text-[var(--ink-soft)]"],
+.app-content .calendar-page .calendar-overview [class*="text-[var(--muted)]"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .calendar-page .calendar-overview [class*="text-[var(--primary-dark)]"],
+.app-content .calendar-page .calendar-overview [class*="text-[var(--primary)]"] {
+  color: var(--p6-primary-hover) !important;
+}
+
+.app-content .calendar-page .calendar-overview article {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  box-shadow: none !important;
+}
+
+/* Keep category hues distinguishable, but soften their fills and edges. */
+.app-content .calendar-page [class*="bg-[#fff0b3]"],
+.app-content .calendar-page [class*="bg-[#fff8d9]"] {
+  border-color: #e5b8a7 !important;
+  background: var(--p6-accent-warm) !important;
+  color: #694331 !important;
+}
+
+.app-content .calendar-page [class*="bg-[#eee8f8]"],
+.app-content .calendar-page [class*="bg-[#f5f0ff]"] {
+  border-color: #d2c7e6 !important;
+  background: #f2eff8 !important;
+  color: #49366f !important;
+}
+
+.app-content .calendar-page [class*="bg-[var(--accent-soft)]"] {
+  border-color: #e5b8a7;
+  background: var(--p6-accent-warm) !important;
+}
+
+.app-content .calendar-page [class*="bg-[var(--primary-soft)]"] {
+  background: var(--p6-surface-selected) !important;
+}
+
+.app-content .calendar-page .calendar-overview [class*="border-l-4"] {
+  border-left-width: 0.1875rem !important;
+}
+
+.app-content .calendar-page .calendar-overview .text-\[\#684000\],
+.app-content .calendar-page [class*="text-[#684000]"] {
+  color: #694600 !important;
+}
+
+.app-content .calendar-page [class*="text-[#49366f]"],
+.app-content .calendar-page [class*="text-[#6750a4]"] {
+  color: #49366f !important;
+}
+
+/* Class/event/task cards and empty states use the same quiet surface language. */
+.app-content .calendar-page article.card,
+.app-content .calendar-page .calendar-page__management .card {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .calendar-page .calendar-page__management .rounded-2xl.border-2,
+.app-content .calendar-page .calendar-page__management [role="tablist"] {
+  border: 1px solid var(--p6-border-decorative) !important;
+}
+
+.app-content .calendar-page .calendar-page__management [class*="bg-[var(--primary-soft)]"],
+.app-content .calendar-page .calendar-page__management [class*="bg-[var(--yellow-soft)]"] {
+  background: var(--p6-surface-selected) !important;
+}
+
+.app-content .calendar-page .calendar-page__management article p,
+.app-content .calendar-page .calendar-page__management .card p {
+  max-width: var(--p6-measure-card);
+}
+
+@media (max-width: 48rem) {
+  body:has(.calendar-page) .page-shell {
+    padding-bottom: 7rem;
+  }
+
+  .app-content .calendar-page .calendar-overview {
+    padding: 1rem !important;
+  }
+
+  .app-content .calendar-page .calendar-overview--expanded {
+    padding: 0.5rem !important;
+  }
+
+  .app-content .calendar-page__management > details > summary {
+    padding: 0.875rem 1rem;
+  }
+
+  .app-content .calendar-page .calendar-overview [role="group"][aria-label="Filter calendar categories"] {
+    flex-wrap: wrap;
+    gap: 0.375rem;
+  }
+
+  .app-content .calendar-page .calendar-overview [role="group"][aria-label="Filter calendar categories"] button {
+    min-height: 2.75rem;
+  }
+
+  .app-content .calendar-page .calendar-page__management form {
+    padding: 1rem !important;
+  }
+}
+
+@media (max-width: 48rem) {
+  /* The full-screen month grid uses flexible rows; keep its date cells flexible. */
+  .app-content .calendar-page .calendar-overview--expanded .grid button {
+    min-height: 0;
+  }
+}
+
+.app-content .calendar-page [role="alert"] {
+  border: 1px solid #e9c4bf !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+@media (min-width: 64rem) {
+  .app-content .calendar-page {
+    max-width: 65rem;
+    margin-inline: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.calendar-page) .app-sidebar *,
+  .app-content .calendar-page *,
+  body:has(.calendar-page) .app-utilities__trigger {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .app-content .calendar-page button:hover,
+  .app-content .calendar-page a:hover {
+    transform: none !important;
+  }
+}
+
+/* Today Up Next: bold only the task type; keep its title and details regular. */
+.app-content .today-page__up-next a.card h3 {
+  font-weight: var(--p6-weight-regular) !important;
+}
+
+.app-content .today-page__up-next a.card > div > div:first-child,
+.app-content .today-page__up-next a.card > div > p {
+  font-weight: var(--p6-weight-regular) !important;
+}
+
+.app-content .today-page__up-next a.card > div > .up-next__metadata > .up-next__type {
+  font-weight: var(--p6-weight-bold) !important;
+}
+
+/* Palette 6 refinement batch 2: Calendar corrections and Study screen. */
+.app-content .calendar-page [class*="border-2"] {
+  border-width: 1px !important;
+}
+
+.app-content .calendar-page [class*="border-[var(--border)]"],
+.app-content .calendar-page [class*="border-[var(--primary-dark)]"],
+.app-content .calendar-page [class*="border-[#1a2e24]"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+
+.app-content .calendar-page *,
+.app-content .calendar-page [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .card,
+.app-content .calendar-page .calendar-overview:not(.calendar-overview--expanded),
+.app-content .calendar-page .calendar-page__management > details,
+.app-content .calendar-page article.card {
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .calendar-page [data-smart-menu-panel] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+.app-content .calendar-page button,
+.app-content .calendar-page button * {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.app-content .calendar-page .calendar-collapse-toggle {
+  min-height: var(--p6-control-md);
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background-color var(--p6-motion-base) var(--p6-ease-standard),
+    border-color var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+.app-content .calendar-page .calendar-collapse-toggle:hover,
+.app-content .calendar-page .calendar-collapse-toggle:active,
+.app-content .calendar-page .calendar-collapse-toggle[aria-expanded="true"],
+.app-content .calendar-page .calendar-collapse-toggle[aria-expanded="false"] {
+  border-color: var(--p6-border-control) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.app-content .calendar-page :focus-visible {
+  outline: 3px solid var(--p6-focus) !important;
+  outline-offset: 3px;
+}
+
+/* Use one consistent Google Calendar purple for chips, dots and filters. */
+.app-content .calendar-page .calendar-overview [class*="bg-[#eee8f8]"],
+.app-content .calendar-page button[aria-label="Show google"] {
+  border-color: #d8cfee !important;
+  background: #eee8f8 !important;
+  color: #49366f !important;
+}
+
+.app-content .calendar-page .calendar-overview [class*="bg-[#6750a4]"] {
+  background: #6750a4 !important;
+}
+
+.app-content .calendar-page .calendar-class-record {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-selected) !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__trigger {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__trigger:hover,
+.app-content .calendar-page .calendar-class-menu__trigger:active {
+  border-color: var(--p6-border-control) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__panel button {
+  min-height: var(--p6-control-md);
+  color: var(--p6-text) !important;
+  text-align: left;
+}
+
+.app-content .calendar-page .calendar-class-menu__panel button:hover {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .calendar-page .calendar-class-menu__panel button:last-child {
+  color: var(--p6-error-text) !important;
+}
+
+/* Study: carry Palette 6 through the whole planning and learning workspace. */
+.app-content .study-page {
+  color: var(--p6-text);
+  font-family: var(--font-body);
+  font-size: var(--p6-font-body);
+  font-weight: var(--p6-weight-regular);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .study-page h1,
+.app-content .study-page h2,
+.app-content .study-page h3,
+.app-content .study-page h4 {
+  color: var(--p6-text);
+  font-family: var(--font-heading);
+  font-weight: var(--p6-weight-semibold);
+  letter-spacing: -0.015em;
+  line-height: var(--p6-line-heading);
+  text-transform: none;
+}
+
+.app-content .study-page h1 {
+  font-size: var(--p6-font-page-title);
+}
+
+.app-content .study-page h2 {
+  font-size: var(--p6-font-section-title);
+}
+
+.app-content .study-page h3,
+.app-content .study-page h4 {
+  font-size: var(--p6-font-card-title);
+}
+
+.app-content .study-page p {
+  max-width: var(--p6-measure-body);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .study-page section[class*="rounded-3xl"] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .study-page section[class*="rounded-2xl"] {
+  border-color: var(--p6-border-decorative);
+}
+
+.app-content .study-page section[id] {
+  scroll-margin-top: 1.5rem;
+}
+
+.app-content .study-page .card {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .study-page .text-xs {
+  font-size: var(--p6-font-metadata);
+  line-height: var(--p6-line-compact);
+}
+
+.app-content .study-page .text-sm {
+  font-size: var(--p6-font-supporting);
+}
+
+.app-content .study-page .font-black,
+.app-content .study-page .font-extrabold,
+.app-content .study-page .font-bold {
+  font-weight: var(--p6-weight-semibold) !important;
+}
+
+.app-content .study-page .font-semibold,
+.app-content .study-page .font-medium {
+  font-weight: var(--p6-weight-medium) !important;
+}
+
+.app-content .study-page [class*="uppercase"] {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.app-content .study-page [class*="border-[#d8ccb8]"],
+.app-content .study-page [class*="border-stone-"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+
+.app-content .study-page [class*="bg-[#fffaf1]"],
+.app-content .study-page [class*="bg-white"] {
+  background: var(--p6-surface) !important;
+}
+
+.app-content .study-page [class*="bg-[#efe4d1]"] {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .study-page [class*="bg-[#23412f]"],
+.app-content .study-page button[class*="bg-emerald-900"],
+.app-content .study-page button[class*="bg-emerald-800"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-content .study-page [class*="bg-[#1a2e24]"],
+.app-content .study-page button[class*="hover:bg-emerald-800"]:hover {
+  background: var(--p6-primary-hover) !important;
+}
+
+.app-content .study-page [class*="text-[#23412f]"],
+.app-content .study-page [class*="text-stone-900"],
+.app-content .study-page [class*="text-stone-800"] {
+  color: var(--p6-text) !important;
+}
+
+.app-content .study-page [class*="text-stone-700"],
+.app-content .study-page [class*="text-stone-600"],
+.app-content .study-page [class*="text-stone-500"],
+.app-content .study-page [class*="text-stone-400"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .study-page [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.app-content .study-page > header {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--p6-radius-xl);
+  background: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page > header h1,
+.app-content .study-page > header span,
+.app-content .study-page > header button {
+  color: #ffffff;
+}
+
+.app-content .study-page > header a {
+  min-height: var(--p6-control-md);
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: var(--p6-radius-md);
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.app-content .study-page > header button {
+  min-height: var(--p6-control-md);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--p6-radius-md);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff !important;
+}
+
+.app-content .study-page button {
+  min-height: var(--p6-control-md);
+  border-radius: var(--p6-radius-md);
+  font-family: var(--font-body);
+  font-weight: var(--p6-weight-semibold);
+  line-height: 1.25;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.app-content .study-page input:not([type="checkbox"]):not([type="radio"]),
+.app-content .study-page textarea,
+.app-content .study-page select {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--p6-control-md);
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  padding: 0.625rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: var(--p6-font-input) !important;
+  font-weight: var(--p6-weight-regular) !important;
+  line-height: 1.35;
+}
+
+.app-content .study-page input[type="checkbox"],
+.app-content .study-page input[type="radio"] {
+  accent-color: var(--p6-primary);
+}
+
+.app-content .study-page input:disabled,
+.app-content .study-page textarea:disabled,
+.app-content .study-page select:disabled,
+.app-content .study-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.app-content .study-page :focus-visible {
+  outline: 3px solid var(--p6-focus);
+  outline-offset: 3px;
+}
+
+.app-content .study-page [role="alert"] {
+  border-color: #e9c4bf !important;
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+.app-content .study-page [role="status"] {
+  border-color: #c4dfd1 !important;
+  background: var(--p6-success-bg) !important;
+  color: var(--p6-success-text) !important;
+}
+
+@media (max-width: 48rem) {
+  .app-content .study-page {
+    padding-bottom: 7rem;
+  }
+
+  .app-content .study-page > header {
+    padding: 1.125rem !important;
+  }
+
+  .app-content .study-page section[class*="p-5"],
+  .app-content .study-page section[class*="p-6"],
+  .app-content .study-page section[class*="p-8"] {
+    padding: 1rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-content .study-page *,
+  .app-content .calendar-page .calendar-collapse-toggle {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+/* Palette 6 refinement batch 3: Study polish + complete Workspace surfaces. */
+
+/* Shared page frame and navigation for the newly migrated areas. */
+body:has(.study-page),
+body:has(.workspace-page),
+body:has(.reading-detail-page) {
+  background: var(--p6-page) !important;
+  color: var(--p6-text) !important;
+}
+
+body:has(.study-page) .topbar,
+body:has(.workspace-page) .topbar,
+body:has(.reading-detail-page) .topbar {
+  border-bottom: 1px solid var(--p6-border-decorative) !important;
+  background: rgba(237, 246, 249, 0.97) !important;
+}
+
+body:has(.study-page) .app-sidebar,
+body:has(.workspace-page) .app-sidebar,
+body:has(.reading-detail-page) .app-sidebar {
+  background: linear-gradient(180deg, #004d55 0%, #00454c 68%, #003840 100%) !important;
+  color: #ffffff !important;
+}
+
+body:has(.study-page) .sidebar-nav__link--active,
+body:has(.workspace-page) .sidebar-nav__link--active,
+body:has(.reading-detail-page) .sidebar-nav__link--active {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-page) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+
+body:has(.study-page) .topbar__brand,
+body:has(.workspace-page) .topbar__brand,
+body:has(.reading-detail-page) .topbar__brand {
+  color: var(--p6-text) !important;
+}
+
+body:has(.study-page) .topbar__brand-mark,
+body:has(.workspace-page) .topbar__brand-mark,
+body:has(.reading-detail-page) .topbar__brand-mark {
+  border-color: var(--p6-primary-hover) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+body:has(.study-page) .sidebar-nav__link,
+body:has(.workspace-page) .sidebar-nav__link,
+body:has(.reading-detail-page) .sidebar-nav__link {
+  min-height: var(--p6-control-md);
+  border: 1px solid transparent;
+  border-radius: var(--p6-radius-md);
+  color: #edf6f9 !important;
+  font-weight: var(--p6-weight-semibold);
+}
+
+body:has(.study-page) .sidebar-nav__link:hover,
+body:has(.workspace-page) .sidebar-nav__link:hover,
+body:has(.reading-detail-page) .sidebar-nav__link:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  transform: none !important;
+}
+
+body:has(.study-page) .mobile-nav,
+body:has(.workspace-page) .mobile-nav,
+body:has(.reading-detail-page) .mobile-nav {
+  border-top: 1px solid var(--p6-border-decorative) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 -3px 14px rgba(26, 43, 47, 0.05) !important;
+}
+
+body:has(.study-page) .mobile-nav__content--active,
+body:has(.workspace-page) .mobile-nav__content--active,
+body:has(.reading-detail-page) .mobile-nav__content--active {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Study: remove leftover forest/cream styling throughout the learning flow. */
+.app-content .study-page {
+  width: 100%;
+  max-width: 72rem;
+  min-width: 0;
+  margin-inline: auto;
+  overflow-x: clip;
+  color: var(--p6-text) !important;
+  font-family: var(--font-body);
+  font-size: var(--p6-font-body);
+  line-height: var(--p6-line-body);
+}
+
+.app-content .study-page > header.study-page__header {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .study-page > header .study-page__eyebrow {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-primary) !important;
+  font-size: var(--p6-font-label) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.app-content .study-page > header .study-sync-status {
+  display: inline-flex;
+  max-width: 100%;
+  min-height: 2rem;
+  align-items: center;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-pill);
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-text) !important;
+  font-size: var(--p6-font-supporting) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.app-content .study-page > header h1 {
+  max-width: 48ch;
+  color: var(--p6-text) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+}
+
+.app-content .study-page h1,
+.app-content .study-page h2,
+.app-content .study-page h3,
+.app-content .study-page h4 {
+  color: var(--p6-text) !important;
+  text-transform: none !important;
+}
+
+.app-content .study-page [class*="border-2"],
+.app-content .study-page [class*="border-[#d8ccb8]"],
+.app-content .study-page [class*="border-[#e4dac9]"],
+.app-content .study-page [class*="border-stone-"],
+.app-content .study-page [class*="border-[var(--primary-dark)]"] {
+  border-width: 1px !important;
+  border-color: var(--p6-border-decorative) !important;
+}
+
+.app-content .study-page [class*="bg-[#fffaf1]"],
+.app-content .study-page [class*="bg-[var(--surface)]"],
+.app-content .study-page [class*="bg-white"] {
+  background: var(--p6-surface) !important;
+}
+
+.app-content .study-page [class*="bg-[#efe4d1]"],
+.app-content .study-page [class*="bg-[#e5dccb]"],
+.app-content .study-page [class*="bg-[var(--surface-soft)]"] {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .study-page [class*="bg-[#23412f]"],
+.app-content .study-page [class*="bg-[#1a2e24]"],
+.app-content .study-page [class*="bg-[#183021]"],
+.app-content .study-page [class*="bg-[#557c61]"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-content .study-page [class*="text-[#23412f]"],
+.app-content .study-page [class*="text-[#1a2e24]"],
+.app-content .study-page [class*="text-[#183021]"],
+.app-content .study-page [class*="text-stone-900"],
+.app-content .study-page [class*="text-stone-800"] {
+  color: var(--p6-text) !important;
+}
+
+.app-content .study-page [class*="text-stone-700"],
+.app-content .study-page [class*="text-stone-600"],
+.app-content .study-page [class*="text-stone-500"],
+.app-content .study-page [class*="text-stone-400"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .study-page [class*="hover:bg-[#183021]"]:hover,
+.app-content .study-page [class*="hover:bg-[#1a2e24]"]:hover {
+  background: var(--p6-primary-hover) !important;
+}
+
+.app-content .study-page [class*="accent-[#23412f]"] {
+  accent-color: var(--p6-primary) !important;
+}
+
+.app-content .study-page [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.app-content .study-page section[id],
+.app-content .study-page section[class*="rounded-3xl"],
+.app-content .study-page .study-plan-item,
+.app-content .study-page .card {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .study-page section[id] {
+  min-width: 0;
+  scroll-margin-top: 1.5rem;
+}
+
+.app-content .study-page .study-page__daily-summary {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  align-items: stretch;
+  gap: 0.75rem !important;
+}
+
+.app-content .study-page .study-page__daily-summary > div {
+  min-width: 0;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-surface-subtle) !important;
+  overflow-wrap: anywhere;
+}
+
+.app-content .study-page .study-plan-item {
+  position: relative;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  transition: border-color var(--p6-motion-base) var(--p6-ease-standard),
+    background-color var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+.app-content .study-page .study-plan-item--reorderable {
+  padding-right: 4.75rem !important;
+}
+
+.app-content .study-page .study-plan-item__drag-handle {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 0.75rem;
+  display: inline-flex;
+  width: 3rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.app-content .study-page .study-plan-item__drag-handle:hover,
+.app-content .study-page .study-plan-item__drag-handle:focus-visible {
+  border-color: var(--p6-border-strong) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+}
+
+.app-content .study-page .study-plan-item__drag-handle:active {
+  cursor: grabbing;
+  transform: translateY(-50%);
+  background: var(--p6-surface-selected) !important;
+}
+
+.app-content .study-page .study-plan-item__drop-indicator {
+  background: var(--p6-primary) !important;
+}
+
+.app-content .study-page .study-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.app-content .study-page button.study-primary-action {
+  display: inline-flex;
+  width: auto;
+  max-width: 100%;
+  min-width: 12.5rem;
+  min-height: 3.25rem !important;
+  height: auto !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.25rem !important;
+  border: 1px solid var(--p6-primary-hover) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  font-family: var(--font-body) !important;
+  font-size: 1rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.25;
+  text-align: center;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  box-shadow: var(--p6-elevation-interactive) !important;
+  transform: none !important;
+  transition: background-color var(--p6-motion-base) var(--p6-ease-standard),
+    box-shadow var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+.app-content .study-page button.study-primary-action:hover:not(:disabled) {
+  border-color: var(--p6-primary-hover) !important;
+  background: var(--p6-primary-hover) !important;
+  color: #ffffff !important;
+  box-shadow: var(--p6-elevation-card) !important;
+  transform: none !important;
+}
+
+.app-content .study-page button.study-primary-action:active:not(:disabled) {
+  border-color: var(--p6-primary-hover) !important;
+  background: #00515a !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.app-content .study-page button.study-primary-action:disabled {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-disabled-bg) !important;
+  color: var(--p6-text-disabled) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+.app-content .study-page :focus-visible {
+  outline: 3px solid var(--p6-focus) !important;
+  outline-offset: 3px;
+}
+
+.app-content .study-page input:not([type="checkbox"]):not([type="radio"]),
+.app-content .study-page textarea,
+.app-content .study-page select {
+  width: 100%;
+  min-width: 0;
+  min-height: 3rem;
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  font-size: 1rem !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page input:focus,
+.app-content .study-page textarea:focus,
+.app-content .study-page select:focus {
+  border-color: var(--p6-primary) !important;
+  outline: 3px solid rgba(0, 109, 119, 0.18) !important;
+  outline-offset: 1px;
+}
+
+@media (max-width: 48rem) {
+  .app-content .study-page {
+    padding-bottom: 7rem;
+  }
+
+  .app-content .study-page > header {
+    padding: 1rem !important;
+  }
+
+  .app-content .study-page section[class*="p-5"],
+  .app-content .study-page section[class*="p-6"],
+  .app-content .study-page section[class*="p-8"] {
+    padding: 1rem !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable {
+    padding-right: 4rem !important;
+  }
+
+  .app-content .study-page .study-plan-item__drag-handle {
+    right: 0.5rem;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .app-content .study-page .study-plan-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .app-content .study-page button.study-primary-action {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .app-content .study-page .study-sync-status {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 48rem) and (max-width: 64rem) {
+  .app-content .study-page .study-page__daily-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Workspace: Books, Essays, Projects, and the linked reading-detail screens. */
+.app-content .workspace-page {
+  width: 100%;
+  min-width: 0;
+  color: var(--p6-text) !important;
+  font-family: var(--font-body);
+  font-size: var(--p6-font-body);
+  line-height: var(--p6-line-body);
+  overflow-x: clip;
+}
+
+.app-content .workspace-page__container {
+  width: min(100%, 72rem);
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(1.25rem, 1rem + 1.2vw, 2rem) clamp(0rem, 0.5rem + 1vw, 1rem) 3.5rem;
+}
+
+.app-content .workspace-page h1,
+.app-content .workspace-page h2,
+.app-content .workspace-page h3,
+.app-content .workspace-page h4 {
+  color: var(--p6-text) !important;
+  font-family: var(--font-heading);
+  text-transform: none !important;
+}
+
+.app-content .workspace-page [class*="border-2"],
+.app-content .workspace-page [class*="border-[var(--border)]"],
+.app-content .workspace-page [class*="border-[var(--primary-dark)]"] {
+  border-width: 1px !important;
+  border-color: var(--p6-border-decorative) !important;
+}
+
+.app-content .workspace-page [class*="bg-[var(--background)]"],
+.app-content .workspace-page [class*="bg-[var(--surface)]"],
+.app-content .workspace-page [class*="bg-white"] {
+  background: var(--p6-surface) !important;
+}
+
+.app-content .workspace-page [class*="bg-[var(--surface-soft)]"] {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .workspace-page [class*="bg-[var(--primary-soft)]"] {
+  background: var(--p6-surface-selected) !important;
+}
+
+.app-content .workspace-page [class*="bg-[var(--primary)]"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-content .workspace-page [class*="text-[var(--primary-dark)]"],
+.app-content .workspace-page [class*="text-[var(--primary)]"] {
+  color: var(--p6-primary) !important;
+}
+
+.app-content .workspace-page [class*="text-[var(--ink)]"] {
+  color: var(--p6-text) !important;
+}
+
+.app-content .workspace-page [class*="text-[var(--ink-soft)]"],
+.app-content .workspace-page [class*="text-[var(--muted)]"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .workspace-page [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.app-content .workspace-page .card,
+.app-content .workspace-page article.card,
+.app-content .workspace-page form.card,
+.app-content .workspace-page .workspace-projects-panel .card,
+.app-content .workspace-page .workspace-projects-panel article {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .workspace-page [class*="border-[var(--border)]"][class*="bg-[var(--surface)]"],
+.app-content .workspace-page [class*="border-2"][class*="bg-[var(--surface)]"] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .workspace-page [aria-label="Workspace section"] {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.375rem !important;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle) !important;
+  padding: 0.375rem !important;
+}
+
+.app-content .workspace-page [aria-label="Workspace section"] button {
+  min-width: 0;
+  min-height: 3rem !important;
+  height: auto;
+  border: 1px solid transparent !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  font-size: 0.95rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.25;
+  white-space: normal;
+  box-shadow: none !important;
+}
+
+.app-content .workspace-page [aria-label="Workspace section"] button[aria-pressed="true"] {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-content .workspace-page button {
+  min-width: 0;
+  min-height: 3rem;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--p6-radius-md);
+  font-family: var(--font-body);
+  font-weight: var(--p6-weight-semibold);
+  line-height: 1.25;
+  text-align: center;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.app-content .workspace-page button.action-primary--forest,
+.app-content .workspace-page button.action-primary--terracotta,
+.app-content .workspace-page .btn--primary,
+.app-content .workspace-page button[class*="bg-[var(--primary)]"] {
+  border: 1px solid var(--p6-primary-hover) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: var(--p6-elevation-interactive) !important;
+  transform: none !important;
+}
+
+.app-content .workspace-page button.action-primary--forest:hover:not(:disabled),
+.app-content .workspace-page button.action-primary--terracotta:hover:not(:disabled),
+.app-content .workspace-page .btn--primary:hover:not(:disabled),
+.app-content .workspace-page button[class*="bg-[var(--primary)]"]:hover:not(:disabled) {
+  background: var(--p6-primary-hover) !important;
+  color: #ffffff !important;
+  box-shadow: var(--p6-elevation-card) !important;
+  transform: none !important;
+}
+
+.app-content .workspace-page button.action-primary--forest:active:not(:disabled),
+.app-content .workspace-page button.action-primary--terracotta:active:not(:disabled),
+.app-content .workspace-page .btn--primary:active:not(:disabled),
+.app-content .workspace-page button[class*="bg-[var(--primary)]"]:active:not(:disabled) {
+  background: #00515a !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.app-content .workspace-page input:not([type="checkbox"]):not([type="radio"]),
+.app-content .workspace-page textarea,
+.app-content .workspace-page select {
+  width: 100%;
+  min-width: 0;
+  min-height: 3rem;
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  font-size: 1rem !important;
+  box-shadow: none !important;
+}
+
+.app-content .workspace-page input[type="checkbox"],
+.app-content .workspace-page input[type="radio"] {
+  accent-color: var(--p6-primary);
+}
+
+.app-content .workspace-page :focus-visible {
+  outline: 3px solid var(--p6-focus) !important;
+  outline-offset: 3px;
+}
+
+.app-content .workspace-page [role="alert"] {
+  border-color: #e9c4bf !important;
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+.app-content .workspace-page [role="status"] {
+  border-color: #c4dfd1 !important;
+  background: var(--p6-success-bg) !important;
+  color: var(--p6-success-text) !important;
+}
+
+.app-content .workspace-projects-panel {
+  min-width: 0;
+}
+
+.app-content .reading-detail-page {
+  width: min(100%, 72rem);
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(1.25rem, 1rem + 1.2vw, 2rem) clamp(0rem, 0.5rem + 1vw, 1rem) 3.5rem;
+  color: var(--p6-text) !important;
+  font-family: var(--font-body);
+  font-size: var(--p6-font-body);
+  line-height: var(--p6-line-body);
+  overflow-wrap: anywhere;
+}
+
+.app-content .reading-detail-page h1,
+.app-content .reading-detail-page h2,
+.app-content .reading-detail-page h3,
+.app-content .reading-detail-page h4 {
+  color: var(--p6-text) !important;
+  font-family: var(--font-heading);
+  text-transform: none !important;
+}
+
+.app-content .reading-detail-page [class*="border-[var(--border)]"],
+.app-content .reading-detail-page [class*="border-2"] {
+  border-width: 1px !important;
+  border-color: var(--p6-border-decorative) !important;
+}
+
+.app-content .reading-detail-page [class*="bg-[var(--surface)]"],
+.app-content .reading-detail-page [class*="bg-white"] {
+  background: var(--p6-surface) !important;
+}
+
+.app-content .reading-detail-page [class*="bg-[var(--surface-soft)]"] {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .reading-detail-page [class*="text-[var(--ink-soft)]"],
+.app-content .reading-detail-page [class*="text-[var(--muted)]"] {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .reading-detail-page [class*="text-[var(--primary-dark)]"],
+.app-content .reading-detail-page [class*="text-[var(--primary)]"] {
+  color: var(--p6-primary) !important;
+}
+
+.app-content .reading-detail-page [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.app-content .reading-detail-page__back {
+  display: inline-flex;
+  min-height: 3rem !important;
+  align-items: center;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-primary) !important;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  text-decoration: none;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.app-content .reading-detail-page__back:hover,
+.app-content .reading-detail-page__back:active {
+  border-color: var(--p6-border-strong) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.app-content .reading-detail-page__eyebrow,
+.app-content .reading-detail-page__subtitle,
+.app-content .reading-detail-page__label {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .reading-detail-page__panel,
+.app-content .reading-detail-page__note {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .reading-detail-page button.reading-detail-page__action {
+  display: inline-flex;
+  min-height: 3rem !important;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--p6-primary-hover) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: var(--p6-weight-semibold);
+  text-align: center;
+  white-space: normal;
+  box-shadow: var(--p6-elevation-interactive) !important;
+  transform: none !important;
+}
+
+.app-content .reading-detail-page button.reading-detail-page__action:hover:not(:disabled) {
+  background: var(--p6-primary-hover) !important;
+  color: #ffffff !important;
+  box-shadow: var(--p6-elevation-card) !important;
+  transform: none !important;
+}
+
+.app-content .reading-detail-page button.reading-detail-page__action:active:not(:disabled) {
+  background: #00515a !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.app-content .reading-detail-page input,
+.app-content .reading-detail-page textarea,
+.app-content .reading-detail-page select {
+  width: 100%;
+  min-width: 0;
+  min-height: 3rem;
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  font-size: 1rem !important;
+}
+
+.app-content .reading-detail-page :focus-visible {
+  outline: 3px solid var(--p6-focus) !important;
+  outline-offset: 3px;
+}
+
+@media (max-width: 48rem) {
+  .app-content .workspace-page__container {
+    padding-inline: 0;
+    padding-top: 1.25rem;
+  }
+
+  .app-content .workspace-page [aria-label="Workspace section"] button {
+    padding-inline: 0.375rem;
+    font-size: 0.9rem !important;
+  }
+
+  .app-content .workspace-page .workspace-projects-panel .flex.items-center.justify-between {
+    flex-wrap: wrap;
+  }
+
+  .app-content .workspace-page .workspace-projects-panel button {
+    max-width: 100%;
+  }
+
+  .app-content .reading-detail-page {
+    padding-inline: 0;
+    padding-top: 1.25rem;
+  }
+
+  .app-content .reading-detail-page header {
+    flex-wrap: wrap;
+  }
+
+  .app-content .reading-detail-page__action {
+    max-width: 100%;
+  }
+}
+
+@media (min-width: 64rem) {
+  .app-content .workspace-page__container {
+    max-width: 72rem;
+  }
+
+  .app-content .reading-detail-page {
+    max-width: 72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-content .study-page *,
+  .app-content .workspace-page *,
+  .app-content .reading-detail-page * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+/* Palette 6 global consistency batch: remove legacy tactile borders and beige canvas. */
+html,
+body,
+.app-frame,
+.app-content {
+  background: var(--p6-page) !important;
+  color: var(--p6-text);
+}
+
+.app-content button:not(.topbar__icon-button) {
+  min-height: 48px;
+  border-width: 1px !important;
+  border-color: var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  box-shadow: none !important;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.25;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  transform: none !important;
+  transition: background-color var(--p6-motion-base) var(--p6-ease-standard),
+    border-color var(--p6-motion-base) var(--p6-ease-standard),
+    color var(--p6-motion-base) var(--p6-ease-standard);
+}
+
+.app-content button.action-primary--forest,
+.app-content button.action-primary--terracotta,
+.app-content button.action-primary--sage,
+.app-content button.btn--primary {
+  min-height: 44px !important;
+  padding: 0.625rem 1rem !important;
+  border: 1px solid var(--p6-primary-hover) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.app-content button.action-primary--forest:hover:not(:disabled),
+.app-content button.action-primary--terracotta:hover:not(:disabled),
+.app-content button.action-primary--sage:hover:not(:disabled),
+.app-content button.btn--primary:hover:not(:disabled) {
+  border-color: var(--p6-primary-hover) !important;
+  background: var(--p6-primary-hover) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content button.action-primary--forest:active:not(:disabled),
+.app-content button.action-primary--terracotta:active:not(:disabled),
+.app-content button.action-primary--sage:active:not(:disabled),
+.app-content button.btn--primary:active:not(:disabled) {
+  background: #004b53 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content input:not([type="checkbox"]):not([type="radio"]),
+.app-content textarea,
+.app-content select {
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+  font-size: 1rem !important;
+}
+
+.app-content input[type="checkbox"],
+.app-content input[type="radio"] {
+  accent-color: var(--p6-primary);
+}
+
+/* Reusable context-menu surface: white, borderless, soft elevation. */
+.app-content button.card-menu__trigger,
+.app-content button.calendar-class-menu__trigger,
+.app-content summary.calendar-class-menu__trigger,
+.app-content details[data-smart-menu="actions"] > summary {
+  min-width: 48px;
+  min-height: 48px;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.card-menu__panel,
+.context-menu-panel {
+  position: fixed;
+  z-index: 1000;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0 !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+  color: var(--p6-text) !important;
+}
+
+.card-menu__panel {
+  top: var(--card-menu-top, 12px) !important;
+  left: var(--card-menu-left, 12px) !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 230px;
+  max-height: var(--card-menu-max-height, calc(100dvh - 24px));
+  padding: 8px;
+}
+
+.card-menu__heading,
+.context-menu__heading {
+  margin: 4px 10px 8px;
+  color: var(--p6-text-secondary) !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.app-content button.card-menu__action,
+.app-content button.card-menu__cancel,
+.app-content button.context-menu__action {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+  text-align: left;
+  font-size: 0.92rem;
+  font-weight: var(--p6-weight-medium) !important;
+}
+
+.app-content button.card-menu__action:hover,
+.app-content button.context-menu__action:hover {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+
+.app-content button.card-menu__action--destructive,
+.app-content button.context-menu__action--destructive {
+  color: var(--p6-error-text) !important;
+}
+
+.app-content button.card-menu__action--destructive:hover,
+.app-content button.context-menu__action--destructive:hover {
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+.context-menu__action::before {
+  display: inline-flex;
+  width: 1.25rem;
+  flex: 0 0 1.25rem;
+  justify-content: center;
+  color: var(--p6-primary);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.context-menu__action[data-menu-action="edit"]::before { content: "✎"; }
+.context-menu__action[data-menu-action="delete"]::before,
+.context-menu__action[data-menu-action="cancel"]::before { content: "⌫"; color: var(--p6-error-text); }
+.context-menu__action[data-menu-action="restore"]::before { content: "↶"; }
+
+.app-content button.card-menu__backdrop {
+  z-index: 990;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: rgba(26, 43, 47, 0.22) !important;
+  box-shadow: none !important;
+}
+
+/* Study semantic surfaces: map every remaining legacy status colour to P6. */
+.app-content .study-page [class*="bg-[#dce8d8]"] {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-selected) !important;
+}
+.app-content .study-page [class*="bg-[#31573f]"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+.app-content .study-page [class*="border-[#23412f]"],
+.app-content .study-page [class*="border-[#557c61]"],
+.app-content .study-page [class*="border-[#d8ccb8]"],
+.app-content .study-page [class*="border-[#e4dac9]"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+.app-content .study-page [class*="text-[#23412f]"] { color: var(--p6-primary) !important; }
+.app-content .study-page [class*="text-[#1a2b2f]"] { color: var(--p6-text) !important; }
+.app-content .study-page [class*="bg-amber-50"],
+.app-content .study-page [class*="bg-amber-100"] {
+  border-color: #ead6a4 !important;
+  background: var(--p6-warning-bg) !important;
+  color: var(--p6-warning-text) !important;
+}
+.app-content .study-page [class*="bg-amber-900"],
+.app-content .study-page [class*="bg-amber-950"] {
+  border-color: #ead6a4 !important;
+  background: var(--p6-warning-bg) !important;
+  color: var(--p6-warning-text) !important;
+}
+.app-content .study-page [class*="bg-blue-50"] {
+  border-color: #c6dfe6 !important;
+  background: var(--p6-info-bg) !important;
+  color: var(--p6-info-text) !important;
+}
+.app-content .study-page [class*="bg-emerald-50"],
+.app-content .study-page [class*="bg-emerald-100"] {
+  border-color: #c4dfd1 !important;
+  background: var(--p6-success-bg) !important;
+  color: var(--p6-success-text) !important;
+}
+.app-content .study-page [class*="bg-emerald-700"],
+.app-content .study-page [class*="bg-emerald-800"],
+.app-content .study-page [class*="bg-emerald-900"] {
+  border-color: var(--p6-primary-hover) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+.app-content .study-page [class*="bg-rose-50"],
+.app-content .study-page [class*="bg-rose-100"] {
+  border-color: #e9c4bf !important;
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+.app-content .study-page [class*="bg-stone-50"],
+.app-content .study-page [class*="bg-stone-100"] {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text-secondary) !important;
+}
+.app-content .study-page [class*="bg-stone-300"] {
+  background: var(--p6-disabled-bg) !important;
+  color: var(--p6-text-disabled) !important;
+}
+.app-content .study-page [class*="border-amber-"],
+.app-content .study-page [class*="border-blue-"],
+.app-content .study-page [class*="border-emerald-"],
+.app-content .study-page [class*="border-rose-"],
+.app-content .study-page [class*="border-stone-"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+.app-content .study-page [class*="text-amber-"] { color: var(--p6-warning-text) !important; }
+.app-content .study-page [class*="text-blue-"] { color: var(--p6-info-text) !important; }
+.app-content .study-page [class*="text-emerald-"] { color: var(--p6-success-text) !important; }
+.app-content .study-page [class*="text-rose-"] { color: var(--p6-error-text) !important; }
+.app-content .study-page [class*="text-stone-"] { color: var(--p6-text-secondary) !important; }
+.app-content .study-page [class*="ring-[#dce8d8]"] { --tw-ring-color: var(--p6-focus) !important; }
+.app-content .study-page [class*="shadow-"] { box-shadow: none !important; }
+
+.app-content .study-page .study-empty-info {
+  border: 1px solid #c6dfe6 !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-info-bg) !important;
+  color: var(--p6-info-text) !important;
+}
+
+/* One compact Study metadata banner with vertical dividers (Option 3). */
+.app-content .study-page .study-page__summary-banner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .study-page .study-page__summary-item {
+  position: relative;
+  min-width: 0;
+  padding: 1rem 1.25rem;
+  background: transparent !important;
+  overflow-wrap: anywhere;
+}
+.app-content .study-page .study-page__summary-item + .study-page__summary-item {
+  border-left: 1px solid var(--p6-border-decorative);
+}
+.app-content .study-page .study-page__summary-label {
+  margin: 0;
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-label) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.3;
+}
+.app-content .study-page .study-page__summary-value {
+  margin: 0.3rem 0 0;
+  color: var(--p6-text) !important;
+  font-size: clamp(1.05rem, 1rem + 0.35vw, 1.3rem) !important;
+  font-weight: var(--p6-weight-bold) !important;
+  line-height: 1.3;
+}
+
+/* Workspace: clean tabs, bold titles, quiet essay stats and status pills. */
+.app-content .workspace-page [aria-label="Workspace section"] {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  gap: 0.5rem !important;
+}
+.app-content .workspace-page [aria-label="Workspace section"] button {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .workspace-page [aria-label="Workspace section"] button[aria-pressed="true"] {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+.app-content .workspace-page [id^="book-"] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  padding: 1rem 1.125rem !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .workspace-page .reading-row__title-link {
+  color: var(--p6-text) !important;
+  font-weight: var(--p6-weight-bold) !important;
+}
+.app-content .workspace-page [id^="book-"] + [id^="book-"] {
+  margin-top: 1.5rem !important;
+}
+.app-content .calendar-page article[id^="calendar-item-"] + article[id^="calendar-item-"] {
+  margin-top: 1.5rem !important;
+}
+.app-content .workspace-page [id^="essay-"] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  padding: 1.25rem !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .workspace-page .workspace-page__essay-title,
+.app-content .workspace-page [id^="essay-"] h2 {
+  color: var(--p6-text) !important;
+  font-weight: var(--p6-weight-bold) !important;
+}
+.app-content .workspace-page .workspace-page__essay-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  border: 1px solid #b9d9d3 !important;
+  border-radius: var(--p6-radius-pill) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  padding: 0.25rem 0.65rem;
+  font-size: var(--p6-font-metadata) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+}
+.app-content .workspace-page .reading-numbered-shelf__row {
+  min-height: 4.5rem;
+  padding-block: 1rem !important;
+  border-bottom: 1px solid var(--p6-border-decorative);
+}
+.app-content .workspace-page .reading-numbered-shelf__row [class*="text-[11px]"],
+.app-content .workspace-page [id^="essay-"] [class*="text-[11px]"] {
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-metadata) !important;
+}
+
+/* Classes: de-nest class records and give the course name priority. */
+.app-content .calendar-page .calendar-class-record {
+  border: 0 !important;
+  border-bottom: 1px solid var(--p6-border-decorative) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0.875rem 0.25rem !important;
+  box-shadow: none !important;
+}
+.app-content .calendar-page .calendar-class-record:last-child {
+  border-bottom: 0 !important;
+}
+.app-content .calendar-page .calendar-class-record__title {
+  color: var(--p6-text) !important;
+  font-size: 1rem !important;
+  font-weight: var(--p6-weight-bold) !important;
+}
+.app-content .calendar-page .calendar-class-record__time {
+  margin-top: 0.25rem;
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-supporting) !important;
+  font-weight: var(--p6-weight-medium) !important;
+}
+.app-content .calendar-page [aria-label="Choose class day"] button[aria-pressed="false"] {
+  border-color: transparent !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .calendar-page [aria-label="Choose class day"] button[aria-pressed="true"] {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Book detail: form fields are soft-filled; saving actions are secondary. */
+.app-content .reading-detail-page textarea {
+  min-height: 6rem;
+  border: 1px solid transparent !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+.app-content .reading-detail-page textarea:focus {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-surface) !important;
+}
+.app-content .reading-detail-page form label + label {
+  margin-top: 1rem;
+}
+.app-content .reading-detail-page button.reading-detail-page__secondary-action {
+  min-height: 44px !important;
+  border: 1px solid var(--p6-primary) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: #ffffff !important;
+  color: var(--p6-primary) !important;
+  padding: 0.625rem 1rem !important;
+  box-shadow: none !important;
+}
+.app-content .reading-detail-page button.reading-detail-page__secondary-action:hover:not(:disabled) {
+  border-color: var(--p6-primary-hover) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+}
+.app-content .reading-detail-page .reading-detail-page__save-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.app-content .reading-detail-page .reading-detail-page__finished-guidance strong {
+  color: var(--p6-text) !important;
+  font-weight: var(--p6-weight-bold) !important;
+}
+.app-content .reading-detail-page .reading-detail-page__finished-guidance-exception {
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-supporting) !important;
+}
+
+/* Timers share the same light controls and teal action colour. */
+.app-content .item-work-timer,
+.app-content .focus-timer__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+  color: var(--p6-text) !important;
+}
+.app-content .item-work-timer__clock,
+.app-content .focus-timer__clock {
+  color: var(--p6-primary) !important;
+  font-variant-numeric: tabular-nums;
+}
+.app-content .item-work-timer__clock:hover {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-surface-selected) !important;
+}
+.app-content .item-work-timer button[class*="bg-[#23412f]"],
+.app-content .focus-timer button[class*="bg-[#23412f]"] {
+  border: 1px solid var(--p6-primary-hover) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer button[class*="bg-[#23412f]"]:hover,
+.app-content .focus-timer button[class*="bg-[#23412f]"]:hover {
+  background: var(--p6-primary-hover) !important;
+}
+.app-content .focus-timer {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* CardMenu is rendered in a body portal, outside .app-content. */
+.card-menu__panel button.card-menu__action,
+.card-menu__panel button.card-menu__cancel {
+  min-height: 48px !important;
+}
+
+@media (max-width: 48rem) {
+  .app-content .study-page .study-page__summary-banner {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .app-content .study-page .study-page__summary-item {
+    padding: 0.7rem 0.55rem;
+  }
+  .app-content .study-page .study-page__summary-item + .study-page__summary-item {
+    border-left: 1px solid var(--p6-border-decorative);
+    border-top: 0;
+  }
+  .app-content .study-page .study-page__summary-label {
+    font-size: clamp(0.58rem, 2.15vw, 0.7rem) !important;
+    line-height: 1.2;
+    overflow-wrap: normal;
+  }
+  .app-content .study-page .study-page__summary-value {
+    margin-top: 0.25rem;
+    font-size: clamp(0.72rem, 2.85vw, 0.95rem) !important;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-content {
+    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+  .app-content main,
+  .app-content .page-shell {
+    scroll-margin-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+  .app-content [class*="overflow-y-auto"],
+  .app-content [class*="overflow-auto"] {
+    scroll-padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-content *,
+  .card-menu__panel,
+  .context-menu-panel {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+/* Study refinement: compact guidance, consistent guided-practice surfaces,
+   and accessible Palette 6 timer controls. */
+.app-content .study-page [class*="bg-[#f7f1e7]"] {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+
+.app-content .study-page [class*="bg-[#edf4ed]"] {
+  background: var(--p6-success-bg) !important;
+  color: var(--p6-success-text) !important;
+}
+
+.app-content .study-page .item-work-tracker__mode {
+  min-height: 3rem !important;
+  height: auto !important;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .item-work-tracker__mode--active {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page button.study-primary-action,
+.app-content .study-page button.study-primary-action:hover:not(:disabled) {
+  box-shadow: none !important;
+}
+
+.app-content .study-page .study-plan-complete {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+/* Course action menus use the flat Palette 6 control and a soft dropdown. */
+.app-content .course-management button.card-menu__trigger,
+.app-content .course-management button.card-menu__trigger:active {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.card-menu__panel[aria-label^="Actions for "] {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+.card-menu__panel[aria-label^="Actions for "] .card-menu__heading {
+  color: var(--p6-text-secondary) !important;
+}
+.card-menu__panel[aria-label^="Actions for "] button.card-menu__action {
+  min-height: 48px !important;
+  color: var(--p6-text) !important;
+}
+.card-menu__panel[aria-label^="Actions for "] button.card-menu__action--destructive {
+  color: #b42318 !important;
 }

@@ -4,6 +4,7 @@
 import {
   FormEvent,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -37,6 +38,7 @@ const contexts: ContextType[] = [
 export default function ProjectsPanel({ embedded = false }: { embedded?: boolean }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const projectFormRef = useRef<HTMLFormElement>(null);
   const [editingProjectId, setEditingProjectId] = useState<number | null>(null);
 
   const [name, setName] = useState("");
@@ -58,6 +60,12 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
   const [notice, setNotice] = useState("");
   const [projectActionError, setProjectActionError] = useState("");
 
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
   const [projectToDelete, setProjectToDelete] =
     useState<Project | null>(null);
 
@@ -72,6 +80,27 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
   useEffect(() => {
     setProjects(getProjects());
   }, []);
+
+  useEffect(() => {
+    if (!showForm) return;
+    function handleOutsidePointer(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node) || projectFormRef.current?.contains(target)) return;
+      setEditingProjectId(null);
+      setName("");
+      setPurpose("");
+      setNextAction("");
+      setEstimatedMinutes("30");
+      setImportance("Medium");
+      setEnergy("Medium");
+      setContext("Anywhere");
+      setDeadline("");
+      setFormError("");
+      setShowForm(false);
+    }
+    document.addEventListener("pointerdown", handleOutsidePointer, true);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer, true);
+  }, [showForm]);
 
   useEffect(() => {
     if (launchHandled || projects.length === 0) {
@@ -369,7 +398,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
         </div>
       )}
 
-      <div className={embedded ? "w-full" : "mx-auto max-w-5xl px-5 py-8 sm:px-8"}>
+      <div className={`workspace-projects-panel ${embedded ? "w-full" : "mx-auto max-w-5xl px-5 py-8 sm:px-8"}`}>
 {!embedded && (
         <header className="mb-8">
           <p className="stat-label">
@@ -410,13 +439,14 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
               setNotice("");
               setShowForm(true);
             }}
-          >
+           className="action-primary--forest">
             + Add project
           </Button>
         </div>
 
         {showForm && (
           <form
+            ref={projectFormRef}
             onSubmit={handleSubmit}
             className="card mb-6 space-y-5 bg-[var(--surface)] p-5 sm:p-6"
           >
@@ -582,19 +612,11 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
               </p>
             )}
 
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button
-                variant="secondary"
-                className="w-full sm:w-auto"
-                onClick={resetForm}
-              >
-                Cancel
-              </Button>
-
+            <div className="flex justify-end gap-3">
               <Button
                 variant="primary"
                 type="submit"
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto action-primary--forest"
               >
                 {editingProjectId === null ? "Save project" : "Save changes"}
               </Button>
@@ -618,7 +640,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
               {!showForm && (
                 <Button
                   variant="primary"
-                  className="mt-5"
+                  className="mt-5 action-primary--forest"
                   onClick={() => setShowForm(true)}
                 >
                   {pausedProjects.length > 0
@@ -636,7 +658,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                 <article
                   key={project.id}
                   id={`project-${project.id}`}
-                  className={`card bg-[var(--surface)] p-5 sm:p-6 ${
+                  className={`card bg-[var(--surface)] p-4 sm:p-5 ${
                     highlighted
                       ? "ring-2 ring-[var(--accent)]"
                       : ""
@@ -651,7 +673,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                       )}
 
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="break-words text-2xl">
+                        <h2 className="break-words text-xl font-semibold">
                           {project.name}
                         </h2>
 
@@ -677,6 +699,10 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                           onSelect: () => pauseProject(project),
                         },
                         {
+                          label: "Complete project",
+                          onSelect: () => completeProject(project),
+                        },
+                        {
                           label: "Delete project",
                           destructive: true,
                           onSelect: () => askToDelete(project),
@@ -685,7 +711,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                     />
                   </div>
 
-                  <div className="mt-5 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-4">
+                  <div className="mt-4 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3">
                     <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary-dark)]">
                       Next action
                     </p>
@@ -695,41 +721,33 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-extrabold">
+                      <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-extrabold">
                         {project.estimatedMinutes} min
                       </span>
 
-                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-extrabold">
+                      <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-extrabold">
                         {project.energy} energy
                       </span>
 
-                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-extrabold">
+                      <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-extrabold">
                         {project.context}
                       </span>
 
                       {project.deadline && (
-                        <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-extrabold">
+                        <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 text-xs font-extrabold">
                           Due {formatDeadline(project.deadline)}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                  <div className="mt-3 flex">
                     <Button
                       variant="primary"
-                      className="w-full sm:w-auto"
+                      className="project-work-action w-full min-w-0 px-3 text-xs leading-tight sm:w-auto action-primary--forest"
                       onClick={() => markWorkedOn(project)}
                     >
                       I worked on this
-                    </Button>
-
-                    <Button
-                      variant="secondary"
-                      className="w-full sm:w-auto"
-                      onClick={() => completeProject(project)}
-                    >
-                      Complete project
                     </Button>
                   </div>
 

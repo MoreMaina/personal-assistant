@@ -1,3 +1,5 @@
+import type { ActivityIdentity } from "./activity/types";
+
 export type TodayTaskType =
   | "study"
   | "reading"
@@ -14,6 +16,7 @@ export type DateLike = Date | string;
 
 export interface FixedEvent {
   id: string | number;
+  activityIdentity?: ActivityIdentity;
   title: string;
   startAt: DateLike;
   endAt: DateLike;
@@ -28,6 +31,7 @@ export interface FreeWindow {
 
 export interface TodayTask {
   id: string | number;
+  activityIdentity?: ActivityIdentity;
   title: string;
   unitName?: string;
   type: TodayTaskType;

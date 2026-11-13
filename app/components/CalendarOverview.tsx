@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ClassItem } from "@/lib/classes";
+import type { GoogleCalendarEvent } from "@/lib/googleCalendarTypes";
 import {
   cancelClass,
   getCancelledClassIds,
@@ -20,7 +21,7 @@ import {
 } from "@/lib/calendarRecurrence";
 
 type CalendarView = "week" | "month";
-type EntryKind = "class" | "event" | "task";
+type EntryKind = "class" | "event" | "google" | "task";
 
 type CalendarAgendaEntry = {
   id: string;
@@ -34,6 +35,7 @@ type CalendarAgendaEntry = {
   cancelled?: boolean;
   classItem?: ClassItem;
   eventItem?: CalendarEvent;
+  googleEvent?: GoogleCalendarEvent;
   occurrence?: CalendarEventOccurrence;
   task?: CalendarTask;
   taskOccurrence?: CalendarTaskOccurrence;
@@ -153,12 +155,14 @@ function formatTime(entry: CalendarAgendaEntry): string {
     }`;
   }
 
+  if (entry.googleEvent?.allDay) return "All day";
   return entry.kind === "task" ? "Flexible · due date" : "Time not set";
 }
 
 function entryKindLabel(entry: CalendarAgendaEntry): string {
   if (entry.kind === "class") return "Class";
   if (entry.kind === "task") return "Flexible task";
+  if (entry.kind === "google") return "Google Calendar";
   return entry.eventItem?.recurrence ? "Recurring event" : "Event";
 }
 
@@ -175,26 +179,63 @@ export default function CalendarOverview({
 }: CalendarOverviewProps) {
   const [view, setView] = useState<CalendarView>("week");
   // Use deterministic initial values during prerendering.
+  const [viewDate, setViewDate] = useState("2000-01-01");
   const [selectedDate, setSelectedDate] = useState("2000-01-01");
+  const [hasExplicitDateSelection, setHasExplicitDateSelection] = useState(false);
   const [today, setToday] = useState("2000-01-01");
   const [dateReady, setDateReady] = useState(false);
   const [cancelledByDate, setCancelledByDate] = useState<
     Record<string, number[]>
   >({});
+  const [visibleKinds, setVisibleKinds] = useState<Record<EntryKind, boolean>>({
+    class: true,
+    event: true,
+    google: true,
+    task: true,
+  });
+  const [isMobile, setIsMobile] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isAgendaOpen, setIsAgendaOpen] = useState(false);
+  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
+  const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+  const [googleCalendarLoadState, setGoogleCalendarLoadState] = useState<
+    "loading" | "connected" | "disconnected" | "error"
+  >("loading");
+  const [googleCalendarLoadMessage, setGoogleCalendarLoadMessage] = useState("");
+  const [googleCalendarWarnings, setGoogleCalendarWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     const currentDate = localTodayKey();
+    setViewDate(currentDate);
     setSelectedDate(currentDate);
+    setHasExplicitDateSelection(false);
     setToday(currentDate);
     setDateReady(true);
   }, []);
 
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+
+    const updateViewport = () => {
+      const mobile = media.matches;
+      setIsMobile(mobile);
+      setIsExpanded(mobile && view === "month");
+
+      if (!mobile) setIsAgendaOpen(false);
+    };
+
+    updateViewport();
+    media.addEventListener("change", updateViewport);
+
+    return () => media.removeEventListener("change", updateViewport);
+  }, [view]);
+
   const visibleDates = useMemo(
     () =>
       view === "week"
-        ? getWeekDates(selectedDate)
-        : getMonthGridDates(selectedDate),
-    [view, selectedDate],
+        ? getWeekDates(viewDate)
+        : getMonthGridDates(viewDate),
+    [view, viewDate],
   );
 
   const visibleDatesKey = visibleDates.join("|");
@@ -211,6 +252,87 @@ export default function CalendarOverview({
 
     setCancelledByDate(next);
   }, [visibleDatesKey, dateReady]);
+
+  useEffect(() => {
+    const rangeDates = visibleDatesKey.split("|").filter(Boolean);
+    if (!dateReady || rangeDates.length === 0) return;
+
+    const controller = new AbortController();
+    const start = dateFromKey(rangeDates[0]);
+    start.setHours(0, 0, 0, 0);
+
+    const end = dateFromKey(rangeDates[rangeDates.length - 1]);
+    end.setDate(end.getDate() + 1);
+    end.setHours(0, 0, 0, 0);
+
+    const params = new URLSearchParams({
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+    });
+
+    async function loadGoogleEvents() {
+      setGoogleCalendarLoadState("loading");
+      setGoogleCalendarLoadMessage("");
+      setGoogleCalendarWarnings([]);
+
+      try {
+        const response = await fetch(
+          `/api/google-calendar/events?${params.toString()}`,
+          { cache: "no-store", signal: controller.signal },
+        );
+        const payload: unknown = await response.json().catch(() => ({}));
+        const body = payload && typeof payload === "object"
+          ? payload as Record<string, unknown>
+          : {};
+
+        if (!response.ok) {
+          throw new Error(
+            typeof body.error === "string"
+              ? body.error
+              : "Google Calendar events could not be loaded.",
+          );
+        }
+
+        if (body.connected !== true) {
+          setGoogleEvents([]);
+          setGoogleCalendarLoadState("disconnected");
+          setGoogleCalendarLoadMessage("");
+          return;
+        }
+
+        if (typeof body.error === "string") {
+          throw new Error(body.error);
+        }
+
+        if (!Array.isArray(body.events)) {
+          throw new Error("Google Calendar returned an invalid event list.");
+        }
+
+        setGoogleEvents(body.events as GoogleCalendarEvent[]);
+        setGoogleCalendarWarnings(
+          Array.isArray(body.warnings)
+            ? body.warnings.filter(
+                (warning): warning is string => typeof warning === "string",
+              )
+            : [],
+        );
+        setGoogleCalendarLoadState("connected");
+      } catch (error) {
+        if (controller.signal.aborted) return;
+
+        setGoogleEvents([]);
+        setGoogleCalendarLoadState("error");
+        setGoogleCalendarLoadMessage(
+          error instanceof Error
+            ? error.message
+            : "Google Calendar events could not be loaded.",
+        );
+      }
+    }
+
+    void loadGoogleEvents();
+    return () => controller.abort();
+  }, [dateReady, visibleDatesKey]);
 
   const entries = useMemo(() => {
     const firstDate = visibleDates[0];
@@ -269,6 +391,76 @@ export default function CalendarOverview({
       });
     }
 
+    // Imported Google entries stay separate from locally editable events.
+    // Google all-day event end dates are exclusive.
+    for (const googleEvent of googleEvents) {
+      if (googleEvent.allDay && googleEvent.startDate) {
+        const endDateExclusive =
+          googleEvent.endDate ?? addDays(googleEvent.startDate, 1);
+
+        for (const date of visibleDates) {
+          if (
+            date < googleEvent.startDate ||
+            date >= endDateExclusive
+          ) {
+            continue;
+          }
+
+          result.push({
+            id: `google:${googleEvent.id}:${date}`,
+            kind: "google",
+            date,
+            title: googleEvent.title,
+            detail: [
+              googleEvent.calendarName,
+              googleEvent.location,
+            ].filter(Boolean).join(" · "),
+            notes: googleEvent.description,
+            googleEvent,
+          });
+        }
+        continue;
+      }
+
+      if (!googleEvent.startDateTime) continue;
+      const googleStart = new Date(googleEvent.startDateTime);
+      if (!Number.isFinite(googleStart.getTime())) continue;
+
+      const eventDate = dateKey(googleStart);
+      if (!visibleDates.includes(eventDate)) continue;
+
+      const googleEnd = googleEvent.endDateTime
+        ? new Date(googleEvent.endDateTime)
+        : null;
+
+      const formatGoogleTime = (date: Date) =>
+        date.toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+
+      result.push({
+        id: `google:${googleEvent.id}:${eventDate}`,
+        kind: "google",
+        date: eventDate,
+        title: googleEvent.title,
+        startTime: formatGoogleTime(googleStart),
+        endTime:
+          googleEnd &&
+          Number.isFinite(googleEnd.getTime()) &&
+          dateKey(googleEnd) === eventDate
+            ? formatGoogleTime(googleEnd)
+            : undefined,
+        detail: [
+          googleEvent.calendarName,
+          googleEvent.location,
+        ].filter(Boolean).join(" · "),
+        notes: googleEvent.description,
+        googleEvent,
+      });
+    }
+
     // Expand due dates, keeping each recurring task occurrence independent.
     const taskOccurrences = expandCalendarTasks(
       tasks,
@@ -292,7 +484,8 @@ export default function CalendarOverview({
     const kindOrder: Record<EntryKind, number> = {
       class: 0,
       event: 1,
-      task: 2,
+      google: 2,
+      task: 3,
     };
 
     return result.sort(
@@ -304,16 +497,20 @@ export default function CalendarOverview({
         kindOrder[a.kind] - kindOrder[b.kind] ||
         a.title.localeCompare(b.title),
     );
-  }, [classes, events, tasks, visibleDates, cancelledByDate]);
+  }, [classes, events, googleEvents, tasks, visibleDates, cancelledByDate]);
 
-  const selectedEntries = entries.filter(
+  const visibleEntries = entries.filter(
+    (entry) => visibleKinds[entry.kind],
+  );
+
+  const selectedEntries = visibleEntries.filter(
     (entry) => entry.date === selectedDate,
   );
 
-  const selectedMonthKey = selectedDate.slice(0, 7);
+  const selectedMonthKey = viewDate.slice(0, 7);
   const heading =
     view === "month"
-      ? dateFromKey(selectedDate).toLocaleDateString("en-GB", {
+      ? dateFromKey(viewDate).toLocaleDateString("en-GB", {
           month: "long",
           year: "numeric",
         })
@@ -327,11 +524,11 @@ export default function CalendarOverview({
 
   function movePeriod(direction: number) {
     if (view === "week") {
-      setSelectedDate(addDays(selectedDate, direction * 7));
+      setViewDate(addDays(viewDate, direction * 7));
       return;
     }
 
-    const current = dateFromKey(selectedDate);
+    const current = dateFromKey(viewDate);
     const originalDay = current.getDate();
     const targetMonth = new Date(
       current.getFullYear(),
@@ -347,7 +544,7 @@ export default function CalendarOverview({
     ).getDate();
 
     targetMonth.setDate(Math.min(originalDay, lastDay));
-    setSelectedDate(dateKey(targetMonth));
+    setViewDate(dateKey(targetMonth));
   }
 
   function renderDateCell(
@@ -355,19 +552,19 @@ export default function CalendarOverview({
     showWeekday: boolean,
     monthCell: boolean,
   ) {
-    const dayEntries = entries.filter((entry) => entry.date === date);
-    const isSelected = date === selectedDate;
+    const dayEntries = visibleEntries.filter((entry) => entry.date === date);
+    const isSelected = hasExplicitDateSelection && date === selectedDate;
     const isToday = date === today;
+    const isHighlighted = hasExplicitDateSelection ? isSelected : isToday;
     const isCurrentMonth = date.slice(0, 7) === selectedMonthKey;
 
-    // Keep weekday columns aligned, but don't show dates belonging to
-    // neighbouring months.
+    // Keep weekday alignment without displaying dates outside this month.
     if (monthCell && !isCurrentMonth) {
       return (
         <div
           key={date}
           aria-hidden="true"
-          className="h-24 rounded-xl sm:h-28"
+          className={isMobile && isExpanded ? "min-h-0 rounded-md" : "h-16 rounded-lg sm:h-28 sm:rounded-xl"}
         />
       );
     }
@@ -378,17 +575,21 @@ export default function CalendarOverview({
         type="button"
         aria-pressed={isSelected}
         aria-label={`${formatLongDate(date)}, ${dayEntries.length} calendar items`}
-        onClick={() => setSelectedDate(date)}
-        className={`relative min-w-0 overflow-hidden rounded-xl border-2 p-1.5 text-left transition sm:p-2 ${
+        onClick={() => {
+          setSelectedDate(date);
+          setHasExplicitDateSelection(true);
+          if (isMobile && isExpanded) setIsAgendaOpen(true);
+        }}
+        className={`relative flex min-w-0 flex-col overflow-hidden text-left transition ${
           monthCell
-            ? "h-24 sm:h-28"
-            : "min-h-36"
+            ? isMobile && isExpanded
+              ? "h-full min-h-0 rounded-md border p-1"
+              : "h-16 rounded-lg border p-1 sm:h-28 sm:rounded-xl sm:border-2 sm:p-2"
+            : "min-h-36 rounded-xl border-2 p-1.5 sm:p-2"
         } ${
-          isSelected
-            ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] shadow-[0_3px_0_var(--primary-dark)]"
-            : isToday
-              ? "border-[var(--primary)] bg-[var(--surface)]"
-              : "border-[var(--border)] bg-[var(--surface)]"
+          isHighlighted
+            ? "border-[var(--primary-soft)] bg-[var(--primary-soft)] shadow-none"
+            : "border-[var(--border)] bg-[var(--surface)]"
         } ${
           monthCell && !isCurrentMonth ? "opacity-50" : ""
         }`}
@@ -403,17 +604,17 @@ export default function CalendarOverview({
               </span>
             )}
             <span
-              className={`inline-flex items-center justify-center rounded-full border-2 px-1 font-extrabold transition ${
+              className={`inline-flex items-center justify-center rounded-full font-extrabold transition ${
                   monthCell
-                    ? `h-8 min-w-8 text-sm sm:h-9 sm:min-w-9 sm:text-base ${
+                    ? `h-5 min-w-5 border-0 px-0 text-xs sm:h-9 sm:min-w-9 sm:border-2 sm:px-1 sm:text-base ${
                         isToday
                           ? "border-[var(--primary-dark)] bg-[var(--primary)] text-white shadow-sm"
-                          : "border-[var(--primary-soft)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                          : "border-transparent bg-transparent text-[var(--ink)] sm:border-transparent sm:bg-transparent sm:text-[var(--ink)]"
                       }`
-                    : `h-6 min-w-6 text-xs sm:h-7 sm:min-w-7 sm:text-sm ${
+                    : `h-6 min-w-6 border-2 px-1 text-xs sm:h-7 sm:min-w-7 sm:text-sm ${
                         isToday
-                          ? "bg-[var(--primary)] text-white"
-                          : "text-[var(--ink)]"
+                          ? "border-[var(--primary-dark)] bg-[var(--primary)] text-white"
+                          : "border-transparent bg-transparent text-[var(--ink)]"
                       }`
                 }`}
             >
@@ -421,19 +622,48 @@ export default function CalendarOverview({
             </span>
           </div>
           <span
-              className={`shrink-0 min-w-6 rounded-full px-1.5 py-0.5 text-center text-[10px] font-extrabold ${monthCell ? "absolute bottom-2 right-2 z-10" : ""} ${
+              className={`inline-flex shrink-0 items-center justify-center min-w-0 px-0 text-[9px] font-extrabold leading-none sm:min-w-6 sm:rounded-full sm:px-1.5 sm:py-0.5 sm:text-[10px] ${
                 dayEntries.length > 0
-                  ? "bg-[var(--yellow-soft)] text-[var(--ink)]"
-                  : "bg-[var(--surface)] text-[var(--muted)]"
-              }`}
+                  ? "text-[var(--ink)] sm:bg-[var(--yellow-soft)]"
+                  : "hidden sm:inline-flex sm:bg-[var(--surface)] sm:text-[var(--muted)]"
+              } ${isMobile && isExpanded ? "hidden" : ""}`}
             >
               {dayEntries.length}
             </span>
         </div>
 
 {monthCell ? (
-            <div className="mt-1.5 flex min-w-0 flex-col items-start gap-1">
-              {(["class", "event", "task"] as const).map((kind) => {
+            isMobile && isExpanded ? (
+              <div className="mt-1 min-w-0 space-y-0.5 overflow-hidden">
+                {dayEntries.slice(0, 2).map((entry) => (
+                  <span
+                    key={entry.id}
+                    title={entry.title}
+                    className={[
+                      "block truncate rounded-sm px-1 py-0.5 text-[9px] font-semibold leading-tight",
+                      entry.cancelled
+                        ? "bg-[var(--border)] text-[var(--muted)] line-through"
+                        : entry.kind === "class"
+                          ? "bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                          : entry.kind === "event"
+                            ? "bg-[#fff0b3] text-[#684000]"
+                            : entry.kind === "google"
+                              ? "bg-[#eee8f8] text-[#49366f]"
+                              : "bg-[var(--accent-soft)] text-[var(--accent-dark)]",
+                    ].join(" ")}
+                  >
+                    {entry.title}
+                  </span>
+                ))}
+                {dayEntries.length > 2 && (
+                  <span className="block truncate px-1 text-[9px] font-extrabold text-[var(--muted)]">
+                    +{dayEntries.length - 2}
+                  </span>
+                )}
+              </div>
+            ) : (
+            <div className="mt-1 flex min-w-0 items-center justify-center gap-1 sm:mt-1.5 sm:flex-col sm:items-start sm:justify-start sm:gap-1">
+              {(["class", "event", "google", "task"] as const).map((kind) => {
                 const count = dayEntries.filter(
                   (entry) => entry.kind === kind,
                 ).length;
@@ -444,39 +674,46 @@ export default function CalendarOverview({
                     ? "classes"
                     : kind === "event"
                       ? "events"
-                      : "tasks";
+                      : kind === "google"
+                        ? "Google events"
+                        : "tasks";
 
                 const markerColor =
                   kind === "class"
                     ? "bg-[var(--primary-dark)]"
                     : kind === "event"
                       ? "bg-[#946200]"
-                      : "bg-[var(--accent-dark)]";
+                      : kind === "google"
+                        ? "bg-[#6750a4]"
+                        : "bg-[var(--accent-dark)]";
 
                 const countColor =
                   kind === "class"
                     ? "text-[var(--primary-dark)]"
                     : kind === "event"
                       ? "text-[#946200]"
-                      : "text-[var(--accent-dark)]";
+                      : kind === "google"
+                        ? "text-[#6750a4]"
+                        : "text-[var(--accent-dark)]";
 
                 return (
                   <span
                     key={kind}
                     title={`${count} ${label}`}
-                    className={`inline-flex h-3 shrink-0 items-center gap-0.5 ${count === 0 ? "opacity-30" : ""}`}
+                    className={`inline-flex h-3 shrink-0 items-center gap-0.5 ${count === 0 ? "hidden sm:inline-flex sm:opacity-30" : ""}`}
                   >
                     <span
                       aria-hidden="true"
                       className={`h-1.5 w-1.5 rounded-full ${markerColor}`}
                     />
-                    <span className={`text-[9px] font-extrabold leading-none sm:text-[10px] ${countColor}`}>
+                    <span className={`hidden text-[9px] font-extrabold leading-none sm:inline sm:text-[10px] ${countColor}`}>
                       {count}
                     </span>
                   </span>
                 );
               })}
             </div>
+            )
           ) : (
           <div className="mt-1 space-y-1">
           {dayEntries.slice(0, 4).map((entry) => (
@@ -489,7 +726,9 @@ export default function CalendarOverview({
                     ? "border-l-4 border-[var(--primary-dark)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
                     : entry.kind === "event"
                       ? "border-l-4 border-[#946200] bg-[#fff0b3] text-[#684000]"
-                      : "border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] text-[var(--accent-dark)]"
+                      : entry.kind === "google"
+                        ? "border-l-4 border-[#6750a4] bg-[#eee8f8] text-[#49366f]"
+                        : "border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] text-[var(--accent-dark)]"
               }`}
             >
               {entry.startTime ? `${entry.startTime} ` : ""}
@@ -542,70 +781,203 @@ export default function CalendarOverview({
   }
 
   return (
-    <section className="card mb-8 bg-[var(--surface)] p-4 sm:p-6">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="stat-label">Classes · Events · Tasks</p>
-            <h2 className="mt-1 text-2xl sm:text-3xl">
-              Calendar overview
-            </h2>
-            <p className="mt-1 text-sm text-[var(--ink-soft)]">
-              Your week and month, together. Tasks appear on their due dates,
-              without taking up a fixed time slot.
-            </p>
-          </div>
+    <section
+      className={
+        isMobile && isExpanded && !isCalendarCollapsed
+          ? "calendar-overview calendar-overview--expanded fixed inset-0 z-[70] m-0 flex h-[100dvh] min-h-0 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] p-2"
+          : "calendar-overview card mb-8 bg-[var(--surface)] p-3 sm:p-4"
+      }
+    >
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-[var(--ink)]">Calendar</h2>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {!isCalendarCollapsed && (
+            <div
+              role="group"
+              aria-label="Calendar view"
+              className="inline-flex items-center gap-0.5 rounded-full bg-[var(--surface-soft)] p-0.5"
+            >
+              {(["week", "month"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={view === option}
+                  onClick={() => {
+                    setView(option);
+                    if (isMobile) setIsExpanded(option === "month");
+                    setIsAgendaOpen(false);
+                  }}
+                  className={`min-h-6 rounded-full px-3 py-1 text-[10px] font-semibold capitalize ${
+                    view === option
+                      ? "bg-[var(--primary)] text-white"
+                      : "text-[var(--ink-soft)]"
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            aria-expanded={!isCalendarCollapsed}
+            onClick={() => {
+              setIsCalendarCollapsed((current) => !current);
+              if (isExpanded) {
+                setIsExpanded(false);
+                setIsAgendaOpen(false);
+              }
+            }}
+            className="calendar-collapse-toggle rounded-lg px-3 py-2 text-sm font-semibold"
+          >
+            {isCalendarCollapsed ? "Expand" : "Collapse"}
+          </button>
+        </div>
+      </div>
+      <div
+        className={
+          isCalendarCollapsed
+            ? "hidden"
+            : isMobile && isExpanded
+              ? "flex min-h-0 flex-1 flex-col gap-1"
+              : "flex flex-col gap-4"
+        }
+      >
+        <div className={isMobile && isExpanded ? "hidden" : "flex flex-wrap items-center justify-between gap-2"}>
 
           <div
             role="group"
-            aria-label="Calendar view"
-            className="flex shrink-0 rounded-xl border-2 border-[var(--border)] p-1"
+            aria-label="Filter calendar categories"
+            className="flex min-w-0 items-center gap-1"
           >
-            {(["week", "month"] as const).map((option) => (
+            {([
+              { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
+              { kind: "event", label: "Events", marker: "bg-[#946200]" },
+              { kind: "google", label: "Google", marker: "bg-[#6750a4]" },
+              { kind: "task", label: "Tasks", marker: "bg-[var(--accent-dark)]" },
+            ] as const).map(({ kind, label, marker }) => (
               <button
-                key={option}
+                key={kind}
                 type="button"
-                aria-pressed={view === option}
-                onClick={() => setView(option)}
-                className={`rounded-lg px-3 py-2 text-sm font-extrabold capitalize ${
-                  view === option
-                    ? "bg-[var(--primary)] text-white"
-                    : "text-[var(--ink-soft)]"
-                }`}
+                title={label}
+                aria-label={`Show ${label.toLowerCase()}`}
+                aria-pressed={visibleKinds[kind]}
+                onClick={() =>
+                  setVisibleKinds((current) => ({
+                    ...current,
+                    [kind]: !current[kind],
+                  }))
+                }
+                className={[
+                  "inline-flex min-h-6 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium transition",
+                  visibleKinds[kind]
+                    ? kind === "class"
+                      ? "bg-[var(--primary-soft)] text-[var(--primary-dark)] shadow-[0_2px_0_var(--primary-dark)]"
+                      : kind === "event"
+                        ? "bg-[#fff0b3] text-[#684000] shadow-[0_2px_0_#946200]"
+                        : kind === "google"
+                          ? "bg-[#eee8f8] text-[#49366f] shadow-[0_2px_0_#6750a4]"
+                          : "bg-[var(--accent-soft)] text-[var(--accent-dark)] shadow-[0_2px_0_var(--accent-dark)]"
+                    : "text-[var(--muted)]",
+                ].join(" ")}
               >
-                {option}
+                <span
+                  aria-hidden="true"
+                  className={["h-2 w-2 shrink-0 rounded-full", marker, visibleKinds[kind] ? "" : "opacity-40"].join(" ")}
+                />
+                <span>{label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-y border-[var(--border)] py-3">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Previous week or month"
-              onClick={() => movePeriod(-1)}
-              className="rounded-xl border-2 border-[var(--border)] px-3 py-2 font-extrabold"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDate(today)}
-              className="rounded-xl border-2 border-[var(--border)] px-3 py-2 text-sm font-extrabold"
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              aria-label="Next week or month"
-              onClick={() => movePeriod(1)}
-              className="rounded-xl border-2 border-[var(--border)] px-3 py-2 font-extrabold"
-            >
-              →
-            </button>
-          </div>
-          <h3 className="text-lg font-extrabold">{heading}</h3>
+        {googleCalendarLoadState === "disconnected" && (
+          <p className="text-xs text-[var(--ink-soft)]" aria-live="polite">
+            Want to see events from Google?{" "}
+            <a href="/settings" className="font-bold text-[var(--primary-dark)] underline">
+              Connect Google Calendar in Settings
+            </a>.
+          </p>
+        )}
+        {googleCalendarLoadState === "error" && googleCalendarLoadMessage && (
+          <p className="text-xs text-[var(--accent-dark)]" role="status">
+            Google Calendar: {googleCalendarLoadMessage}
+          </p>
+        )}
+        {googleCalendarWarnings.map((warning) => (
+          <p key={warning} className="text-xs text-[var(--muted)]" role="status">
+            Google Calendar: {warning}
+          </p>
+        ))}
+
+        <div className={isMobile && isExpanded ? "flex shrink-0 items-center gap-1 border-b border-[var(--border)] py-1" : "flex items-center gap-2 border-y border-[var(--border)] py-2"}>
+          <button
+            type="button"
+            aria-label="Previous week or month"
+            onClick={() => movePeriod(-1)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-sm font-semibold"
+          >
+            ←
+          </button>
+          <h3 className="min-w-0 flex-1 truncate text-center text-sm font-bold sm:text-lg">
+            {heading}
+          </h3>
+          <button
+            type="button"
+            aria-label="Next week or month"
+            onClick={() => movePeriod(1)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] text-sm font-semibold"
+          >
+            →
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setViewDate(today);
+              setSelectedDate(today);
+              setHasExplicitDateSelection(false);
+            }}
+            className="calendar-today-button action-primary--sage flex h-7 shrink-0 items-center justify-center rounded-lg px-2 text-[10px] font-semibold"
+          >
+            Today
+          </button>
+
+          {isMobile && isExpanded && !isAgendaOpen && (
+            <details data-smart-menu className="relative z-40 shrink-0">
+              <summary aria-label="Calendar filters" title="Calendar filters" className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-[var(--border)] text-sm font-medium">
+                <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M3 5h14M3 10h14M3 15h14" />
+                </svg>
+              </summary>
+              <div data-smart-menu-panel className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1.5 shadow-lg">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.currentTarget.closest("details")?.removeAttribute("open");
+                    setIsAgendaOpen(false);
+                    setView("week");
+                    setIsExpanded(false);
+                  }}
+                  className="w-full rounded-lg px-2 py-2.5 text-left text-sm font-extrabold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
+                >
+                  Switch to week view
+                </button>
+                <div className="my-1 border-t border-[var(--border)]" />
+                <p className="px-2 py-1 text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">Show on calendar</p>
+                {([
+                  { kind: "class", label: "Classes", marker: "bg-[var(--primary-dark)]" },
+                  { kind: "event", label: "Events", marker: "bg-[#946200]" },
+                  { kind: "task", label: "Tasks", marker: "bg-[var(--accent-dark)]" },
+                ] as const).map(({ kind, label, marker }) => (
+                  <button key={kind} type="button" aria-pressed={visibleKinds[kind]} onClick={() => setVisibleKinds((current) => ({ ...current, [kind]: !current[kind] }))} className={["flex w-full items-center gap-2 rounded-lg px-2 py-2.5 text-left text-sm font-bold transition", visibleKinds[kind] ? "bg-[var(--primary-soft)] text-[var(--primary-dark)]" : "text-[var(--muted)]"].join(" ")}>
+                    <span aria-hidden="true" className={["h-2.5 w-2.5 shrink-0 rounded-full", marker, visibleKinds[kind] ? "" : "opacity-40"].join(" ")} />
+                    <span className="flex-1">{label}</span>
+                    <span aria-hidden="true" className="w-4 text-right">{visibleKinds[kind] ? "✓" : ""}</span>
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
 
         {view === "week" ? (
@@ -613,11 +985,14 @@ export default function CalendarOverview({
             {/* Compact seven-day strip for phones. */}
             <div className="grid grid-cols-7 gap-1 md:hidden">
               {visibleDates.map((date, index) => {
-                const isSelected = date === selectedDate;
+                const isSelected = hasExplicitDateSelection && date === selectedDate;
                 const isToday = date === today;
-                const count = entries.filter(
-                  (entry) => entry.date === date,
-                ).length;
+                const isHighlighted = hasExplicitDateSelection ? isSelected : isToday;
+                const dayKinds = Array.from(new Set(
+                  visibleEntries
+                    .filter((entry) => entry.date === date)
+                    .map((entry) => entry.kind),
+                ));
 
                 return (
                   <button
@@ -625,10 +1000,13 @@ export default function CalendarOverview({
                     type="button"
                     aria-pressed={isSelected}
                     aria-label={formatLongDate(date)}
-                    onClick={() => setSelectedDate(date)}
+                    onClick={() => {
+                      setSelectedDate(date);
+                      setHasExplicitDateSelection(true);
+                    }}
                     className={`min-w-0 rounded-xl border-2 px-0.5 py-2 ${
-                      isSelected
-                        ? "border-[var(--primary-dark)] bg-[var(--primary-soft)]"
+                      isHighlighted
+                        ? "border-[var(--primary-soft)] bg-[var(--primary-soft)] shadow-none"
                         : "border-[var(--border)] bg-[var(--surface)]"
                     }`}
                   >
@@ -639,13 +1017,26 @@ export default function CalendarOverview({
                       className={`mx-auto mt-1 flex h-7 w-7 items-center justify-center rounded-full text-sm font-extrabold ${
                         isToday
                           ? "bg-[var(--primary)] text-white"
-                          : "text-[var(--ink)]"
+                          : "bg-transparent text-[var(--ink)]"
                       }`}
                     >
                       {dateFromKey(date).getDate()}
                     </span>
-                    <span className="mt-1 block text-[10px] font-bold text-[var(--muted)]">
-                      {count > 0 ? `· ${count}` : "·"}
+                    <span aria-hidden="true" className="mt-1 flex min-h-2 items-center justify-center gap-1">
+                      {dayKinds.map((kind) => (
+                        <span
+                          key={kind}
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            kind === "class"
+                              ? "bg-[var(--primary-dark)]"
+                              : kind === "event"
+                                ? "bg-[#946200]"
+                                : kind === "google"
+                                  ? "bg-[#6750a4]"
+                                  : "bg-[var(--accent-dark)]"
+                          }`}
+                        />
+                      ))}
                     </span>
                   </button>
                 );
@@ -658,7 +1049,10 @@ export default function CalendarOverview({
             </div>
           </>
         ) : (
-          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          <div
+            className={isMobile && isExpanded && !isAgendaOpen ? "grid min-h-0 flex-1 grid-cols-7 gap-x-1 gap-y-1" : isMobile && isExpanded ? "hidden" : "grid grid-cols-7 gap-1 sm:gap-2"}
+            style={isMobile && isExpanded && !isAgendaOpen ? { gridTemplateRows: "auto repeat(" + visibleDates.length / 7 + ", minmax(0, 1fr))" } : undefined}
+          >
             {SHORT_WEEKDAYS.map((weekday) => (
               <div
                 key={weekday}
@@ -671,52 +1065,53 @@ export default function CalendarOverview({
           </div>
         )}
 
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-bold text-[var(--ink-soft)]">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[var(--primary-soft)]" />
-            Classes
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[var(--yellow-soft)]" />
-            Events
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[var(--accent-soft)]" />
-            Tasks
-          </span>
-        </div>
 
-        <div className="border-t border-[var(--border)] pt-4">
-          <div className="flex items-start justify-between gap-3">
-            <p className="stat-label">Selected day</p>
-            <details data-smart-menu className="relative">
+
+
+        <div className={isMobile && isExpanded && !isAgendaOpen ? "hidden" : isMobile && isExpanded ? "min-h-0 flex-1 overflow-y-auto border-t border-[var(--border)] pt-3" : "border-t border-[var(--border)] pt-4"}>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="min-w-0 flex-1 break-words text-base font-extrabold sm:text-xl">
+              {formatLongDate(selectedDate)}
+            </h3>
+            <details data-smart-menu className="relative shrink-0">
               <summary
                 aria-label="Selected day actions"
-                className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
+                className="flex h-8 w-8 cursor-pointer list-none items-center justify-center rounded-lg border border-[var(--border)] text-sm font-medium"
               >
-                <span aria-hidden="true">⋮</span>
+                <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <path d="M3 5h14M3 10h14M3 15h14" />
+                </svg>
               </summary>
-              <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+              <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-32 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                {isMobile && isExpanded && isAgendaOpen && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.currentTarget.closest("details")?.removeAttribute("open");
+                      setIsAgendaOpen(false);
+                    }}
+                    className="w-full rounded-lg px-3 py-2 text-left text-sm font-extrabold text-[var(--primary-dark)] hover:bg-[var(--primary-soft)]"
+                  >
+                    Back to month view
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => onAddEvent(selectedDate)}
-                  className="w-full rounded-lg border-l-4 border-[#946200] bg-[#fff0b3] px-3 py-2 text-left text-sm font-extrabold text-[#684000] transition hover:bg-[#ffe68a]"
+                  className="calendar-day-action calendar-day-action--event w-full rounded-lg bg-[#fff0b3] px-2 py-1.5 text-left text-[11px] font-semibold text-[#684000] transition hover:bg-[#ffe68a]"
                 >
                   Add event
                 </button>
                 <button
                   type="button"
                   onClick={() => onAddTask(selectedDate)}
-                  className="w-full rounded-lg border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] px-3 py-2 text-left text-sm font-extrabold text-[var(--accent-dark)] transition hover:brightness-95"
+                  className="calendar-day-action calendar-day-action--task w-full rounded-lg bg-[var(--accent-soft)] px-2 py-1.5 text-left text-[11px] font-semibold text-[var(--accent-dark)] transition hover:brightness-95"
                 >
                   Add task
                 </button>
               </div>
             </details>
           </div>
-          <h3 className="mt-1 text-xl sm:text-2xl">
-            {formatLongDate(selectedDate)}
-          </h3>
 
           {selectedEntries.length === 0 ? (
             <p className="mt-3 rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--ink-soft)]">
@@ -734,23 +1129,48 @@ export default function CalendarOverview({
                         ? "border-[var(--primary-dark)] bg-[var(--primary-soft)]"
                         : entry.kind === "event"
                           ? "border-[#946200] bg-[#fff8d9]"
-                          : "border-[var(--accent-dark)] bg-[var(--accent-soft)]"
+                          : entry.kind === "google"
+                            ? "border-[#6750a4] bg-[#f5f0ff]"
+                            : "border-[var(--accent-dark)] bg-[var(--accent-soft)]"
                   }`}
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex flex-row items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
                         {entryKindLabel(entry)} · {formatTime(entry)}
                       </p>
-                      <h4
-                        className={`mt-1 break-words text-lg font-extrabold ${
-                          entry.cancelled || (entry.taskOccurrence?.completed ?? entry.task?.completed)
-                            ? "line-through"
-                            : ""
-                        }`}
-                      >
-                        {entry.title}
-                      </h4>
+                      <div className="mt-1 flex min-w-0 items-start gap-2">
+                        {entry.kind === "task" && entry.task && (
+                          <input
+                            type="checkbox"
+                            aria-label={`Mark ${entry.title} ${(entry.taskOccurrence?.completed ?? entry.task.completed) ? "incomplete" : "complete"}`}
+                            checked={entry.taskOccurrence?.completed ?? entry.task.completed}
+                            onChange={() =>
+                              onToggleTask(
+                                entry.task!,
+                                entry.taskOccurrence?.recurring
+                                  ? entry.taskOccurrence.originalDate
+                                  : undefined,
+                                entry.taskOccurrence?.completed ?? entry.task!.completed,
+                              )
+                            }
+                            className="mt-1 !h-5 !w-5 shrink-0 cursor-pointer accent-[var(--primary)]"
+                          />
+                        )}
+                        <h4
+                          className={`min-w-0 break-words ${
+                            entry.kind === "event" || entry.kind === "google"
+                              ? "text-sm font-semibold sm:text-base"
+                              : "text-base font-bold sm:text-lg"
+                          } ${
+                            entry.cancelled || (entry.taskOccurrence?.completed ?? entry.task?.completed)
+                              ? "line-through"
+                              : ""
+                          }`}
+                        >
+                          {entry.title}
+                        </h4>
+                      </div>
                       {entry.detail && (
                         <p className="mt-1 text-sm text-[var(--ink-soft)]">
                           {entry.detail}
@@ -760,6 +1180,16 @@ export default function CalendarOverview({
                         <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--ink-soft)]">
                           {entry.notes}
                         </p>
+                      )}
+                      {entry.googleEvent?.htmlLink && (
+                        <a
+                          href={entry.googleEvent.htmlLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-block text-sm font-bold text-[#6750a4] underline"
+                        >
+                          Open in Google Calendar
+                        </a>
                       )}
                       {entry.cancelled && (
                         <p className="mt-2 text-xs font-extrabold text-[var(--muted)]">
@@ -781,21 +1211,23 @@ export default function CalendarOverview({
 
                     <div className="flex shrink-0 flex-wrap gap-2">
                       {entry.kind === "class" && entry.classItem && (
-                        <details data-smart-menu className="relative">
+                        <details data-smart-menu="actions" className="relative">
                           <summary
                             aria-label={`More actions for ${entry.title}`}
                             className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                           >
                             <span aria-hidden="true">⋮</span>
                           </summary>
-                          <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                          <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-48 p-1">
+                            <p className="context-menu__heading">Class Actions</p>
                             <button
                               type="button"
                               onClick={(clickEvent) => {
                                 clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                 changeClassCancellation(entry);
                               }}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                              data-menu-action={entry.cancelled ? "restore" : "cancel"}
+                              className={`context-menu__action ${entry.cancelled ? "" : "context-menu__action--destructive"}`}
                             >
                               {entry.cancelled ? "Restore session" : "Cancel session"}
                             </button>
@@ -804,21 +1236,23 @@ export default function CalendarOverview({
                       )}
 
                       {entry.kind === "event" && entry.eventItem && (
-                        <details data-smart-menu className="relative">
+                        <details data-smart-menu="actions" className="relative">
                           <summary
                             aria-label={`More actions for ${entry.title}`}
                             className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                           >
                             <span aria-hidden="true">⋮</span>
                           </summary>
-                          <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                          <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-48 p-1">
+                            <p className="context-menu__heading">Event Actions</p>
                             <button
                               type="button"
                               onClick={(clickEvent) => {
                                 clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                 onEditEvent(entry.eventItem!);
                               }}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                              data-menu-action="edit"
+                              className="context-menu__action"
                             >
                               {entry.eventItem.recurrence ? "Edit series" : "Edit event"}
                             </button>
@@ -828,7 +1262,8 @@ export default function CalendarOverview({
                                 clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                 onDeleteItem(entry.eventItem!);
                               }}
-                              className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                              data-menu-action="delete"
+                              className="context-menu__action context-menu__action--destructive"
                             >
                               {entry.eventItem.recurrence ? "Delete series" : "Delete event"}
                             </button>
@@ -838,37 +1273,23 @@ export default function CalendarOverview({
 
                       {entry.kind === "task" && entry.task && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onToggleTask(
-                                entry.task!,
-                                entry.taskOccurrence?.recurring
-                                  ? entry.taskOccurrence.originalDate
-                                  : undefined,
-                                entry.taskOccurrence?.completed ??
-                                  entry.task!.completed,
-                              )
-                            }
-                            className="rounded-lg border-2 border-[var(--accent-dark)] px-3 py-2 text-sm font-extrabold text-[var(--accent-dark)]"
-                          >
-                            {(entry.taskOccurrence?.completed ?? entry.task.completed) ? "Reopen" : "Complete"}
-                          </button>
-                          <details data-smart-menu className="relative">
+                          <details data-smart-menu="actions" className="relative">
                             <summary
                               aria-label={`More actions for ${entry.title}`}
                               className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                             >
                               <span aria-hidden="true">⋮</span>
                             </summary>
-                            <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-44 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                            <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-44 p-1">
+                              <p className="context-menu__heading">Task Actions</p>
                               <button
                                 type="button"
                                 onClick={(clickEvent) => {
                                   clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                   onEditTask(entry.task!);
                                 }}
-                                className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                                data-menu-action="edit"
+                                className="context-menu__action"
                               >
                                 Edit task
                               </button>
@@ -878,7 +1299,8 @@ export default function CalendarOverview({
                                   clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                                   onDeleteItem(entry.task!);
                                 }}
-                                className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                                data-menu-action="delete"
+                                className="context-menu__action context-menu__action--destructive"
                               >
                                 Delete task
                               </button>

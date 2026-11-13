@@ -1,5 +1,72 @@
 import { readStoredJson } from "./storageRecovery";
 
+export type ReadingMethod =
+  | "Novel / narrative nonfiction"
+  | "Practical nonfiction"
+  | "Philosophy / theory"
+  | "Technical / skill-building"
+  | "Poetry / literary work"
+  | "Other";
+
+export type ChapterReflection = {
+  id: string;
+  section: string;
+  centralPoint: string;
+  development: string;
+  questions: string;
+  updatedAt: string;
+};
+
+export type WholeBookReconstruction = {
+  about: string;
+  doing: string;
+  development: string;
+  changed: string;
+  updatedAt?: string;
+};
+
+export type SecondPassSection = {
+  id: string;
+  section: string;
+  reason: string;
+  notes: string;
+  completed: boolean;
+  updatedAt: string;
+};
+
+export type ReadingApplication = {
+  idea: string;
+  experiment: string;
+  result: string;
+  updatedAt?: string;
+};
+
+export type ReadingDecision =
+  | "Continue reading"
+  | "Revisit difficult sections"
+  | "Read selectively"
+  | "Apply an idea"
+  | "Stop — purpose fulfilled"
+  | "Stop — not enough value";
+
+export type BookWorkflowStep =
+  | "purpose"
+  | "first_pass"
+  | "reconstruction"
+  | "second_pass"
+  | "application";
+
+export type EssayWorkflowStep =
+  | "first_pass"
+  | "second_pass_turns"
+  | "second_pass_rhythm"
+  | "second_pass_essential_sentences"
+  | "second_pass_ending"
+  | "reflection_what_happened"
+  | "reflection_what_changed"
+  | "reflection_why_ending"
+  | "criticism";
+
 export type Book = {
   id: number;
   title: string;
@@ -8,6 +75,19 @@ export type Book = {
   totalPages: number;
   currentPage: number;
   status: "Reading" | "Want to read" | "Finished";
+
+  // Optional reading-framework data preserves compatibility with existing books.
+  readingPurpose?: string;
+  readingMethod?: ReadingMethod;
+  chapterReflections?: ChapterReflection[];
+  wholeBookReconstruction?: WholeBookReconstruction;
+  secondPassSections?: SecondPassSection[];
+  readingApplication?: ReadingApplication;
+  readingDecision?: ReadingDecision;
+
+  // Optional explicit workflow markers; older records remain compatible.
+  workflowCompletedSteps?: BookWorkflowStep[];
+  workflowSkippedSteps?: BookWorkflowStep[];
 };
 
 export type ReadingSession = {
@@ -64,6 +144,11 @@ export type Essay = {
   reflection: EssayReflection;
 
   criticismUnlockedAt?: string;
+
+  // Optional explicit step markers preserve sequential progress.
+  workflowCompletedSteps?: EssayWorkflowStep[];
+  criticismNotes?: string;
+  criticismCompletedAt?: string;
 };
 
 function isObjectRecord(
@@ -118,34 +203,43 @@ const BOOKS_KEY = "personal-assistant-books";
 const SESSIONS_KEY = "personal-assistant-reading-sessions";
 const ESSAYS_KEY = "personal-assistant-essays";
 
-const defaultBooks: Book[] = [
-  {
-    id: 1,
-    title: "The Master and His Emissary",
-    author: "Iain McGilchrist",
-    category: "Pleasure",
-    totalPages: 608,
-    currentPage: 365,
-    status: "Reading",
-  },
-];
+function isBuiltInSampleBook(book: Book): boolean {
+  return (
+    book.id === 1 &&
+    book.title === "The Master and His Emissary" &&
+    book.author === "Iain McGilchrist" &&
+    book.category === "Pleasure" &&
+    book.totalPages === 608 &&
+    book.currentPage === 365 &&
+    book.status === "Reading" &&
+    !book.readingPurpose &&
+    !book.readingMethod &&
+    !book.chapterReflections?.length &&
+    !book.wholeBookReconstruction &&
+    !book.secondPassSections?.length &&
+    !book.readingApplication &&
+    !book.readingDecision &&
+    !book.workflowCompletedSteps?.length &&
+    !book.workflowSkippedSteps?.length
+  );
+}
 
 export function getBooks(): Book[] {
   if (typeof window === "undefined") {
-    return defaultBooks;
+    return [];
   }
 
   const saved = localStorage.getItem(BOOKS_KEY);
   if (!saved) {
-    return defaultBooks;
+    return [];
   }
 
   return readStoredJson<Book[]>(
     BOOKS_KEY,
     saved,
-    defaultBooks,
+    [],
     isBookArray,
-  );
+  ).filter((book) => !isBuiltInSampleBook(book));
 }
 
 export function saveBooks(books: Book[]) {
@@ -162,6 +256,8 @@ export function addBook(
     id: Date.now(),
     currentPage: 0,
     status: "Want to read",
+    workflowCompletedSteps: [],
+    workflowSkippedSteps: [],
   };
 
   saveBooks([...books, newBook]);
@@ -272,8 +368,9 @@ export function addEssay(
     },
 
     secondPassStep: 0,
+    workflowCompletedSteps: [],
   };
-
+  
   saveEssays([...essays, newEssay]);
 
   return newEssay;

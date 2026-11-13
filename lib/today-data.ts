@@ -4,13 +4,6 @@ import {
 } from "./classStorage";
 
 import {
-  getCurrentSemester,
-  getCourses,
-  getDueLectures,
-  getUnits,
-} from "./studyStorage";
-
-import {
   getBooks,
   getEssays,
   getReadingSessions,
@@ -26,6 +19,10 @@ import type {
   TaskPriority,
   TodayTask,
 } from "./today-engine";
+
+import type { StudyMvpState } from "./studyMvp/types";
+import { applyActivitySchedulesToTasks } from "./activity/scheduling";
+import { applyActivityProgressToTasks } from "./activity/progress";
 
 function getLocalDateKey(
   date: Date,
@@ -104,6 +101,11 @@ export function getTodayFixedEvents(
     )
     .map((classItem) => ({
       id: classItem.id,
+      activityIdentity: {
+        domain: "personal",
+        kind: "class",
+        entityId: classItem.id,
+      },
       title: classItem.name,
       startAt:
         makeLocalDate(
@@ -118,95 +120,143 @@ export function getTodayFixedEvents(
     }));
 }
 
-function getStudyDuration(
-  box: number,
-): number {
-  if (box <= 1) {
-    return 8;
+
+function getStudyDateKey(
+  now: Date,
+  timezone: string,
+): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(now);
+
+    const year = parts.find((part) => part.type === "year")?.value;
+    const month = parts.find((part) => part.type === "month")?.value;
+    const day = parts.find((part) => part.type === "day")?.value;
+
+    if (year && month && day) {
+      return `${year}-${month}-${day}`;
+    }
+  } catch {
+    // Fall back to the browser's local date.
   }
 
-  if (box === 2) {
-    return 8;
-  }
-
-  if (box === 3) {
-    return 10;
-  }
-
-  if (box === 4) {
-    return 12;
-  }
-
-  return 15;
+  return getLocalDateKey(now);
 }
 
-function getStudyTasks(): TodayTask[] {
-  const semester =
-    getCurrentSemester();
+export function getStudyMvpTasks(
+  state: StudyMvpState,
+  now = new Date(),
+): TodayTask[] {
+  const today = getStudyDateKey(
+    now,
+    state.settings.timezone,
+  );
 
-  if (!semester) {
-    return [];
-  }
+  const topicsById = new Map(
+    state.topics.map((topic) => [topic.id, topic]),
+  );
 
-  const courses =
-    getCourses().filter(
-      (course) =>
-        course.semesterId ===
-        semester.id,
+  const unitsById = new Map(
+    state.units.map((unit) => [unit.id, unit]),
+  );
+
+  const coursesById = new Map(
+    state.courses.map((course) => [course.id, course]),
+  );
+
+  const retrievalTasksById = new Map(
+    state.retrieval_tasks.map((task) => [task.id, task]),
+  );
+
+  const eligibleStatuses = new Set([
+    "pending",
+    "in_progress",
+    "deferred",
+    "missed",
+  ]);
+
+  return state.review_events.flatMap((review): TodayTask[] => {
+    if (
+      !eligibleStatuses.has(review.status) ||
+      review.current_due_date > today
+    ) {
+      return [];
+    }
+
+    const topic = topicsById.get(review.topic_id);
+
+    if (!topic) {
+      return [];
+    }
+
+    const unit = unitsById.get(topic.unit_id);
+
+    if (!unit) {
+      return [];
+    }
+
+    const course = coursesById.get(unit.course_id);
+
+    if (!course || course.archived_at) {
+      return [];
+    }
+    const selectedTasks = review.selected_task_ids.map(
+      (id) => retrievalTasksById.get(id),
     );
 
-  const courseIds =
-    new Set(
-      courses.map(
-        (course) =>
-          course.id,
-      ),
+    if (
+      review.selected_task_ids.length < 2 ||
+      review.selected_task_ids.length > 3 ||
+      selectedTasks.some(
+        (task) => !task || task.topic_id !== review.topic_id,
+      )
+    ) {
+      return [];
+    }
+
+    const durationMinutes = selectedTasks.reduce(
+      (total, task) =>
+        total + (task?.estimated_duration_min ?? 0),
+      0,
     );
 
-  const units =
-    getUnits().filter(
-      (unit) =>
-        courseIds.has(
-          unit.courseId,
-        ),
-    );
+    if (
+      !Number.isSafeInteger(durationMinutes) ||
+      durationMinutes < 1
+    ) {
+      return [];
+    }
 
-  const unitById =
-    new Map(
-      units.map(
-        (unit) => [
-          unit.id,
-          unit,
-        ],
-      ),
-    );
+    const unitName = [
+      course?.name,
+      unit?.name,
+    ]
+      .filter((name): name is string => Boolean(name))
+      .join(" · ");
 
-  return getDueLectures(
-    semester.id,
-  ).map((lecture) => {
-    const unit =
-      unitById.get(
-        lecture.unitId,
-      );
-
-    return {
-      id: `study-${lecture.id}`,
-      title: lecture.name,
-      unitName: unit?.name,
-      type: "study",
-      durationMinutes:
-        getStudyDuration(
-          lecture.box,
-        ),
-      priority:
-        (lecture.box >= 4
-          ? 5
-          : 4) as TaskPriority,
-      dueAt:
-        lecture.nextReviewAt,
-    };
+    return [
+      {
+        id: `study-review-${review.id}`,
+        activityIdentity: {
+          domain: "study",
+          kind: "review",
+          entityId: review.id,
+        },
+        title: `Review — ${topic.title}`,
+        ...(unitName ? { unitName } : {}),
+        type: "study",
+        durationMinutes,
+        priority: review.current_priority,
+        dueAt: review.current_due_date,
+      },
+    ];
   });
 }
+
 
 function getReadingTasks(): TodayTask[] {
   const tasks: TodayTask[] =
@@ -253,6 +303,11 @@ function getReadingTasks(): TodayTask[] {
 
     tasks.push({
       id: `book-${book.id}`,
+      activityIdentity: {
+        domain: "reading",
+        kind: "book",
+        entityId: book.id,
+      },
       title: `Read — ${book.title}`,
       type: "reading",
       durationMinutes: 20,
@@ -309,6 +364,11 @@ function getReadingTasks(): TodayTask[] {
 
     tasks.push({
       id: `essay-${essay.id}`,
+      activityIdentity: {
+        domain: "reading",
+        kind: "essay",
+        entityId: essay.id,
+      },
       title: `Essay — ${essay.title} · ${essay.status}`,
       type: "reading",
       durationMinutes:
@@ -366,6 +426,11 @@ function getProjectTasks(): TodayTask[] {
     )
     .map((project) => ({
       id: `project-${project.id}`,
+      activityIdentity: {
+        domain: "project",
+        kind: "project",
+        entityId: project.id,
+      },
       title: `${project.name} — ${project.nextAction}`,
       type: "project",
       durationMinutes:
@@ -386,21 +451,27 @@ function getProjectTasks(): TodayTask[] {
     }));
 }
 
-export function getTodayTasks(): TodayTask[] {
-  return [
-    ...getStudyTasks(),
-    ...getReadingTasks(),
-    ...getProjectTasks(),
-  ];
+export function getTodayTasks(
+  studyState: StudyMvpState,
+  now = new Date(),
+): TodayTask[] {
+  return applyActivitySchedulesToTasks(
+    applyActivityProgressToTasks([
+      ...getStudyMvpTasks(studyState, now),
+      ...getReadingTasks(),
+      ...getProjectTasks(),
+    ], undefined, now),
+  );
 }
 
 export function getTodayData(
+  studyState: StudyMvpState,
   now = new Date(),
 ) {
   return {
     fixedEvents:
       getTodayFixedEvents(now),
     tasks:
-      getTodayTasks(),
+      getTodayTasks(studyState, now),
   };
 }

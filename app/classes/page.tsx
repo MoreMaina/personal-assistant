@@ -2,6 +2,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -11,7 +12,8 @@ import {
 
 import Button from "@/app/components/Button";
 import CalendarOverview from "@/app/components/CalendarOverview";
-import { addClass, getClasses } from "@/lib/classStorage";
+import { addClass, deleteClass, getClasses, updateClass } from "@/lib/classStorage";
+import type { ClassItem } from "@/lib/classes";
 import {
   addCalendarEvent,
   addCalendarTask,
@@ -27,6 +29,7 @@ import {
   type TaskRecurrence,
   type WeekdayName,
 } from "@/lib/calendarItemStorage";
+import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
 const days = [
   "Monday",
@@ -64,28 +67,40 @@ function localDateString() {
   return `${year}-${month}-${day}`;
 }
 
+function ordinalSuffix(day: number): string {
+  if (day % 100 >= 11 && day % 100 <= 13) return "th";
+  if (day % 10 === 1) return "st";
+  if (day % 10 === 2) return "nd";
+  if (day % 10 === 3) return "rd";
+  return "th";
+}
+
 function formatDate(value?: string) {
   if (!value) return "No due date";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return value;
+  const monthName = date.toLocaleDateString("en-US", { month: "short" });
+  return `${monthName} ${day}${ordinalSuffix(day)}`;
+}
 
-  const [year, month, day] = value.split("-");
-  const monthNames = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-  ];
+function formatClockTime(value: string): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return value;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return value;
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" })
+    .format(new Date(2000, 0, 1, hours, minutes));
+}
 
-  const monthIndex = Number(month) - 1;
-
-  if (
-    !year ||
-    !day ||
-    monthIndex < 0 ||
-    monthIndex > 11 ||
-    !Number.isFinite(Number(day))
-  ) {
-    return value;
-  }
-
-  return `${Number(day)} ${monthNames[monthIndex]} ${year}`;
+function formatTimeRange(start?: string, end?: string): string {
+  if (!start) return "Time not set";
+  return `${formatClockTime(start)}${end ? ` - ${formatClockTime(end)}` : ""}`;
 }
 
 function recurrenceSignature(
@@ -142,16 +157,52 @@ function formatDuration(minutes: number) {
 }
 
 export default function ClassesPage() {
+  const {
+    state: studyState,
+    cloudSyncStatus: studyCloudSyncStatus,
+    syncConflict: studySyncConflict,
+  } = useCloudStudyState();
+
+  const studyLinksReady = Boolean(
+    studyState &&
+    !studySyncConflict &&
+    (studyCloudSyncStatus === "ready" ||
+      studyCloudSyncStatus === "synced"),
+  );
+  const studyUnits = studyState?.units ?? [];
+
+  const studyLinkBlockReason = studySyncConflict
+    ? "Study has a browser/cloud conflict. Resolve it on the Study page before editing class links."
+    : studyCloudSyncStatus === "migration"
+      ? "Study cloud migration needs approval. Open Study and approve migration before creating links."
+      : !studyState || !studyLinksReady
+        ? `Study catalog is ${studyCloudSyncStatus}. Linking is disabled until the catalog is ready.`
+        : studyUnits.length === 0
+          ? "No Study Units are available yet. Create or import Units on the Study page, or leave classes unlinked."
+          : "";
+
+
+
   const [classList, setClassList] = useState(getClasses);
+  const [selectedClassOverviewDay, setSelectedClassOverviewDay] = useState("Monday");
   const [showClassForm, setShowClassForm] = useState(false);
+  const [editingClassId, setEditingClassId] = useState<number | null>(null);
 
   const [name, setName] = useState("");
   const [type, setType] = useState("Lecture");
   const [day, setDay] = useState("Monday");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [studyUnitId, setStudyUnitId] = useState("");
   const [classError, setClassError] = useState("");
+  const [studyLinkError, setStudyLinkError] = useState("");
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(""), 5500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   // Calendar events and tasks
   const [calendarItems, setCalendarItems] = useState<CalendarItem[]>([]);
@@ -160,11 +211,13 @@ export default function ClassesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [plannerError, setPlannerError] = useState("");
   const [managementTab, setManagementTab] = useState<ManagementTab>("events");
+  const [expandedTaskTitles, setExpandedTaskTitles] = useState<Set<string>>(() => new Set());
   const [searchHighlightCalendarId, setSearchHighlightCalendarId] =
     useState<string | null>(null);
   const [searchHighlightClassId, setSearchHighlightClassId] =
     useState<number | null>(null);
   const plannerFormRef = useRef<HTMLFormElement | null>(null);
+  const classFormRef = useRef<HTMLFormElement | null>(null);
 
   const [plannerTitle, setPlannerTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
@@ -194,6 +247,7 @@ export default function ClassesPage() {
 
   useEffect(() => {
     setCalendarItems(getCalendarItems());
+    setSelectedClassOverviewDay(days[(new Date().getDay() + 6) % 7]);
   }, []);
 
   useEffect(() => {
@@ -231,6 +285,7 @@ export default function ClassesPage() {
     if (!classItem) return;
 
     setSearchHighlightClassId(classItem.id);
+    setSelectedClassOverviewDay(classItem.day);
     window.history.replaceState({}, "", "/classes");
 
     window.setTimeout(() => {
@@ -267,23 +322,10 @@ export default function ClassesPage() {
 
 
 
-  const activeDays = new Set(classList.map((item) => item.day)).size;
-
-  const weeklyMinutes = classList.reduce((total, item) => {
-    const [startHour, startMinute] = item.start.split(":").map(Number);
-    const [endHour, endMinute] = item.end.split(":").map(Number);
-
-    const duration =
-      endHour * 60 +
-      endMinute -
-      (startHour * 60 + startMinute);
-
-    return total + Math.max(0, duration);
-  }, 0);
-
 
   useEffect(() => {
     let lastTrigger: HTMLElement | null = null;
+    let activeActionMenu: HTMLDetailsElement | null = null;
 
     const getMenus = () =>
       Array.from(
@@ -295,7 +337,6 @@ export default function ClassesPage() {
     const getPanel = (menu: HTMLDetailsElement): HTMLElement | null => {
       const trigger = menu.querySelector(":scope > summary");
       const panel = trigger?.nextElementSibling;
-
       return panel instanceof HTMLElement ? panel : null;
     };
 
@@ -303,11 +344,52 @@ export default function ClassesPage() {
       getPanel(menu)?.removeAttribute("style");
     };
 
+    const positionActionMenu = (menu: HTMLDetailsElement) => {
+      if (!menu.open || menu.dataset.smartMenu !== "actions") return;
+      const trigger = menu.querySelector(":scope > summary");
+      const panel = getPanel(menu);
+      if (!(trigger instanceof HTMLElement) || !panel) return;
+
+      const rect = trigger.getBoundingClientRect();
+      panel.style.position = "fixed";
+      panel.style.right = "auto";
+      panel.style.bottom = "auto";
+      panel.style.margin = "0";
+      panel.style.maxHeight = `${Math.max(120, window.innerHeight - 24)}px`;
+      panel.style.overflowY = "auto";
+
+      const width = Math.min(
+        Math.max(panel.getBoundingClientRect().width, 176),
+        window.innerWidth - 24,
+      );
+      panel.style.width = `${width}px`;
+      const height = Math.min(panel.scrollHeight, window.innerHeight - 24);
+      const below = window.innerHeight - rect.bottom - 8;
+      const above = rect.top - 8;
+      const flipUp = height > below && above > below;
+      const top = flipUp
+        ? Math.max(12, rect.top - height - 8)
+        : Math.min(window.innerHeight - height - 12, rect.bottom + 8);
+      const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+      panel.style.top = `${top}px`;
+      panel.style.left = `${left}px`;
+    };
+
+    const updateActiveMenu = () => {
+      if (activeActionMenu?.open) positionActionMenu(activeActionMenu);
+    };
+
+    const clearAllPositions = () => {
+      for (const menu of getMenus()) clearPanelPosition(menu);
+      activeActionMenu = null;
+    };
+
     const closeAllMenus = () => {
       for (const menu of getMenus()) {
         if (menu.open) menu.open = false;
         clearPanelPosition(menu);
       }
+      activeActionMenu = null;
     };
 
     const handleToggle = (event: Event) => {
@@ -315,12 +397,11 @@ export default function ClassesPage() {
       if (
         !(menu instanceof HTMLDetailsElement) ||
         !menu.hasAttribute("data-smart-menu")
-      ) {
-        return;
-      }
+      ) return;
 
       if (!menu.open) {
         clearPanelPosition(menu);
+        if (activeActionMenu === menu) activeActionMenu = null;
         return;
       }
 
@@ -333,8 +414,11 @@ export default function ClassesPage() {
 
       const trigger = menu.querySelector(":scope > summary");
       lastTrigger = trigger instanceof HTMLElement ? trigger : null;
-
       clearPanelPosition(menu);
+      if (menu.dataset.smartMenu === "actions") {
+        activeActionMenu = menu;
+        window.requestAnimationFrame(() => positionActionMenu(menu));
+      }
     };
 
     const handleOutsidePointer = (event: PointerEvent) => {
@@ -370,6 +454,8 @@ export default function ClassesPage() {
       lastTrigger?.focus();
     };
 
+    window.addEventListener("resize", updateActiveMenu);
+    window.addEventListener("scroll", updateActiveMenu, true);
     document.addEventListener("toggle", handleToggle, true);
     document.addEventListener("pointerdown", handleOutsidePointer, true);
     document.addEventListener("click", handleMenuAction);
@@ -380,6 +466,9 @@ export default function ClassesPage() {
       document.removeEventListener("pointerdown", handleOutsidePointer, true);
       document.removeEventListener("click", handleMenuAction);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updateActiveMenu);
+      window.removeEventListener("scroll", updateActiveMenu, true);
+      clearAllPositions();
     };
   }, []);
 
@@ -412,14 +501,31 @@ export default function ClassesPage() {
     (task) => !task.completed,
   ).length;
 
-  function resetClassForm() {
+  const resetClassForm = useCallback(() => {
     setName("");
     setType("Lecture");
     setDay("Monday");
     setStart("");
     setEnd("");
+    setStudyUnitId("");
     setClassError("");
+    setStudyLinkError("");
+    setEditingClassId(null);
     setShowClassForm(false);
+  }, []);
+
+  function openClassForm(item?: ClassItem) {
+    setEditingClassId(item?.id ?? null);
+    setName(item?.name ?? "");
+    setType(item?.type ?? "Lecture");
+    setDay(item?.day ?? "Monday");
+    setStart(item?.start ?? "");
+    setEnd(item?.end ?? "");
+    setStudyUnitId(item?.studyUnitId ?? "");
+    setClassError("");
+    setStudyLinkError("");
+    setNotice("");
+    setShowClassForm(true);
   }
 
   function handleClassSubmit(event: FormEvent<HTMLFormElement>) {
@@ -442,17 +548,49 @@ export default function ClassesPage() {
       return;
     }
 
+    const existingClass = editingClassId === null
+      ? undefined
+      : classList.find((item) => item.id === editingClassId);
+    const keepingSavedUnitLink = Boolean(
+      existingClass && existingClass.studyUnitId === studyUnitId,
+    );
+
+    if (
+      studyUnitId &&
+      !keepingSavedUnitLink &&
+      (
+        !studyLinksReady ||
+        !studyState ||
+        !studyState.units.some((unit) => unit.id === studyUnitId)
+      )
+    ) {
+      setClassError(
+        studyLinkBlockReason ||
+          "The selected Study Unit is no longer available. Choose another Unit or leave the class unlinked.",
+      );
+      return;
+    }
+
     try {
-      const createdClass = addClass({
+      const details = {
         name: name.trim(),
         type,
         day,
         start,
         end,
-      });
+        studyUnitId: studyUnitId || undefined,
+      };
 
-      setClassList((current) => [...current, createdClass]);
-      setNotice(`${createdClass.name} has been added to your timetable.`);
+      if (editingClassId !== null) {
+        const updatedClasses = updateClass(editingClassId, details);
+        setClassList(updatedClasses);
+        setNotice(`${details.name} has been updated in your timetable.`);
+      } else {
+        const createdClass = addClass(details);
+        setClassList((current) => [...current, createdClass]);
+        setNotice(`${createdClass.name} has been added to your timetable.`);
+      }
+
       resetClassForm();
     } catch (caughtError) {
       console.error("Could not save class:", caughtError);
@@ -460,7 +598,49 @@ export default function ClassesPage() {
     }
   }
 
-  function resetPlannerForm() {
+
+  function handleClassDelete(item: ClassItem) {
+    const confirmed = window.confirm(
+      `Delete ${item.name} from your weekly class schedule?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const updatedClasses = deleteClass(item.id);
+      setClassList(updatedClasses);
+      if (editingClassId === item.id) resetClassForm();
+      if (searchHighlightClassId === item.id) setSearchHighlightClassId(null);
+      setNotice(`${item.name} has been deleted from your timetable.`);
+    } catch (caughtError) {
+      console.error("Could not delete class:", caughtError);
+      setNotice(`Could not delete ${item.name}. Please try again.`);
+    }
+  }
+
+  function renderClassActions(item: ClassItem) {
+    return (
+      <details data-smart-menu="actions" className="relative shrink-0">
+        <summary
+          aria-label={`More actions for ${item.name}`}
+          title={`More actions for ${item.name}`}
+          className="calendar-class-menu__trigger flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border"
+        >
+          <span aria-hidden="true">⋯</span>
+        </summary>
+        <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-40 p-1.5">
+          <p className="context-menu__heading">Class Actions</p>
+          <button type="button" onClick={() => openClassForm(item)} data-menu-action="edit" className="context-menu__action">
+            Edit class
+          </button>
+          <button type="button" onClick={() => handleClassDelete(item)} data-menu-action="delete" className="context-menu__action context-menu__action--destructive">
+            Delete class
+          </button>
+        </div>
+      </details>
+    );
+  }
+
+  const resetPlannerForm = useCallback(() => {
     setShowPlannerForm(false);
     setEditingId(null);
     setPlannerError("");
@@ -483,7 +663,30 @@ export default function ClassesPage() {
     setTaskRepeatInterval("1");
     setTaskRepeatWeekdays([]);
     setTaskRepeatUntil("");
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!showClassForm && !showPlannerForm) return;
+
+    function closeOutside(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (
+        classFormRef.current?.contains(target) ||
+        plannerFormRef.current?.contains(target)
+      ) return;
+      if (showClassForm) resetClassForm();
+      if (showPlannerForm) resetPlannerForm();
+    }
+
+    document.addEventListener("pointerdown", closeOutside, true);
+    return () => document.removeEventListener("pointerdown", closeOutside, true);
+  }, [
+    showClassForm,
+    showPlannerForm,
+    resetClassForm,
+    resetPlannerForm,
+  ]);
 
   function switchManagementTab(tab: ManagementTab) {
     resetPlannerForm();
@@ -811,16 +1014,9 @@ export default function ClassesPage() {
   }
 
   return (
-    <main>
-      <header className="mb-7">
-        <p className="stat-label">Your time, in one place</p>
-
-        <h1 className="mt-2 text-4xl sm:text-5xl">Calendar</h1>
-
-        <p className="mt-3 max-w-2xl text-[var(--ink-soft)]">
-          Plan your recurring classes, one-off commitments and flexible
-          tasks in one place.
-        </p>
+    <main className="calendar-page">
+      <header className="mb-5">
+        <h1 className="text-3xl sm:text-4xl">Calendar</h1>
       </header>
 
       {notice && (
@@ -832,38 +1028,14 @@ export default function ClassesPage() {
         </div>
       )}
 
-      {/* Weekly class summary */}
-      <section className="mb-6 grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-3 shadow-[0_3px_0_var(--primary-dark)] sm:p-4">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--muted)]">
-            Classes
-          </p>
-          <p className="mt-2 font-[var(--font-heading)] text-2xl font-bold text-[var(--primary)] sm:text-3xl">
-            {classList.length}
-          </p>
-          <p className="text-xs font-bold text-[var(--ink-soft)]">per week</p>
-        </div>
-
-        <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)] sm:p-4">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary)]">
-            Busy days
-          </p>
-          <p className="mt-2 font-[var(--font-heading)] text-2xl font-bold text-[var(--primary)] sm:text-3xl">
-            {activeDays}
-          </p>
-          <p className="text-xs font-bold text-[var(--ink-soft)]">out of 7</p>
-        </div>
-
-        <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)] sm:p-4">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary-dark)]">
-            Class time
-          </p>
-          <p className="mt-2 font-[var(--font-heading)] text-xl font-bold text-[var(--primary-dark)] sm:text-3xl">
-            {formatDuration(weeklyMinutes)}
-          </p>
-          <p className="text-xs font-bold text-[var(--ink-soft)]">per week</p>
-        </div>
-      </section>
+      {studyLinkError && (
+        <p
+          role="alert"
+          className="mb-3 rounded-xl bg-[var(--accent-soft)] p-3 text-sm font-extrabold text-[var(--accent-dark)]"
+        >
+          {studyLinkError}
+        </p>
+      )}
 
       <CalendarOverview
         classes={classList}
@@ -894,43 +1066,29 @@ export default function ClassesPage() {
       />
 
       {/* Calendar management: one tab visible at a time */}
-      <section className="mt-10">
-        <div className="mb-4">
+      <section className="calendar-page__management mt-7">
+        <div className="mb-3">
           <p className="stat-label">Manage your plan</p>
-          <h2 className="mt-1 text-2xl sm:text-3xl">Classes, events & tasks</h2>
-          <p className="mt-1 text-sm text-[var(--ink-soft)]">
-            Keep each kind of item organised here. The calendar overview above
-            brings them all together.
-          </p>
+          <h2 className="mt-1 text-xl sm:text-2xl">Classes, events & tasks</h2>
         </div>
 
-        <details className="mb-5 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4">
-          <summary className="cursor-pointer list-none font-extrabold">
+        <details className="mb-5 overflow-hidden rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--surface)]">
+          <summary className="cursor-pointer list-none bg-[var(--primary-soft)] px-4 py-3 font-bold text-[var(--primary-dark)]">
             Manage weekly classes
             <span className="mt-1 block text-sm font-normal text-[var(--ink-soft)]">
-              Add and review your weekly class patterns. Individual sessions can
-              still be cancelled or restored from the selected-day agenda.
+              Edit your recurring class schedule.
             </span>
           </summary>
-          <div className="mt-4 space-y-4">
+          <div className="space-y-4 px-3 pb-4 pt-3 sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="stat-label">Recurring weekly schedule</p>
-                <h3 className="mt-1 text-2xl">Your classes</h3>
-                <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                  Manage your weekly class pattern. Cancel or restore individual
-                  sessions from the selected-day agenda above.
-                </p>
+                <h3 className="mt-1 text-lg font-semibold">Your classes</h3>
               </div>
               {!showClassForm && (
                 <Button
                   variant="primary"
-                  onClick={() => {
-                    setClassError("");
-                    setNotice("");
-                    setShowClassForm(true);
-                  }}
-                >
+                  onClick={() => openClassForm()}
+                 className="action-primary--forest">
                   + Add class
                 </Button>
               )}
@@ -938,14 +1096,17 @@ export default function ClassesPage() {
 
 {showClassForm && (
         <form
+          ref={classFormRef}
           onSubmit={handleClassSubmit}
           className="card mb-6 space-y-5 bg-[var(--surface)] p-5 sm:p-6"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-2xl">Add a class</h2>
+              <h2 className="text-2xl">{editingClassId === null ? "Add a class" : "Edit class"}</h2>
               <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                Add one of your recurring weekly classes.
+                {editingClassId === null
+                  ? "Add one of your recurring weekly classes."
+                  : "Update this class and its optional Study Unit link."}
               </p>
             </div>
 
@@ -970,6 +1131,52 @@ export default function ClassesPage() {
                 placeholder="e.g. Economics"
                 required
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label htmlFor="calendar-class-study-unit" className="mb-1 block text-sm font-extrabold">
+                Linked Study Unit (optional)
+              </label>
+              <select
+                id="calendar-class-study-unit"
+                value={studyUnitId}
+                disabled={!studyLinksReady}
+                onChange={(event) => {
+                  setStudyUnitId(event.target.value);
+                  setStudyLinkError("");
+                }}
+              >
+                <option value="">No Study Unit linked</option>
+                {studyUnitId &&
+                  !studyUnits.some((unit) => unit.id === studyUnitId) && (
+                    <option value={studyUnitId}>
+                      Saved Study Unit — {studyUnitId} (unavailable)
+                    </option>
+                  )}
+                {studyUnits.map((unit) => {
+                  const course = studyState?.courses.find(
+                    (item) => item.id === unit.course_id,
+                  );
+                  return (
+                    <option key={unit.id} value={unit.id}>
+                      {course?.code ?? course?.name ?? "Course"} · {unit.code} — {unit.name}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                The link uses the Study Unit ID, so renaming a Unit will not break the relationship.
+              </p>
+              {studyLinkBlockReason && (
+                <p className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">
+                  {studyLinkBlockReason}
+                </p>
+              )}
+              {studyLinkError && (
+                <p role="alert" className="mt-2 rounded-xl bg-[var(--accent-soft)] p-3 text-sm font-extrabold text-[var(--accent-dark)]">
+                  {studyLinkError}
+                </p>
+              )}
             </div>
 
             <div>
@@ -1035,12 +1242,9 @@ export default function ClassesPage() {
             </p>
           )}
 
-          <div className="grid grid-cols-[1fr_2fr] gap-3 border-t border-[var(--border)] pt-5">
-            <Button variant="secondary" className="w-full" onClick={resetClassForm}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" className="w-full">
-              Save class
+          <div className="flex justify-end border-t border-[var(--border)] pt-5">
+            <Button variant="primary" type="submit" className="w-full sm:w-auto action-primary--forest">
+              {editingClassId === null ? "Save class" : "Save changes"}
             </Button>
           </div>
         </form>
@@ -1074,26 +1278,31 @@ export default function ClassesPage() {
                           {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}
                         </p>
                       </header>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {dayClasses.map((item) => (
                           <article
                             key={item.id}
                             id={`class-record-${item.id}`}
-                            className={`rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-2 ${
+                            className={`calendar-class-record rounded-xl border p-2 ${
                               searchHighlightClassId === item.id
                                 ? "ring-2 ring-[var(--accent)]"
                                 : ""
                             }`}
                           >
-                            <p className="text-xs font-extrabold text-[var(--primary-dark)]">
-                              {item.start}–{item.end}
-                            </p>
-                            <p className="mt-1 break-words text-xs font-extrabold text-[var(--ink)]">
-                              {item.name}
-                            </p>
-                            <p className="mt-1 text-xs font-bold text-[var(--muted)]">
-                              {item.type}
-                            </p>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="calendar-class-record__title break-words">
+                                  {item.name}
+                                </p>
+                                <p className="calendar-class-record__time">
+                                  {formatTimeRange(item.start, item.end)}
+                                </p>
+                                <p className="mt-1 text-xs text-[var(--muted)]">
+                                  {item.type}
+                                </p>
+                              </div>
+                              {renderClassActions(item)}
+                            </div>
                           </article>
                         ))}
                         {dayClasses.length === 0 && (
@@ -1107,62 +1316,80 @@ export default function ClassesPage() {
                 })}
               </div>
 
-              <div className="space-y-3 md:hidden">
-                {days.map((dayName) => {
-                  const dayClasses = sortedClasses.filter(
-                    (item) => item.day === dayName,
-                  );
+              <div className="space-y-2 md:hidden">
+                <div role="group" aria-label="Choose class day" className="grid grid-cols-7 gap-1">
+                  {days.map((dayName) => {
+                    const classCount = sortedClasses.filter((item) => item.day === dayName).length;
+                    const selected = selectedClassOverviewDay === dayName;
 
-                  return (
-                    <section
-                      key={dayName}
-                      className="rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4"
-                    >
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <h4 className="text-lg font-extrabold">{dayName}</h4>
-                        <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs font-extrabold text-[var(--ink-soft)]">
-                          {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}
+                    return (
+                      <button
+                        key={dayName}
+                        type="button"
+                        aria-pressed={selected}
+                        aria-label={`${dayName}, ${classCount} ${classCount === 1 ? "class" : "classes"}`}
+                        onClick={() => setSelectedClassOverviewDay(dayName)}
+                        className={`min-w-0 rounded-lg border px-0.5 py-1.5 text-center ${
+                          selected
+                            ? "border-[var(--primary-dark)] bg-[var(--primary-soft)] text-[var(--primary-dark)]"
+                            : "border-[var(--border)] bg-transparent text-[var(--ink-soft)]"
+                        }`}
+                      >
+                        <span className="block text-[10px] font-semibold">{dayName.slice(0, 3)}</span>
+                        <span className={`mx-auto mt-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
+                          classCount > 0 ? "bg-[var(--surface)]" : "opacity-60"
+                        }`}>
+                          {classCount}
                         </span>
-                      </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                      {dayClasses.length > 0 ? (
-                        <div className="space-y-2">
-                          {dayClasses.map((item) => (
-                            <div key={item.id} className="flex items-stretch gap-3">
-                              <div className="flex w-[88px] shrink-0 flex-col justify-center">
-                                <p className="text-xs font-extrabold text-[var(--primary)]">
-                                  {item.start}
-                                </p>
-                                <p className="text-xs font-bold text-[var(--muted)]">
-                                  {item.end}
-                                </p>
-                              </div>
-                              <article
-                                id={`class-record-mobile-${item.id}`}
-                                className={`min-w-0 flex-1 rounded-xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3 ${
-                                  searchHighlightClassId === item.id
-                                    ? "ring-2 ring-[var(--accent)]"
-                                    : ""
-                                }`}
-                              >
-                                <p className="break-words font-extrabold text-[var(--ink)]">
-                                  {item.name}
-                                </p>
-                                <p className="mt-1 text-xs font-bold text-[var(--muted)]">
-                                  {item.type}
-                                </p>
-                              </article>
+                <div className="pt-1">
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold">{selectedClassOverviewDay.slice(0, 3)}</h4>
+                    <span className="text-xs text-[var(--muted)]">
+                      {sortedClasses.filter((item) => item.day === selectedClassOverviewDay).length} classes
+                    </span>
+                  </div>
+
+                  {sortedClasses.some((item) => item.day === selectedClassOverviewDay) ? (
+                    <div>
+                      {sortedClasses
+                        .filter((item) => item.day === selectedClassOverviewDay)
+                        .map((item) => (
+                          <div
+                            key={item.id}
+                            id={`class-record-mobile-${item.id}`}
+                            className={`calendar-class-record flex items-center gap-3 border-b border-[var(--border)] py-2 ${
+                              searchHighlightClassId === item.id
+                                ? "rounded-lg bg-[var(--primary-soft)] px-2 ring-2 ring-[var(--accent)]"
+                                : ""
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p className="calendar-class-record__title break-words">
+                                {item.name}
+                              </p>
+                              <p className="calendar-class-record__time">
+                                {formatTimeRange(item.start, item.end)}
+                              </p>
+                              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                                {item.type}
+                              </p>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm font-bold text-[var(--muted)]">
-                          No scheduled classes. Room to breathe.
-                        </p>
-                      )}
-                    </section>
-                  );
-                })}
+                            {renderClassActions(item)}
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="py-3 text-sm text-[var(--muted)]">
+                      No scheduled classes. Room to breathe.
+                    </p>
+                  )}
+                </div>
+
               </div>
                 </>
             )}
@@ -1181,7 +1408,7 @@ export default function ClassesPage() {
             aria-selected={managementTab === "events"}
             aria-controls="calendar-panel-events"
             onClick={() => switchManagementTab("events")}
-            className={`flex-1 rounded-full px-3 py-2.5 text-sm font-extrabold transition sm:px-4 ${
+            className={`calendar-management-tab flex-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition sm:px-4 ${
               managementTab === "events"
                 ? "bg-[var(--primary)] text-white shadow-sm"
                 : "text-[var(--muted)] hover:bg-[var(--primary-soft)]"
@@ -1196,7 +1423,7 @@ export default function ClassesPage() {
             aria-selected={managementTab === "tasks"}
             aria-controls="calendar-panel-tasks"
             onClick={() => switchManagementTab("tasks")}
-            className={`flex-1 rounded-full px-3 py-2.5 text-sm font-extrabold transition sm:px-4 ${
+            className={`calendar-management-tab flex-1 rounded-full px-3 py-1.5 text-sm font-extrabold transition sm:px-4 ${
               managementTab === "tasks"
                 ? "bg-[var(--primary)] text-white shadow-sm"
                 : "text-[var(--muted)] hover:bg-[var(--primary-soft)]"
@@ -1222,7 +1449,7 @@ export default function ClassesPage() {
               Appointments, exams, meetings and other things you need to show up for.
             </p>
           </div>
-          <Button variant="primary" onClick={() => openPlannerForm("event")}>
+          <Button variant="primary" onClick={() => openPlannerForm("event")} className="action-primary--forest">
             + Add event
           </Button>
         </div>
@@ -1414,9 +1641,8 @@ export default function ClassesPage() {
               </p>
             )}
 
-            <div className="grid grid-cols-[1fr_2fr] gap-3 border-t border-[var(--border)] pt-4">
-              <Button variant="secondary" onClick={resetPlannerForm}>Cancel</Button>
-              <Button variant="primary" type="submit">
+            <div className="flex justify-end border-t border-[var(--border)] pt-4">
+              <Button variant="primary" type="submit" className="action-primary--forest">
                 {editingId ? "Save changes" : "Save event"}
               </Button>
             </div>
@@ -1436,27 +1662,25 @@ export default function ClassesPage() {
               <article
                 key={item.id}
                 id={`calendar-item-${item.id}`}
-                className={`card bg-[var(--surface)] p-4 sm:p-5 ${
+                className={`card bg-[var(--surface)] p-3 sm:p-4 ${
                   searchHighlightCalendarId === item.id
                     ? "ring-2 ring-[var(--accent)]"
                     : ""
                 }`}
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-row items-start justify-between gap-2 sm:gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--accent-dark)]">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent-dark)]">
                       {formatDate(item.date)}
                     </p>
-                    <h3 className="mt-1 break-words text-xl">{item.title}</h3>
+                    <h3 className="mt-1 break-words text-base font-semibold sm:text-lg">{item.title}</h3>
                     {item.recurrence && (
                       <p className="mt-1 text-xs font-extrabold text-[#684000]">
                         {recurrenceSummary(item.recurrence)}
                       </p>
                     )}
-                    <p className="mt-1 text-sm font-bold text-[var(--primary)]">
-                      {item.startTime
-                        ? `${item.startTime}${item.endTime ? `–${item.endTime}` : ""}`
-                        : "Time not set"}
+                    <p className="mt-1 text-sm font-medium text-[var(--ink-soft)]">
+                      {formatTimeRange(item.startTime, item.endTime)}
                     </p>
                     {item.location && (
                       <p className="mt-2 text-sm text-[var(--ink-soft)]">
@@ -1470,21 +1694,23 @@ export default function ClassesPage() {
                     )}
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    <details data-smart-menu className="relative">
+                    <details data-smart-menu="actions" className="relative">
                       <summary
                         aria-label={`More actions for ${item.title}`}
                         className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                       >
                         <span aria-hidden="true">⋮</span>
                       </summary>
-                      <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-48 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                      <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-48 p-1">
+                        <p className="context-menu__heading">Event Actions</p>
                         <button
                           type="button"
                           onClick={(clickEvent) => {
                             clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                             openPlannerForm("event", item);
                           }}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                          data-menu-action="edit"
+                          className="context-menu__action"
                         >
                           {item.recurrence ? "Edit series" : "Edit event"}
                         </button>
@@ -1494,7 +1720,8 @@ export default function ClassesPage() {
                             clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                             handleDeleteItem(item);
                           }}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                          data-menu-action="delete"
+                          className="context-menu__action context-menu__action--destructive"
                         >
                           {item.recurrence ? "Delete series" : "Delete event"}
                         </button>
@@ -1518,21 +1745,18 @@ export default function ClassesPage() {
           >
 {/* Flexible tasks */}
       <section className="mt-3">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="stat-label">Work around your schedule</p>
-            <h2 className="mt-1 text-2xl">Tasks & to-dos</h2>
-            <p className="mt-1 text-sm text-[var(--ink-soft)]">
-              Flexible work with deadlines and priorities, not fixed calendar slots.
-            </p>
+            <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">Tasks & to-dos</h2>
+            <p className="mt-1 text-sm text-[var(--ink-soft)]">Flexible deadlines.</p>
           </div>
-          <Button variant="primary" onClick={() => openPlannerForm("task")}>
-            + Add task
+          <Button variant="primary" onClick={() => openPlannerForm("task")} className="action-primary--forest">
+            Add task
           </Button>
         </div>
 
         <div className="mb-4 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--primary-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)]">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--primary-soft)] p-3 shadow-none">
             <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary)]">
               To do
             </p>
@@ -1540,7 +1764,7 @@ export default function ClassesPage() {
               {openTaskCount}
             </p>
           </div>
-          <div className="rounded-2xl border-2 border-[var(--primary-dark)] bg-[var(--yellow-soft)] p-3 shadow-[0_3px_0_var(--primary-dark)]">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--yellow-soft)] p-3 shadow-none">
             <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--primary-dark)]">
               Completed
             </p>
@@ -1748,9 +1972,8 @@ export default function ClassesPage() {
               </p>
             )}
 
-            <div className="grid grid-cols-[1fr_2fr] gap-3 border-t border-[var(--border)] pt-4">
-              <Button variant="secondary" onClick={resetPlannerForm}>Cancel</Button>
-              <Button variant="primary" type="submit">
+            <div className="flex justify-end border-t border-[var(--border)] pt-4">
+              <Button variant="primary" type="submit" className="action-primary--forest">
                 {editingId ? "Save changes" : "Save task"}
               </Button>
             </div>
@@ -1770,7 +1993,7 @@ export default function ClassesPage() {
               <article
                 key={item.id}
                 id={`calendar-item-${item.id}`}
-                className={`card bg-[var(--surface)] p-4 sm:p-5 ${
+                className={`card bg-[var(--surface)] p-3 sm:p-4 ${
                   item.completed ? "opacity-75" : ""
                 } ${
                   searchHighlightCalendarId === item.id
@@ -1778,7 +2001,7 @@ export default function ClassesPage() {
                     : ""
                 }`}
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-row items-start justify-between gap-2 sm:gap-3">
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     {item.recurrence ? (
                         <span
@@ -1794,13 +2017,28 @@ export default function ClassesPage() {
                           aria-label={`Mark ${item.title} ${item.completed ? "incomplete" : "complete"}`}
                           checked={item.completed}
                           onChange={() => handleToggleTask(item)}
-                          className="mt-1 h-5 w-5 shrink-0 accent-[var(--primary)]"
+                          className="mt-1 !h-5 !w-5 shrink-0 accent-[var(--primary)]"
                         />
                       )}
 
                       <div className="min-w-0 flex-1">
-                      <h3 className={`break-words text-lg ${item.completed ? "line-through" : ""}`}>
-                        {item.title}
+                      <h3 className={`min-w-0 text-base sm:text-lg ${item.completed ? "line-through" : ""}`}>
+                        <button
+                          type="button"
+                          className="calendar-task-title-button bg-transparent focus-visible:outline-2 focus-visible:outline-[var(--primary-dark)]"
+                          aria-expanded={expandedTaskTitles.has(item.id)}
+                          title={item.title}
+                          onClick={() => setExpandedTaskTitles((current) => {
+                            const next = new Set(current);
+                            if (next.has(item.id)) next.delete(item.id);
+                            else next.add(item.id);
+                            return next;
+                          })}
+                        >
+                          <span className={expandedTaskTitles.has(item.id) ? "block whitespace-normal break-words" : "block truncate"}>
+                            {item.title}
+                          </span>
+                        </button>
                       </h3>
                       <div className="mt-2 flex flex-wrap gap-2 text-xs font-extrabold">
                         <span className="rounded-full border border-[var(--border)] px-2 py-1 text-[var(--ink-soft)]">
@@ -1836,22 +2074,24 @@ export default function ClassesPage() {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 gap-2 pl-8 sm:pl-0">
-                    <details data-smart-menu className="relative">
+                  <div className="flex shrink-0 gap-2">
+                    <details data-smart-menu="actions" className="relative">
                       <summary
                         aria-label={`More actions for ${item.title}`}
                         className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border-2 border-[var(--border)] text-xl font-extrabold"
                       >
                         <span aria-hidden="true">⋮</span>
                       </summary>
-                      <div data-smart-menu-panel className="absolute right-0 z-30 mt-1 w-44 rounded-xl border-2 border-[var(--border)] bg-[var(--surface)] p-1 shadow-lg">
+                      <div data-smart-menu-panel data-action-menu-panel className="context-menu-panel min-w-44 p-1">
+                        <p className="context-menu__heading">Task Actions</p>
                         <button
                           type="button"
                           onClick={(clickEvent) => {
                             clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                             openPlannerForm("task", item);
                           }}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold hover:bg-[var(--primary-soft)]"
+                          data-menu-action="edit"
+                          className="context-menu__action"
                         >
                           Edit task
                         </button>
@@ -1861,7 +2101,8 @@ export default function ClassesPage() {
                             clickEvent.currentTarget.closest("details")?.removeAttribute("open");
                             handleDeleteItem(item);
                           }}
-                          className="w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-[var(--accent-dark)] hover:bg-[var(--accent-soft)]"
+                          data-menu-action="delete"
+                          className="context-menu__action context-menu__action--destructive"
                         >
                           Delete task
                         </button>
