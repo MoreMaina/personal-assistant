@@ -753,9 +753,17 @@ export default function BackupRecoveryPage() {
           {error}
         </div>
       )}
-      <section className="rounded-2xl border border-[#e4dac9] bg-white p-5">
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" aria-label="Study backup and history">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Study data and history</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Export Study records or download earlier Study versions</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
   <h2 className="text-lg font-extrabold text-[#23412f]">
-    Study data and history
+    Export a separate Study copy
   </h2>
 
   <p className="mt-2 text-sm text-stone-600">
@@ -898,9 +906,19 @@ export default function BackupRecoveryPage() {
         ))}
       </div>
     )}
-  </div>  
-</section>
-      <section className="rounded-2xl bg-[var(--surface)] p-5">
+  </div>
+        </div>
+      </details>
+
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" open>
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Download or restore app data</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Download a copy or restore a file; restoring replaces cloud data</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
         <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
           Portable backup
         </p>
@@ -1034,13 +1052,22 @@ export default function BackupRecoveryPage() {
             first.
           </p>
         </div>
-      </section>
+        </div>
+      </details>
 
-      <section className="rounded-2xl bg-[var(--surface)] p-5">
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Local recovery copies</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Browser-only raw data; download it before clearing browser storage</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
-              Local recovery copies
+              Preserved browser data
             </p>
 
             <h2 className="mt-1 text-2xl">
@@ -1126,13 +1153,22 @@ export default function BackupRecoveryPage() {
             ))}
           </div>
         )}
-      </section>
+        </div>
+      </details>
 
-      <section className="rounded-2xl bg-[var(--surface)] p-5">
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Automatic cloud history</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Browse earlier snapshots; restoring replaces current app data</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
-              Automatic cloud history
+              Saved app versions
             </p>
 
             <h2 className="mt-1 text-2xl">
@@ -1273,7 +1309,8 @@ export default function BackupRecoveryPage() {
             })}
           </div>
         )}
-      </section>
+        </div>
+      </details>
 
       <p className="text-sm font-bold text-[var(--muted)]">
         Backup history is associated with your signed-in

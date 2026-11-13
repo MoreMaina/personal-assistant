@@ -145,16 +145,6 @@ export default function AppUtilitiesMenu() {
           </button>
 
           <Link
-            href="/backup"
-            role="menuitem"
-            className="app-utilities__action"
-            onClick={() => setOpen(false)}
-          >
-            <AppIcon name="backup" size={18} />
-            <span>Backup & recovery</span>
-          </Link>
-
-          <Link
             href="/settings"
             role="menuitem"
             className="app-utilities__action"
@@ -174,19 +164,34 @@ export default function AppUtilitiesMenu() {
             <span>AI settings</span>
           </Link>
 
-          <div
-            className={`app-utilities__sync app-utilities__sync--${syncStatus}`}
-            role="status"
-            aria-live="polite"
-            title={syncMessage || undefined}
+          <Link
+            href="/backup"
+            role="menuitem"
+            className="app-utilities__action"
+            onClick={() => setOpen(false)}
           >
-            <AppIcon name="cloud" size={18} />
-            <span>{STATUS_LABELS[syncStatus]}</span>
-          </div>
+            <AppIcon name="backup" size={18} />
+            <span>Backup & recovery</span>
+          </Link>
 
-          {syncMessage && (
-            <p className="app-utilities__sync-message">{syncMessage}</p>
-          )}
+          <div className="app-utilities__divider" />
+
+          <div className="app-utilities__sync-row">
+            <div
+              className={`app-utilities__sync app-utilities__sync--${syncStatus}`}
+              role="status"
+              aria-live="polite"
+              aria-label={`Cloud sync status: ${STATUS_LABELS[syncStatus]}`}
+              title={syncMessage || undefined}
+            >
+              <AppIcon name="cloud" size={15} />
+              <span>{STATUS_LABELS[syncStatus]}</span>
+            </div>
+
+            {syncMessage && (
+              <p className="app-utilities__sync-message">{syncMessage}</p>
+            )}
+          </div>
 
           <div className="app-utilities__divider" />
 

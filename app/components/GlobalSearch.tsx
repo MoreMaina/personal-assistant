@@ -16,11 +16,9 @@ import {
   getBooks,
   getEssays,
 } from "@/lib/readingStorage";
-import {
-  getCourses,
-  getLectures,
-  getUnits,
-} from "@/lib/studyStorage";
+import { loadStudyMvpCloudState } from "@/lib/studyMvp/cloudStorage";
+import { loadStudyMvpState } from "@/lib/studyMvp/storage";
+import { buildStudySearchRecords } from "@/lib/studySearch";
 import {
   filterGlobalSearchRecords,
   type GlobalSearchRecord,
@@ -83,27 +81,6 @@ function buildIndex(): GlobalSearchRecord[] {
     );
   }
 
-  const courses = getCourses();
-  const units = getUnits();
-  const lectures = getLectures();
-  const courseById = new Map(courses.map((course) => [course.id, course]));
-  const unitById = new Map(units.map((unit) => [unit.id, unit]));
-
-  for (const lecture of lectures) {
-    const unit = unitById.get(lecture.unitId);
-    const course = unit ? courseById.get(unit.courseId) : undefined;
-    const context = `${course?.name ?? "Course"} · ${unit?.name ?? "Unit"}`;
-
-    add(
-      `lecture-${lecture.id}`,
-      "Study lecture",
-      lecture.name,
-      `${context} · Review box ${lecture.box} · ${lecture.reviewCount} reviews`,
-      `/study/manage?findLectureId=${lecture.id}`,
-      `${lecture.lastRating ?? ""} ${lecture.nextReviewAt}`,
-    );
-  }
-
   for (const item of getCalendarItems()) {
     if (item.type === "event") {
       add(
@@ -139,6 +116,14 @@ function buildIndex(): GlobalSearchRecord[] {
   return records;
 }
 
+async function loadCurrentStudySearchRecords(): Promise<GlobalSearchRecord[]> {
+  // A cloud row is authoritative. Use the browser Study MVP state only when
+  // no cloud row exists (for a not-yet-migrated browser), never legacy Study v2.
+  const cloud = await loadStudyMvpCloudState();
+  const currentState = cloud?.state ?? loadStudyMvpState();
+  return buildStudySearchRecords(currentState);
+}
+
 export default function GlobalSearch({
   showTrigger = true,
 }: {
@@ -150,6 +135,7 @@ export default function GlobalSearch({
   const [records, setRecords] = useState<GlobalSearchRecord[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [indexError, setIndexError] = useState("");
+  const [indexLoading, setIndexLoading] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultRefs = useRef<Array<HTMLAnchorElement | null>>([]);
@@ -205,22 +191,54 @@ export default function GlobalSearch({
   useEffect(() => {
     if (!open) return;
 
+    let cancelled = false;
     const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
     setQuery("");
     setActiveIndex(0);
     setIndexError("");
+    setIndexLoading(true);
 
+    let baseRecords: GlobalSearchRecord[];
     try {
-      setRecords(buildIndex());
+      // Non-Study records continue to use their existing synced stores.
+      baseRecords = buildIndex();
+      setRecords(baseRecords);
     } catch (error) {
       console.error("Global search could not read app records:", error);
       setRecords([]);
+      setIndexLoading(false);
       setIndexError(
         "Some local records could not be read safely. Check Backup & Recovery before retrying.",
       );
+      return () => {
+        cancelled = true;
+        window.cancelAnimationFrame(frame);
+      };
     }
 
-    return () => window.cancelAnimationFrame(frame);
+    void loadCurrentStudySearchRecords()
+      .then((studyRecords) => {
+        if (cancelled) return;
+        setRecords([...baseRecords, ...studyRecords]);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Global search could not refresh current Study records:", error);
+        // Do not fall back to the legacy Study catalogue, which may contain
+        // courses that are no longer present in the current Study MVP state.
+        setRecords(baseRecords);
+        setIndexError(
+          "Current Study records could not be refreshed. Other saved records remain searchable; check your connection and try again.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setIndexLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -324,8 +342,10 @@ export default function GlobalSearch({
               />
             </label>
 
-            <p className="mt-2 text-xs font-bold text-[var(--muted)]">
-              Search is read-only. Selecting a result takes you to the record without editing it.
+            <p className="mt-2 text-xs font-bold text-[var(--muted)]" role="status">
+              {indexLoading
+                ? "Refreshing current Study records…"
+                : "Search is read-only. Selecting a result takes you to the record without editing it."}
             </p>
 
             {indexError && (
@@ -338,11 +358,16 @@ export default function GlobalSearch({
               id="global-search-results"
               role="listbox"
               aria-label="Search results"
+              aria-busy={indexLoading}
               className="mt-4 max-h-[55vh] space-y-2 overflow-y-auto"
             >
               {query.trim() === "" ? (
                 <p className="rounded-xl border border-dashed border-[var(--border)] p-5 text-sm font-bold text-[var(--ink-soft)]">
                   Start typing to search your saved records.
+                </p>
+              ) : results.length === 0 && indexLoading ? (
+                <p className="rounded-xl border border-dashed border-[var(--border)] p-5 text-sm font-bold text-[var(--ink-soft)]">
+                  Checking the current Study catalogue…
                 </p>
               ) : results.length === 0 ? (
                 <p className="rounded-xl border border-dashed border-[var(--border)] p-5 text-sm font-bold text-[var(--ink-soft)]">

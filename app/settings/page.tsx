@@ -519,25 +519,55 @@ export default function GeneralSettingsPage() {
         </div>
       </form>
 
-      <CourseManagementPanel
-        state={studyState}
-        loadingError={studyLoadingError || undefined}
-        syncConflict={Boolean(studySyncConflict)}
-        problem={studyProblem || undefined}
-        persist={persistStudyState}
-      />
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Manage courses</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Add, edit and organise courses by academic period</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-3">
+          <CourseManagementPanel
+            state={studyState}
+            loadingError={studyLoadingError || undefined}
+            syncConflict={Boolean(studySyncConflict)}
+            problem={studyProblem || undefined}
+            persist={persistStudyState}
+          />
+        </div>
+      </details>
 
-      <GoogleCalendarSettings />
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Calendar connection</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Connect or manage read-only Google Calendar access</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-3">
+          <GoogleCalendarSettings />
+        </div>
+      </details>
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" aria-label="Study catalog import and export">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Study catalog</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Import or export courses, units, topics and retrieval tasks</span>
+          </span>
+          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-4">
   <h2 className="text-xl font-extrabold">
-    Study catalog
+    Import and export your catalogue
   </h2>
 
   <p className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">
-    Import courses, units, topics and retrieval tasks. Preview validates the catalogue without saving changes; Apply validates it again against the latest Study state. New courses inherit the active academic period, while existing matched courses keep their current period.
+    Start with the blank CSV template. It contains the exact column headings accepted by the importer: the first eight columns are required and the remaining columns are optional. Fill in the course, unit and topic details, then add retrieval-task details where you have questions to import.
   </p>
   <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-    Required columns: course_code, course_name, unit_code, unit_name, topic_number, topic_title, learning_objective and objective_type. Optional columns: prerequisite_topic_numbers, topic_importance, consolidation_estimated_duration_min, task_prompt, expected_answer_criteria, task_type, task_purpose, estimated_duration_min and task_active. Use one row per retrieval task; repeat the topic columns when a topic has multiple tasks. Existing course codes are matched without moving their period.
+    Use one row per retrieval task. When a topic has multiple tasks, repeat its course, unit and topic details on each row. Upload the completed CSV or paste its contents, then select Preview import to check it; previewing does not save changes. After reviewing the results, select Apply import to save. New courses use the active academic period (or Unassigned when none is set), while courses matched by code keep their existing period.
   </p>
 
   {studyLoadingError && (
@@ -677,7 +707,8 @@ export default function GeneralSettingsPage() {
       </button>
     </div>
   )}
-</section>
+        </div>
+      </details>
 
       <section className="flex flex-col gap-3 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="space-y-1">
