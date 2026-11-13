@@ -493,13 +493,7 @@ export default function GeneralSettingsPage() {
               )}
             </section>
 
-            <CourseManagementPanel
-              state={studyState}
-              loadingError={studyLoadingError || undefined}
-              syncConflict={Boolean(studySyncConflict)}
-              problem={studyProblem || undefined}
-              persist={persistStudyState}
-            />
+
           </div>
         </details>
 
@@ -524,6 +518,14 @@ export default function GeneralSettingsPage() {
           )}
         </div>
       </form>
+
+      <CourseManagementPanel
+        state={studyState}
+        loadingError={studyLoadingError || undefined}
+        syncConflict={Boolean(studySyncConflict)}
+        problem={studyProblem || undefined}
+        persist={persistStudyState}
+      />
 
       <GoogleCalendarSettings />
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">

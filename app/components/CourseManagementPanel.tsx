@@ -32,14 +32,19 @@ export default function CourseManagementPanel({
   const activePeriodLabel = activeYear && activeSemester
     ? `Year ${activeYear} · Semester ${activeSemester}`
     : "No active period selected";
+  const hasActivePeriod = activeYear !== null && activeSemester !== null;
+  const effectiveCourseFilter =
+    courseFilter === "current" && !hasActivePeriod
+      ? "unassigned"
+      : courseFilter;
   const visibleCourses = (state?.courses ?? []).filter((course) => {
     const assigned = Number.isSafeInteger(course.academic_year) &&
       course.academic_year !== null && course.academic_year !== undefined &&
       (course.academic_semester === 1 || course.academic_semester === 2 || course.academic_semester === 3);
-    if (courseFilter === "all") return true;
-    if (courseFilter === "unassigned") return !assigned;
+    if (effectiveCourseFilter === "all") return true;
+    if (effectiveCourseFilter === "unassigned") return !assigned;
     return Boolean(
-      activeYear !== null && activeSemester !== null &&
+      hasActivePeriod &&
       course.academic_year === activeYear &&
       course.academic_semester === activeSemester,
     );
@@ -220,11 +225,11 @@ export default function CourseManagementPanel({
         <label htmlFor="course-period-filter" className="text-sm font-bold">Show courses</label>
         <select
           id="course-period-filter"
-          value={courseFilter}
+          value={effectiveCourseFilter}
           onChange={(event) => setCourseFilter(event.target.value as "current" | "unassigned" | "all")}
           className="min-h-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
         >
-          <option value="current">Active period ({activePeriodLabel})</option>
+          <option value="current" disabled={!hasActivePeriod}>Active period ({activePeriodLabel})</option>
           <option value="unassigned">Unassigned</option>
           <option value="all">All periods</option>
         </select>
@@ -236,9 +241,9 @@ export default function CourseManagementPanel({
         <p className="mt-3 rounded-xl bg-[var(--surface-soft)] p-3 text-sm text-[var(--muted)]">
           {state.courses.length === 0
             ? "No courses have been added yet. Add one above or import a catalogue below."
-            : courseFilter === "current"
+            : effectiveCourseFilter === "current"
               ? `No courses are assigned to ${activePeriodLabel}. Existing courses may be in Unassigned or another period; they have not been moved automatically.`
-              : courseFilter === "unassigned"
+              : effectiveCourseFilter === "unassigned"
                 ? "No Unassigned courses."
                 : "No courses match this filter."}
         </p>
