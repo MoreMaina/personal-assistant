@@ -563,12 +563,6 @@ export default function GeneralSettingsPage() {
     Import and export your catalogue
   </h2>
 
-  <p className="mt-2 text-sm font-semibold text-[var(--ink-soft)]">
-    Start with the blank CSV template. It contains the exact column headings accepted by the importer: the first eight columns are required and the remaining columns are optional. Fill in the course, unit and topic details, then add retrieval-task details where you have questions to import.
-  </p>
-  <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-    Use one row per retrieval task. When a topic has multiple tasks, repeat its course, unit and topic details on each row. Upload the completed CSV or paste its contents, then select Preview import to check it; previewing does not save changes. After reviewing the results, select Apply import to save. New courses use the active academic period (or Unassigned when none is set), while courses matched by code keep their existing period.
-  </p>
 
   {studyLoadingError && (
     <p role="alert" className="mt-3 text-sm text-red-700">
