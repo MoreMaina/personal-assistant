@@ -1,5 +1,7 @@
 "use client";
 
+import { formatTime12Hour } from "@/lib/timeFormatting";
+
 import { useEffect, useMemo, useState } from "react";
 import type { ClassItem } from "@/lib/classes";
 import type { GoogleCalendarEvent } from "@/lib/googleCalendarTypes";
@@ -150,8 +152,8 @@ function formatShortDate(key: string): string {
 
 function formatTime(entry: CalendarAgendaEntry): string {
   if (entry.startTime) {
-    return `${entry.startTime}${
-      entry.endTime ? `–${entry.endTime}` : ""
+    return `${formatTime12Hour(entry.startTime)}${
+      entry.endTime ? `–${formatTime12Hour(entry.endTime)}` : ""
     }`;
   }
 
@@ -429,10 +431,10 @@ export default function CalendarOverview({
         : null;
 
       const formatGoogleTime = (date: Date) =>
-        date.toLocaleTimeString("en-GB", {
+        date.toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
-          hour12: false,
+          hour12: true,
         });
 
       result.push({
@@ -721,7 +723,7 @@ export default function CalendarOverview({
                         : "border-l-4 border-[var(--accent-dark)] bg-[var(--accent-soft)] text-[var(--accent-dark)]"
               }`}
             >
-              {entry.startTime ? `${entry.startTime} ` : ""}
+              {entry.startTime ? `${formatTime12Hour(entry.startTime)} ` : ""}
               {entry.title}
             </div>
           ))}

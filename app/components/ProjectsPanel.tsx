@@ -1,6 +1,8 @@
 
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import {
   FormEvent,
   useEffect,
@@ -59,6 +61,7 @@ export default function ProjectsPanel({ embedded = false }: { embedded?: boolean
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
   const [projectActionError, setProjectActionError] = useState("");
+  useAutoDismissMessage(projectActionError, setProjectActionError);
 
   useEffect(() => {
     if (!notice) return;

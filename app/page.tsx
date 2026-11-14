@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -31,6 +33,7 @@ function formatTime(
     {
       hour: "numeric",
       minute: "2-digit",
+      hour12: true,
     },
   ).format(new Date(date));
 }
@@ -148,6 +151,7 @@ export default function TodayPage() {
   const [dailyPlan, setDailyPlan] = useState("");
   const [isPlanning, setIsPlanning] = useState(false);
   const [planError, setPlanError] = useState("");
+  useAutoDismissMessage(planError, setPlanError);
     const {
     state: studyState,
     cloudSyncStatus,

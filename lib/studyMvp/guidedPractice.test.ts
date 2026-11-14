@@ -8,6 +8,7 @@ import {
 import {
   applyGuidedPracticeAttempt,
   canCompleteMixedPracticeWithoutQuestions,
+  canCompleteSamplerWithoutQuestions,
   getGuidedPracticeQuestions,
   getGuidedPracticeSessionSelection,
 } from "./guidedPractice";
@@ -138,6 +139,68 @@ describe("guided practice question selection", () => {
         selectionIssue: "missing-questions",
       }),
     ).toBe(false);
+  });
+
+  it("allows Sampler completion only when no eligible active questions exist", () => {
+    const noQuestions = {
+      selectedTaskIds: [],
+      questions: [],
+      missingTaskIds: [],
+      attemptedTaskIds: [],
+      selectionIssue: "no-active-questions" as const,
+    };
+
+    expect(canCompleteSamplerWithoutQuestions(noQuestions)).toBe(true);
+    expect(
+      canCompleteSamplerWithoutQuestions({
+        ...noQuestions,
+        selectionIssue: "allocation-too-short",
+      }),
+    ).toBe(false);
+    expect(
+      canCompleteSamplerWithoutQuestions({
+        ...noQuestions,
+        missingTaskIds: ["previously-selected-question"],
+        selectionIssue: "missing-questions",
+      }),
+    ).toBe(false);
+    expect(
+      canCompleteSamplerWithoutQuestions({
+        ...noQuestions,
+        selectionIssue: "not-enough-topics",
+      }),
+    ).toBe(false);
+  });
+
+  it("distinguishes no active Sampler questions from an allocation that is too short", () => {
+    const state = fixtureState();
+
+    const noQuestionsState = {
+      ...state,
+      retrieval_tasks: state.retrieval_tasks.filter(
+        (task) => task.purpose !== "sampler",
+      ),
+    };
+
+    const noQuestionsSelection = getGuidedPracticeSessionSelection(
+      noQuestionsState,
+      "sampler",
+      "sampler-block",
+      "2026-10-31",
+      25,
+    );
+    expect(noQuestionsSelection.selectionIssue).toBe("no-active-questions");
+    expect(canCompleteSamplerWithoutQuestions(noQuestionsSelection)).toBe(true);
+
+    const shortSelection = getGuidedPracticeSessionSelection(
+      state,
+      "sampler",
+      "sampler-block",
+      "2026-10-31",
+      4,
+    );
+    expect(shortSelection.selectionIssue).toBe("allocation-too-short");
+    expect(canCompleteSamplerWithoutQuestions(shortSelection)).toBe(false);
   });
 
   it("accepts an immutable event recording unavailable mixed-practice questions", () => {

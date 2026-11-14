@@ -179,25 +179,6 @@ function EssayDetailContent() {
     }
   }
 
-  function startFirstPass() {
-    if (!essay) return;
-
-    const updated: Essay = {
-      ...essay,
-      status: "First pass",
-      firstPassStartedAt:
-        essay.firstPassStartedAt ?? new Date().toISOString(),
-    };
-
-    try {
-      updateEssay(updated);
-      setEssay(updated);
-      setFeedback("First reading started.");
-    } catch {
-      setFeedback("First reading could not be started. Please try again.");
-    }
-  }
-
   function finishFirstPass() {
     if (!essay) return;
 
@@ -716,16 +697,6 @@ function EssayDetailContent() {
         </summary>
 
         <div className="mt-4 space-y-4">
-          {!essay.firstPassStartedAt && (
-            <button
-              type="button"
-              onClick={startFirstPass}
-              className="reading-detail-page__action action-primary--terracotta"
-            >
-              Start first reading
-            </button>
-          )}
-
           <h2 className="text-base font-semibold">
             Read the essay straight through
           </h2>

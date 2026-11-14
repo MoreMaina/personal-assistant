@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import {
   useEffect,
   useMemo,
@@ -37,6 +39,7 @@ import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
 import {
   canCompleteMixedPracticeWithoutQuestions,
+  canCompleteSamplerWithoutQuestions,
   getGuidedPracticeSessionSelection,
 } from "@/lib/studyMvp/guidedPractice";
 
@@ -262,6 +265,7 @@ function InitialLearningSection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const item =
     snapshot.plan.items.find(
@@ -595,6 +599,7 @@ function TopicConsolidationSection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) => item.kind === "topic_consolidation",
@@ -979,6 +984,7 @@ function AssignmentSection({
   const [markComplete, setMarkComplete] = useState(false);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -1464,6 +1470,7 @@ function CorrectiveSection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -1787,6 +1794,7 @@ function RecoverySection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -2110,6 +2118,7 @@ function MixedPracticeSection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -2589,6 +2598,7 @@ function SamplerSection({
   const [actualDurationMin, setActualDurationMin] = useState(10);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -2632,25 +2642,74 @@ function SamplerSection({
         plannedMinutesFor(item),
     );
 
+  const guidedSelections = items.map((item) => ({
+    item,
+    selection: getGuidedPracticeSessionSelection(
+      state,
+      "sampler",
+      item.subject_id,
+      today,
+      item.allocated_minutes,
+    ),
+  }));
+
+  const unavailableQuestionBlocks = guidedSelections.filter(
+    ({ selection }) => canCompleteSamplerWithoutQuestions(selection),
+  );
+
   const allGuidedQuestionsCompleted =
     items.length > 0 &&
-    items.every((item) => {
-      const selection = getGuidedPracticeSessionSelection(
-        state,
-        "sampler",
-        item.subject_id,
-        today,
-        item.allocated_minutes,
-      );
+    guidedSelections.every(({ selection }) =>
+      selection.selectedTaskIds.length > 0 &&
+      selection.missingTaskIds.length === 0 &&
+      selection.selectedTaskIds.every((id) =>
+        selection.attemptedTaskIds.includes(id),
+      ),
+    );
 
-      return (
+  const guidedRequirementsResolved = guidedSelections.every(
+    ({ selection }) =>
+      canCompleteSamplerWithoutQuestions(selection) ||
+      (
         selection.selectedTaskIds.length > 0 &&
         selection.missingTaskIds.length === 0 &&
         selection.selectedTaskIds.every((id) =>
           selection.attemptedTaskIds.includes(id),
         )
-      );
-    });
+      ),
+  );
+
+  const canCompleteWithoutQuestions =
+    items.length > 0 &&
+    allAllocationsRecorded &&
+    unavailableQuestionBlocks.length > 0 &&
+    guidedRequirementsResolved;
+
+  const blockingGuidedSelection = guidedSelections.find(
+    ({ selection }) =>
+      !canCompleteSamplerWithoutQuestions(selection) &&
+      (
+        selection.selectedTaskIds.length === 0 ||
+        selection.missingTaskIds.length > 0 ||
+        !selection.selectedTaskIds.every((id) =>
+          selection.attemptedTaskIds.includes(id),
+        )
+      ),
+  )?.selection ?? null;
+
+  const samplerStatusMessage = canCompleteWithoutQuestions
+    ? "Planned time is recorded. No eligible active Sampler questions were available. You can close the section with this limitation recorded."
+    : !allGuidedQuestionsCompleted
+      ? blockingGuidedSelection?.selectionIssue === "allocation-too-short"
+        ? "Increase the Sampler allocation or reduce question estimates."
+        : blockingGuidedSelection?.selectionIssue === "missing-questions"
+          ? "Restore the missing selected questions before continuing."
+          : blockingGuidedSelection?.selectionIssue === "no-active-questions"
+            ? "No active Sampler questions are available for this block."
+            : "Answer every selected Sampler question before continuing."
+      : !allAllocationsRecorded
+        ? "Record the planned Sampler and analysis time before continuing."
+        : "All Sampler questions are answered and all planned time is recorded.";
 
   function saveSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2749,16 +2808,79 @@ function SamplerSection({
   }
 
   function finishSection() {
-    if (!allAllocationsRecorded) return;
+    if (
+      !allAllocationsRecorded ||
+      (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
+    ) return;
 
     setError("");
 
     try {
+      const completedAt = new Date().toISOString();
+
+      const unavailableResolutionEvents: TaskEvent[] =
+        canCompleteWithoutQuestions
+          ? unavailableQuestionBlocks
+              .filter(({ item }) =>
+                !state.task_events.some((event) =>
+                  event.event_type === "guided_practice_unavailable" &&
+                  event.subject_type === "sampler" &&
+                  event.subject_id === item.subject_id &&
+                  localDateOfTimestamp(
+                    event.logged_at,
+                    state.settings.timezone,
+                  ) === today,
+                ),
+              )
+              .map(({ item, selection }) => ({
+                id: newId("event"),
+                logged_at: completedAt,
+                event_type: "guided_practice_unavailable",
+                subject_type: "sampler",
+                subject_id: item.subject_id,
+                review_event_id: null,
+                retrieval_task_id: null,
+                gate_session_id: null,
+                gate_selected_task_ids_snapshot: null,
+                skill_demonstrated_without_hints: null,
+                work_session_id: null,
+                related_event_id: null,
+                estimated_duration_min_at_event: item.estimated_minutes,
+                task_type_at_event: null,
+                priority_at_event: item.priority,
+                intended_due_date_at_event: item.intended_due_date,
+                current_due_date_at_event: item.current_due_date,
+                actual_duration_min: null,
+                result: null,
+                yellow_gap_severity: null,
+                disposition: null,
+                reason:
+                  `No eligible active Sampler questions were available (${selection.selectionIssue}); planned time was recorded and the section was closed without question attempts.`,
+                guided_practice_selected_task_ids_snapshot: null,
+                critical_error_flag: null,
+                defer_count_at_event: item.defer_count,
+                re_entry_condition: null,
+                old_priority: null,
+                new_priority: null,
+              }))
+          : [];
+
+      const stateWithResolution =
+        unavailableResolutionEvents.length > 0
+          ? {
+              ...state,
+              task_events: [
+                ...state.task_events,
+                ...unavailableResolutionEvents,
+              ],
+            }
+          : state;
+
       const nextState = completeDailyPlanSection(
-        state,
+        stateWithResolution,
         snapshot.id,
         "sampler",
-        new Date().toISOString(),
+        completedAt,
       );
 
       persist(
@@ -2905,22 +3027,20 @@ function SamplerSection({
 
           <div className="mt-6 border-t border-[#e4dac9] pt-5">
             <p className="text-sm font-semibold text-stone-600">
-              {!allGuidedQuestionsCompleted
-                ? "Answer every selected Sampler question before continuing."
-                : allAllocationsRecorded
-                  ? "All Sampler questions are answered and all Sampler and analysis time is recorded."
-                  : "Record the planned time for the Sampler and its analysis before continuing."}
+              {samplerStatusMessage}
             </p>
             <button
               type="button"
               disabled={
                 !allAllocationsRecorded ||
-                !allGuidedQuestionsCompleted
+                (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
               }
               onClick={finishSection}
               className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Complete Sampler section
+              {canCompleteWithoutQuestions
+                ? "Complete without questions"
+                : "Complete Sampler section"}
             </button>
           </div>
         </>
@@ -4944,7 +5064,7 @@ function movePlanningItemTo(
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-[var(--p6-primary)]">Today</p>
-              <h2 className="mt-1 text-xl font-bold">Today's plan is complete</h2>
+              <h2 className="mt-1 text-xl font-bold">Today&apos;s plan is complete</h2>
               <p className="mt-2 text-sm text-[var(--p6-text-secondary)]">
                 {completedPlannedSections} of {plannedSectionIds.length} planned sections complete · {remainingPlannedSections} remaining · {unresolvedPlanDecisions} unresolved decisions. Your work is saved.
               </p>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { addCalendarTask, type CalendarTask } from "@/lib/calendarItemStorage";
@@ -113,9 +115,11 @@ export default function AssistantPage() {
   const [sending, setSending] = useState(false);
   const sendingRef = useRef(false);
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
   const [taskProposal, setTaskProposal] = useState<TaskProposal | null>(null);
   const [savingProposal, setSavingProposal] = useState(false);
   const [proposalError, setProposalError] = useState("");
+  useAutoDismissMessage(proposalError, setProposalError);
   const proposalSaveLock = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
   const questionInputRef = useRef<HTMLTextAreaElement>(null);
@@ -138,6 +142,7 @@ export default function AssistantPage() {
   const voiceTurnStartedAtRef = useRef<number | null>(null);
   const voiceRequestStartedAtRef = useRef<number | null>(null);
   const [voiceError, setVoiceError] = useState("");
+  useAutoDismissMessage(voiceError, setVoiceError);
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
   const [speechPreparing, setSpeechPreparing] = useState(false);
 

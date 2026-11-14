@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import { useState, type FormEvent } from "react";
 import CardMenu, { type CardMenuAction } from "@/app/components/CardMenu";
 import { defaultIdFactory } from "@/lib/studyMvp/reviewEngine";
@@ -27,6 +29,7 @@ export default function CourseManagementPanel({
 }: CourseManagementPanelProps) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
   const [quickCourseName, setQuickCourseName] = useState("");
   const [quickCourseCode, setQuickCourseCode] = useState("");
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);

@@ -770,7 +770,7 @@ export function ItemWorkTimer({
 
   return (
     <div
-      className="item-work-timer mt-3 rounded-xl border border-[#e4dac9] bg-[#fffaf1] p-4"
+      className="item-work-timer mt-3 rounded-xl border border-[#e4dac9] bg-[#fffaf1] p-3"
       aria-label={`Work tracker for ${itemName}`}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

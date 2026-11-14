@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CardMenu from "@/app/components/CardMenu";
@@ -129,7 +131,9 @@ export default function ReadingPage() {
     content: string;
   } | null>(null);
   const [exportFeedback, setExportFeedback] = useState("");
+  useAutoDismissMessage(exportFeedback, setExportFeedback);
   const [deleteEssaysError, setDeleteEssaysError] = useState("");
+  useAutoDismissMessage(deleteEssaysError, setDeleteEssaysError);
 
   useEffect(() => {
     if (!exportFeedback) return;
