@@ -1,6 +1,8 @@
 
 "use client";
 
+import TimeInput from "@/app/components/TimeInput";
+
 import {
   useCallback,
   useEffect,
@@ -94,7 +96,7 @@ function formatClockTime(value: string): string {
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   if (hours > 23 || minutes > 59) return value;
-  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" })
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
     .format(new Date(2000, 0, 1, hours, minutes));
 }
 
@@ -1213,11 +1215,10 @@ export default function ClassesPage() {
               <label htmlFor="calendar-class-start" className="mb-1 block text-sm font-extrabold">
                 Start time
               </label>
-              <input
+              <TimeInput
                 id="calendar-class-start"
-                type="time"
                 value={start}
-                onChange={(event) => setStart(event.target.value)}
+                onChange={setStart}
                 required
               />
             </div>
@@ -1226,11 +1227,10 @@ export default function ClassesPage() {
               <label htmlFor="calendar-class-end" className="mb-1 block text-sm font-extrabold">
                 End time
               </label>
-              <input
+              <TimeInput
                 id="calendar-class-end"
-                type="time"
                 value={end}
-                onChange={(event) => setEnd(event.target.value)}
+                onChange={setEnd}
                 required
               />
             </div>
@@ -1509,22 +1509,20 @@ export default function ClassesPage() {
                 <label htmlFor="planner-event-start" className="mb-1 block text-sm font-extrabold">
                   Start time (optional)
                 </label>
-                <input
+                <TimeInput
                   id="planner-event-start"
-                  type="time"
                   value={eventStart}
-                  onChange={(event) => setEventStart(event.target.value)}
+                  onChange={setEventStart}
                 />
               </div>
               <div>
                 <label htmlFor="planner-event-end" className="mb-1 block text-sm font-extrabold">
                   End time (optional)
                 </label>
-                <input
+                <TimeInput
                   id="planner-event-end"
-                  type="time"
                   value={eventEnd}
-                  onChange={(event) => setEventEnd(event.target.value)}
+                  onChange={setEventEnd}
                 />
               </div>
             </div>

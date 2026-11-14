@@ -155,15 +155,25 @@ export default function GuidedPracticeRunner({
     purpose === "mixed" ? "Mixed practice" : "Saturday Sampler";
 
   return (
-    <section className="mt-6 rounded-2xl border border-[#d8ccb8] bg-white p-5">
+    <section
+      className={
+        selection.selectedTaskIds.length === 0 &&
+        selection.missingTaskIds.length === 0
+          ? "mt-3 rounded-xl bg-[var(--p6-surface-subtle)] p-3"
+          : "mt-6 rounded-2xl border border-[#d8ccb8] bg-white p-5"
+      }
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-extrabold text-[#23412f]">
-            Guided questions
+            {selection.selectedTaskIds.length > 0
+            ? "Guided questions"
+            : "No questions available"}
           </h3>
           <p className="mt-1 text-sm text-stone-600">
-            {activityName} · {answeredCount} of{" "}
-            {selection.selectedTaskIds.length} answered
+            {selection.selectedTaskIds.length > 0
+              ? `${activityName} · ${answeredCount} of ${selection.selectedTaskIds.length} answered`
+              : activityName}
           </p>
         </div>
 
@@ -180,14 +190,16 @@ export default function GuidedPracticeRunner({
       </div>
 
       {selection.selectedTaskIds.length === 0 && (
-        <p className="mt-4 rounded-xl bg-[#f7f1e7] p-4 text-sm font-semibold text-stone-700">
+        <p className="mt-2 text-sm font-semibold text-[var(--p6-text-secondary)]">
           {purpose === "sampler"
-            ? "No active Sampler questions are available. Add or activate one in Study management."
+            ? selection.selectionIssue === "allocation-too-short"
+              ? "This Sampler allocation is too short for an active question. Increase the allocation or reduce question estimates."
+              : "No active Sampler questions are available. Add or activate one in Study management."
             : selection.selectionIssue === "not-enough-topics"
-              ? "Mixed practice needs questions from at least two active topics. Add or activate questions in another topic."
+              ? "Mixed practice needs active questions from at least two topics."
               : selection.selectionIssue === "allocation-too-short"
-                ? "This time allocation cannot fit questions from two topics. Increase the allocation or shorten question estimates."
-                : "No active mixed-practice questions are available. Add or activate questions across two topics."}
+                ? "Increase the time allocation or reduce question estimates."
+                : "No active mixed-practice questions are available across two topics."}
         </p>
       )}
 

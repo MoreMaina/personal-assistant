@@ -1,32 +1,18 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 512 512"
->
-  <rect
-    width="512"
-    height="512"
-    rx="112"
-    fill="#23412F"
-  />
-
-  <rect
-    x="82"
-    y="82"
-    width="348"
-    height="348"
-    rx="82"
-    fill="#FFF9F0"
-  />
-
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#006D77"/>
   <text
-    x="256"
-    y="294"
+    x="250"
+    y="326"
     text-anchor="middle"
     font-family="Arial, sans-serif"
-    font-size="150"
-    font-weight="700"
-    fill="#23412F"
-  >
-    PA
-  </text>
+    font-size="208"
+    font-weight="800"
+    letter-spacing="-15"
+    fill="#FFFFFF"
+  >PA</text>
+  <path
+    d="M394 74l15 39 39 15-39 15-15 39-15-39-39-15 39-15z"
+    fill="#E8BD68"
+  />
+  <circle cx="344" cy="190" r="7" fill="#9EDBD4"/>
 </svg>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import {
   useCallback,
   useEffect,
@@ -224,6 +226,7 @@ export default function BackupRecoveryPage() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const visibleStudyBackups =
     studyBackupDisplayLimit === "all"
@@ -730,9 +733,7 @@ export default function BackupRecoveryPage() {
         </h1>
 
         <p className="max-w-2xl text-base font-bold text-[var(--ink-soft)]">
-          Keep a separate copy of your app data, browse
-          previous cloud versions, and recover an earlier
-          version when something goes wrong.
+          Download backups and restore earlier versions of your app data.
         </p>
       </header>
 
@@ -759,7 +760,6 @@ export default function BackupRecoveryPage() {
             <span className="block font-extrabold text-[var(--ink)]">Study data and history</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Export Study records or download earlier Study versions</span>
           </span>
-          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
         </summary>
         <div className="mt-4">
   <h2 className="text-lg font-extrabold text-[#23412f]">
@@ -767,8 +767,7 @@ export default function BackupRecoveryPage() {
   </h2>
 
   <p className="mt-2 text-sm text-stone-600">
-    Download your Study state and event history as a JSON backup.
-    This is separate from the full-app backup below.
+    Export Study data and history as JSON.
   </p>
   <div className="mt-4 grid gap-3 sm:grid-cols-2">
   <div className="rounded-xl bg-stone-50 p-4">
@@ -916,7 +915,6 @@ export default function BackupRecoveryPage() {
             <span className="block font-extrabold text-[var(--ink)]">Download or restore app data</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Download a copy or restore a file; restoring replaces cloud data</span>
           </span>
-          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
         </summary>
         <div className="mt-4">
         <p className="text-sm font-black uppercase tracking-wide text-[var(--ink-soft)]">
@@ -928,8 +926,7 @@ export default function BackupRecoveryPage() {
         </h2>
 
         <p className="mt-2 text-sm font-bold text-[var(--muted)]">
-          Downloads the current cloud snapshot as a JSON
-          file. Store it somewhere private and safe.
+          Download the current cloud snapshot as a JSON file. Keep it private.
         </p>
 
         <button
@@ -1047,9 +1044,7 @@ export default function BackupRecoveryPage() {
           )}
 
           <p className="mt-3 text-sm font-bold text-[var(--muted)]">
-            Restoring replaces cloud data on your signed-in
-            devices. The previous cloud version is saved
-            first.
+            Restoring replaces cloud data on your devices. The current version is backed up first.
           </p>
         </div>
         </div>
@@ -1059,9 +1054,8 @@ export default function BackupRecoveryPage() {
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
           <span>
             <span className="block font-extrabold text-[var(--ink)]">Local recovery copies</span>
-            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Browser-only raw data; download it before clearing browser storage</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Local-only raw data; download it before clearing browser storage</span>
           </span>
-          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
         </summary>
         <div className="mt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1075,14 +1069,7 @@ export default function BackupRecoveryPage() {
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm font-bold text-[var(--muted)]">
-              When a storage reader detects malformed data, the original
-              raw value is preserved here in this browser before a fallback
-              is returned. These copies are local to this browser and are
-              not synced to the cloud. Download them somewhere private and
-              safe before clearing browser data. They are raw recovery
-              material, not files that can be directly restored through
-              the normal backup importer.
-            </p>
+              Malformed data is saved locally before fallback. These raw copies are not synced to the cloud and cannot be imported through the normal backup tool. Download them before clearing browser data.</p>
           </div>
 
           <button
@@ -1162,7 +1149,6 @@ export default function BackupRecoveryPage() {
             <span className="block font-extrabold text-[var(--ink)]">Automatic cloud history</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Browse earlier snapshots; restoring replaces current app data</span>
           </span>
-          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
         </summary>
         <div className="mt-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1176,9 +1162,7 @@ export default function BackupRecoveryPage() {
             </h2>
 
             <p className="mt-2 text-sm font-bold text-[var(--muted)]">
-              Up to 50 recent snapshots are retained.
-              Changes and deletions preserve the prior
-              cloud data automatically.
+              Up to 50 snapshots are kept. Changes and deletions save the previous version.
             </p>
           </div>
 
@@ -1221,9 +1205,7 @@ export default function BackupRecoveryPage() {
             </h3>
 
             <p className="mt-2 text-sm font-bold text-[var(--ink-soft)]">
-              Your current data can still be downloaded
-              above. Older versions appear as the saved
-              cloud data changes.
+              Download your current data above. Earlier versions appear as cloud data changes.
             </p>
           </div>
         ) : (
@@ -1313,9 +1295,7 @@ export default function BackupRecoveryPage() {
       </details>
 
       <p className="text-sm font-bold text-[var(--muted)]">
-        Backup history is associated with your signed-in
-        account. Downloaded files are separate copies;
-        keep them private and somewhere safe.
+        Cloud history belongs to your account. Keep downloaded backups private.
       </p>
     </div>
   );

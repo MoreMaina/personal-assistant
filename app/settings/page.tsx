@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import {
   useEffect,
   useState,
@@ -39,12 +41,14 @@ export default function GeneralSettingsPage() {
   const [ready, setReady] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
   const {
     state: studyState,
     loadingError: studyLoadingError,
     syncConflict: studySyncConflict,
     problem: studyProblem,
     persist: persistStudyState,
+    persistCourseDeletion,
   } = useCloudStudyState();
 
   const [catalogImportText, setCatalogImportText] = useState("");
@@ -56,6 +60,7 @@ export default function GeneralSettingsPage() {
     useState(false);
   const [catalogImportMessage, setCatalogImportMessage] = useState("");
   const [catalogImportError, setCatalogImportError] = useState("");
+  useAutoDismissMessage(catalogImportError, setCatalogImportError);
 
   useEffect(() => {
     if (!saved) return;
@@ -393,7 +398,7 @@ export default function GeneralSettingsPage() {
         <p className="stat-label">Personal Assistant</p>
         <h1 className="text-3xl font-extrabold">General Settings</h1>
         <p className="leading-relaxed text-[var(--ink-soft)]">
-          Manage your global academic details. Your course and lecture records remain in place when you update these settings.
+          Manage your program, study year and current semester. Your courses and lectures stay unchanged.
         </p>
       </header>
 
@@ -408,7 +413,7 @@ export default function GeneralSettingsPage() {
               <div className="space-y-1">
                 <h3 className="font-bold">Program and current study year</h3>
                 <p className="text-sm leading-relaxed text-[var(--ink-soft)]">
-                  Keep one program name and set the study year you are currently in.
+                  Set your program and current study year.
                 </p>
               </div>
               <div className="space-y-2">
@@ -449,7 +454,7 @@ export default function GeneralSettingsPage() {
                   className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base"
                 />
                 <p className="text-xs leading-relaxed text-[var(--muted)]">
-                  Enter any positive whole number, such as 1, 2, 3, or 4.
+                  Use a positive whole number.
                 </p>
               </div>
             </section>
@@ -483,7 +488,7 @@ export default function GeneralSettingsPage() {
               </select>
               {ready && !selectedSemesterId && semesters.length > 0 && (
                 <p className="text-xs leading-relaxed text-[var(--muted)]">
-                  Choose a semester and save to make it current. Any older semester records are retained.
+                  Choose and save the current semester. Older records are kept.
                 </p>
               )}
               {ready && semesters.length === 0 && (
@@ -525,7 +530,6 @@ export default function GeneralSettingsPage() {
             <span className="block font-extrabold text-[var(--ink)]">Manage courses</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Add, edit and organise courses by academic period</span>
           </span>
-          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
         </summary>
         <div className="mt-3">
           <CourseManagementPanel
@@ -534,6 +538,7 @@ export default function GeneralSettingsPage() {
             syncConflict={Boolean(studySyncConflict)}
             problem={studyProblem || undefined}
             persist={persistStudyState}
+            persistCourseDeletion={persistCourseDeletion}
           />
         </div>
       </details>
@@ -544,7 +549,6 @@ export default function GeneralSettingsPage() {
             <span className="block font-extrabold text-[var(--ink)]">Calendar connection</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Connect or manage read-only Google Calendar access</span>
           </span>
-          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
         </summary>
         <div className="mt-3">
           <GoogleCalendarSettings />
@@ -556,7 +560,6 @@ export default function GeneralSettingsPage() {
             <span className="block font-extrabold text-[var(--ink)]">Study catalog</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Import or export courses, units, topics and retrieval tasks</span>
           </span>
-          <span aria-hidden="true" className="shrink-0 text-lg text-[var(--primary)] transition-transform group-open:rotate-180">⌄</span>
         </summary>
         <div className="mt-4">
   <h2 className="text-xl font-extrabold">

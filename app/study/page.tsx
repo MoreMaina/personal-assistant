@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import {
   useEffect,
   useMemo,
@@ -37,6 +39,7 @@ import { getDailyPlanItemPresentation } from "@/lib/studyMvp/planPresentation";
 import { getGateReadiness } from "@/lib/studyMvp/gateReadiness";
 import {
   canCompleteMixedPracticeWithoutQuestions,
+  canCompleteSamplerWithoutQuestions,
   getGuidedPracticeSessionSelection,
 } from "@/lib/studyMvp/guidedPractice";
 
@@ -214,10 +217,10 @@ function pillClass(value: string): string {
 }
 
 const STUDY_FORM_CONTROL_CLASS =
-  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500";
+  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 study-form-control--soft";
 
 const STUDY_FORM_CONTROL_COMPACT_CLASS =
-  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500";
+  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 study-form-control--soft";
 
 function SectionHeading({
   eyebrow,
@@ -262,6 +265,7 @@ function InitialLearningSection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const item =
     snapshot.plan.items.find(
@@ -595,6 +599,7 @@ function TopicConsolidationSection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) => item.kind === "topic_consolidation",
@@ -979,6 +984,7 @@ function AssignmentSection({
   const [markComplete, setMarkComplete] = useState(false);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -1464,6 +1470,7 @@ function CorrectiveSection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -1787,6 +1794,7 @@ function RecoverySection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -2110,6 +2118,7 @@ function MixedPracticeSection({
   const [actualDurationMin, setActualDurationMin] = useState(5);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -2527,43 +2536,25 @@ function MixedPracticeSection({
             />
           )}
 
-          <div className="mt-6 border-t border-[var(--border)] pt-5">
+          <div className="study-section-completion mt-5 border-t border-[var(--border)] pt-4">
             <p className="text-sm font-semibold text-[var(--p6-text-secondary)]">
               {guidedPracticeStatusMessage}
             </p>
-            <ul aria-label="Mixed-practice readiness" className="mt-3 space-y-2 text-sm">
-              <li>
-                <strong>{allAllocationsRecorded ? "Ready" : "Pending"}:</strong>{" "}
-                {allAllocationsRecorded
-                  ? "Actual minutes have been recorded for every planned mixed-practice block."
-                  : "Record the planned actual minutes for every mixed-practice block."}
-              </li>
-              <li>
-                <strong>{allGuidedQuestionsCompleted ? "Ready" : canCompleteWithoutQuestions ? "Recorded limitation" : "Pending"}:</strong>{" "}
-                {allGuidedQuestionsCompleted
-                  ? "Every frozen selected question has an attempt recorded."
-                  : canCompleteWithoutQuestions
-                    ? "No eligible questions were available for one or more blocks; this limitation will be saved."
-                    : blockingGuidedSelection?.selectionIssue === "missing-questions"
-                      ? "Restore the original frozen question selection before continuing."
-                      : blockingGuidedSelection?.selectionIssue === "allocation-too-short"
-                        ? "Increase the planned time or reduce question estimates."
-                        : "Complete the selected questions before closing this section."}
-              </li>
-            </ul>
-            <button
-              type="button"
-              disabled={
-                !allAllocationsRecorded ||
-                (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
-              }
-              onClick={finishSection}
-              className="study-primary-action mt-3 rounded-xl border border-[#006d77] bg-[#006d77] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#005a63] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {canCompleteWithoutQuestions
-                ? "Complete without questions"
-                : "Complete mixed-practice section"}
-            </button>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                disabled={
+                  !allAllocationsRecorded ||
+                  (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
+                }
+                onClick={finishSection}
+                className="study-primary-action study-section-complete-action rounded-xl disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {canCompleteWithoutQuestions
+                  ? "Complete without questions"
+                  : "Complete mixed-practice section"}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -2589,6 +2580,7 @@ function SamplerSection({
   const [actualDurationMin, setActualDurationMin] = useState(10);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
 
   const items = snapshot.plan.items.filter(
     (item) =>
@@ -2632,25 +2624,74 @@ function SamplerSection({
         plannedMinutesFor(item),
     );
 
+  const guidedSelections = items.map((item) => ({
+    item,
+    selection: getGuidedPracticeSessionSelection(
+      state,
+      "sampler",
+      item.subject_id,
+      today,
+      item.allocated_minutes,
+    ),
+  }));
+
+  const unavailableQuestionBlocks = guidedSelections.filter(
+    ({ selection }) => canCompleteSamplerWithoutQuestions(selection),
+  );
+
   const allGuidedQuestionsCompleted =
     items.length > 0 &&
-    items.every((item) => {
-      const selection = getGuidedPracticeSessionSelection(
-        state,
-        "sampler",
-        item.subject_id,
-        today,
-        item.allocated_minutes,
-      );
+    guidedSelections.every(({ selection }) =>
+      selection.selectedTaskIds.length > 0 &&
+      selection.missingTaskIds.length === 0 &&
+      selection.selectedTaskIds.every((id) =>
+        selection.attemptedTaskIds.includes(id),
+      ),
+    );
 
-      return (
+  const guidedRequirementsResolved = guidedSelections.every(
+    ({ selection }) =>
+      canCompleteSamplerWithoutQuestions(selection) ||
+      (
         selection.selectedTaskIds.length > 0 &&
         selection.missingTaskIds.length === 0 &&
         selection.selectedTaskIds.every((id) =>
           selection.attemptedTaskIds.includes(id),
         )
-      );
-    });
+      ),
+  );
+
+  const canCompleteWithoutQuestions =
+    items.length > 0 &&
+    allAllocationsRecorded &&
+    unavailableQuestionBlocks.length > 0 &&
+    guidedRequirementsResolved;
+
+  const blockingGuidedSelection = guidedSelections.find(
+    ({ selection }) =>
+      !canCompleteSamplerWithoutQuestions(selection) &&
+      (
+        selection.selectedTaskIds.length === 0 ||
+        selection.missingTaskIds.length > 0 ||
+        !selection.selectedTaskIds.every((id) =>
+          selection.attemptedTaskIds.includes(id),
+        )
+      ),
+  )?.selection ?? null;
+
+  const samplerStatusMessage = canCompleteWithoutQuestions
+    ? "Planned time is recorded. No eligible active Sampler questions were available. You can close the section with this limitation recorded."
+    : !allGuidedQuestionsCompleted
+      ? blockingGuidedSelection?.selectionIssue === "allocation-too-short"
+        ? "Increase the Sampler allocation or reduce question estimates."
+        : blockingGuidedSelection?.selectionIssue === "missing-questions"
+          ? "Restore the missing selected questions before continuing."
+          : blockingGuidedSelection?.selectionIssue === "no-active-questions"
+            ? "No active Sampler questions are available for this block."
+            : "Answer every selected Sampler question before continuing."
+      : !allAllocationsRecorded
+        ? "Record the planned Sampler and analysis time before continuing."
+        : "All Sampler questions are answered and all planned time is recorded.";
 
   function saveSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2749,16 +2790,79 @@ function SamplerSection({
   }
 
   function finishSection() {
-    if (!allAllocationsRecorded) return;
+    if (
+      !allAllocationsRecorded ||
+      (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
+    ) return;
 
     setError("");
 
     try {
+      const completedAt = new Date().toISOString();
+
+      const unavailableResolutionEvents: TaskEvent[] =
+        canCompleteWithoutQuestions
+          ? unavailableQuestionBlocks
+              .filter(({ item }) =>
+                !state.task_events.some((event) =>
+                  event.event_type === "guided_practice_unavailable" &&
+                  event.subject_type === "sampler" &&
+                  event.subject_id === item.subject_id &&
+                  localDateOfTimestamp(
+                    event.logged_at,
+                    state.settings.timezone,
+                  ) === today,
+                ),
+              )
+              .map(({ item, selection }) => ({
+                id: newId("event"),
+                logged_at: completedAt,
+                event_type: "guided_practice_unavailable",
+                subject_type: "sampler",
+                subject_id: item.subject_id,
+                review_event_id: null,
+                retrieval_task_id: null,
+                gate_session_id: null,
+                gate_selected_task_ids_snapshot: null,
+                skill_demonstrated_without_hints: null,
+                work_session_id: null,
+                related_event_id: null,
+                estimated_duration_min_at_event: item.estimated_minutes,
+                task_type_at_event: null,
+                priority_at_event: item.priority,
+                intended_due_date_at_event: item.intended_due_date,
+                current_due_date_at_event: item.current_due_date,
+                actual_duration_min: null,
+                result: null,
+                yellow_gap_severity: null,
+                disposition: null,
+                reason:
+                  `No eligible active Sampler questions were available (${selection.selectionIssue}); planned time was recorded and the section was closed without question attempts.`,
+                guided_practice_selected_task_ids_snapshot: null,
+                critical_error_flag: null,
+                defer_count_at_event: item.defer_count,
+                re_entry_condition: null,
+                old_priority: null,
+                new_priority: null,
+              }))
+          : [];
+
+      const stateWithResolution =
+        unavailableResolutionEvents.length > 0
+          ? {
+              ...state,
+              task_events: [
+                ...state.task_events,
+                ...unavailableResolutionEvents,
+              ],
+            }
+          : state;
+
       const nextState = completeDailyPlanSection(
-        state,
+        stateWithResolution,
         snapshot.id,
         "sampler",
-        new Date().toISOString(),
+        completedAt,
       );
 
       persist(
@@ -2797,11 +2901,11 @@ function SamplerSection({
         </p>
       ) : (
         <>
-          <div className="mb-5 rounded-2xl bg-white p-4">
-            <h3 className="font-extrabold text-[#23412f]">
+          <div className="mb-4 rounded-xl bg-[var(--p6-surface-subtle)] px-3 py-2.5">
+            <h3 className="text-sm font-extrabold text-[var(--p6-text)]">
               Today&apos;s Sampler allocation
             </h3>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-1 space-y-0">
               {items.map((item) => {
                 const planned = plannedMinutesFor(item);
                 const logged = loggedMinutesFor(item.subject_id);
@@ -2809,10 +2913,10 @@ function SamplerSection({
                 return (
                   <li
                     key={item.id}
-                    className="flex flex-wrap justify-between gap-2 rounded-xl bg-[#efe4d1] p-3 text-sm font-semibold"
+                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-[var(--p6-border-decorative)] py-2 text-sm font-semibold first:border-0"
                   >
                     <span>Sampler and analysis</span>
-                    <span>
+                    <span className="whitespace-nowrap text-right tabular-nums">
                       {logged} / {planned} min recorded
                     </span>
                     <span className="w-full text-xs font-medium text-stone-600">
@@ -2903,25 +3007,25 @@ function SamplerSection({
             />
           )}
 
-          <div className="mt-6 border-t border-[#e4dac9] pt-5">
-            <p className="text-sm font-semibold text-stone-600">
-              {!allGuidedQuestionsCompleted
-                ? "Answer every selected Sampler question before continuing."
-                : allAllocationsRecorded
-                  ? "All Sampler questions are answered and all Sampler and analysis time is recorded."
-                  : "Record the planned time for the Sampler and its analysis before continuing."}
+          <div className="study-section-completion mt-5 border-t border-[#e4dac9] pt-4">
+            <p className="text-sm font-semibold text-[var(--p6-text-secondary)]">
+              {samplerStatusMessage}
             </p>
-            <button
-              type="button"
-              disabled={
-                !allAllocationsRecorded ||
-                !allGuidedQuestionsCompleted
-              }
-              onClick={finishSection}
-              className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Complete Sampler section
-            </button>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                disabled={
+                  !allAllocationsRecorded ||
+                  (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
+                }
+                onClick={finishSection}
+                className="study-section-complete-action rounded-xl disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {canCompleteWithoutQuestions
+                  ? "Complete without questions"
+                  : "Complete Sampler section"}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -3106,6 +3210,15 @@ const hasRecordedTodaysWork =
         event.logged_at,
         studyTimezone,
       ) === today,
+  );
+
+const loggedTodayMinutes = (state?.work_sessions ?? [])
+  .filter((session) =>
+    localDateOfTimestamp(session.logged_at, studyTimezone) === today,
+  )
+  .reduce(
+    (total, session) => total + Math.max(0, session.actual_duration_min),
+    0,
   );
 
     const plannedSectionIds = [
@@ -4193,9 +4306,8 @@ function movePlanningItemTo(
           </button>
 
           <p className="mt-4 text-xs leading-5 text-stone-600">
-            Migration creates the cloud record only if another session has
-            not created one first. If cloud data appears before migration
-            completes, the app will stop and ask you to resolve the difference.
+            Migration creates a cloud record only if none exists. If another
+            session creates one first, setup pauses so you can resolve the conflict.
           </p>
         </section>
       </main>
@@ -4411,7 +4523,7 @@ function movePlanningItemTo(
           title={planningMode ? "Daily time budget" : "Today's saved worklist"}
           detail={
             planningMode
-              ? "Build a plan from due reviews and unfinished work. Each saved plan is kept as a dated snapshot."
+              ? "Plan due reviews and unfinished work."
               : ""
           }
         />
@@ -4423,22 +4535,40 @@ function movePlanningItemTo(
               {today ? formatStudyDateLabel(today) : "Loading…"}
             </p>
           </div>
-          <div className="study-page__summary-item">
+          <div className="study-page__summary-item study-page__summary-item--budget">
             <p className="study-page__summary-label">Daily budget</p>
             <p className="study-page__summary-value">
               {state.settings.daily_budget_min} min
             </p>
+            <div
+              className="study-page__budget-progress"
+              role="progressbar"
+              aria-label="Recorded Study work against daily budget"
+              aria-valuemin={0}
+              aria-valuemax={Math.max(1, state.settings.daily_budget_min)}
+              aria-valuenow={Math.min(loggedTodayMinutes, state.settings.daily_budget_min)}
+            >
+              <span
+                className="study-page__budget-progress-fill"
+                style={{
+                  width: `${state.settings.daily_budget_min > 0
+                    ? Math.min(100, (loggedTodayMinutes / state.settings.daily_budget_min) * 100)
+                    : 0}%`,
+                }}
+              />
+            </div>
+            <p className="study-page__budget-progress-label">
+              {loggedTodayMinutes} / {state.settings.daily_budget_min} min recorded
+            </p>
           </div>
           <div className="study-page__summary-item">
-            <p className="study-page__summary-label">Trial</p>
+            <p className="study-page__summary-label">Trial ends</p>
             <p className="study-page__summary-value">
-              {state.settings.trial_start_date
-                ? `${formatStudyDateLabel(state.settings.trial_start_date)}${
-                    state.settings.trial_end_date
-                      ? ` – ${formatStudyDateLabel(state.settings.trial_end_date)}`
-                      : ""
-                  }`
-                : "Not started"}
+              {state.settings.trial_end_date
+                ? formatStudyDateLabel(state.settings.trial_end_date)
+                : state.settings.trial_start_date
+                  ? "Date not set"
+                  : "Not started"}
             </p>
           </div>
         </div>
@@ -4865,7 +4995,7 @@ function movePlanningItemTo(
                         setIsAdditionalPlanning(false);
                         setPlanningOrder([]);
                       }}
-                      className="rounded-xl border border-[#d8ccb8] bg-white px-5 py-3 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
+                      className="study-plan-cancel-action rounded-xl border border-[#d8ccb8] bg-white px-4 py-2.5 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
                     >
                       Cancel replan
                     </button>
@@ -4916,7 +5046,7 @@ function movePlanningItemTo(
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-[var(--p6-primary)]">Today</p>
-              <h2 className="mt-1 text-xl font-bold">Today's plan is complete</h2>
+              <h2 className="mt-1 text-xl font-bold">Today&apos;s plan is complete</h2>
               <p className="mt-2 text-sm text-[var(--p6-text-secondary)]">
                 {completedPlannedSections} of {plannedSectionIds.length} planned sections complete · {remainingPlannedSections} remaining · {unresolvedPlanDecisions} unresolved decisions. Your work is saved.
               </p>
@@ -5315,10 +5445,9 @@ function movePlanningItemTo(
                         ) : (
                           <>
                             <p className="text-sm font-semibold text-amber-900">
-                              At least one original question record is missing or belongs
-                              to another topic. This session will not substitute a new
-                              question set. Export a full JSON backup before recovering
-                              the original catalog record.
+                              An original question is missing or linked to another topic.
+                              No replacement will be used. Export a full JSON backup
+                              before restoring the original catalog record.
                             </p>
                             <a
                               href="#catalog"

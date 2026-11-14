@@ -1,5 +1,9 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
+import { formatTime12Hour } from "@/lib/timeFormatting";
+
 import {
   useEffect,
   useMemo,
@@ -87,7 +91,7 @@ function buildIndex(): GlobalSearchRecord[] {
         `calendar-event-${item.id}`,
         "Calendar event",
         item.title,
-        `${item.date} · ${item.startTime ?? "Time not set"} · ${item.location ?? ""}`,
+        `${item.date} · ${item.startTime ? formatTime12Hour(item.startTime) : "Time not set"} · ${item.location ?? ""}`,
         `/classes?findCalendarItemId=${encodeURIComponent(item.id)}`,
         `${item.notes ?? ""} ${item.recurrence ? "recurring" : ""}`,
       );
@@ -135,6 +139,7 @@ export default function GlobalSearch({
   const [records, setRecords] = useState<GlobalSearchRecord[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [indexError, setIndexError] = useState("");
+  useAutoDismissMessage(indexError, setIndexError);
   const [indexLoading, setIndexLoading] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

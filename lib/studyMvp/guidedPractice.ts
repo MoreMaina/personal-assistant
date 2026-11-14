@@ -205,6 +205,21 @@ export function canCompleteMixedPracticeWithoutQuestions(
 }
 
 /**
+ * A Sampler block may close without attempts only when no eligible active
+ * Sampler questions exist. Short allocations and missing frozen questions
+ * remain blockers.
+ */
+export function canCompleteSamplerWithoutQuestions(
+  selection: GuidedPracticeSessionSelection,
+): boolean {
+  return (
+    selection.selectedTaskIds.length === 0 &&
+    selection.missingTaskIds.length === 0 &&
+    selection.selectionIssue === "no-active-questions"
+  );
+}
+
+/**
  * Selects a question set that fits the planned practice allocation.
  * Once the first answer is saved, its question-ID snapshot is reused
  * so the session does not reshuffle after a refresh.
@@ -319,7 +334,10 @@ export function getGuidedPracticeSessionSelection(
 
     selectedTaskIds = selected.map((question) => question.taskId);
     if (selectedTaskIds.length === 0) {
-      selectionIssue = "no-active-questions";
+      selectionIssue =
+        candidates.length === 0
+          ? "no-active-questions"
+          : "allocation-too-short";
     }
   }
 

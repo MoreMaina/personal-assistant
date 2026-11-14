@@ -1,5 +1,7 @@
 "use client";
 
+import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
+
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -75,6 +77,7 @@ export default function AISettingsPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
   const [error, setError] = useState("");
+  useAutoDismissMessage(error, setError);
   const [status, setStatus] = useState("");
   const [voices, setVoices] = useState<Voice[]>([]);
 
@@ -85,6 +88,7 @@ export default function AISettingsPage() {
   }, [status]);
   const [loadingVoices, setLoadingVoices] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  useAutoDismissMessage(voiceError, setVoiceError);
   const [formOpen, setFormOpen] = useState(false);
   const connectionFormRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<Placement>("reasoning");

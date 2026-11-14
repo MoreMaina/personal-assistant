@@ -21,6 +21,7 @@ vi.mock("./storage", () => ({
 
 import {
   loadStudyMvpCloudState,
+  deleteStudyMvpCloudCourse,
   saveStudyMvpCloudState,
   StudyMvpCloudConflictError,
 } from "./cloudStorage";
@@ -117,6 +118,33 @@ describe("Study MVP cloud storage adapter", () => {
       },
     );
     expect(mocks.assertStudyStateIntegrity).toHaveBeenCalledWith(sampleState);
+  });
+
+  it("calls the dedicated course-deletion RPC with the selected course and expected revision", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: 6, error: null });
+    mocks.createClient.mockReturnValue({ rpc });
+
+    await expect(
+      deleteStudyMvpCloudCourse(sampleState, "course-a", 5),
+    ).resolves.toBe(6);
+
+    expect(rpc).toHaveBeenCalledWith("delete_user_study_mvp_course", {
+      p_course_id: "course-a",
+      p_state: sampleState,
+      p_expected_revision: 5,
+    });
+    expect(mocks.assertStudyStateIntegrity).toHaveBeenCalledWith(sampleState);
+  });
+
+  it("rejects an invalid course deletion revision before making a database call", async () => {
+    const rpc = vi.fn();
+    mocks.createClient.mockReturnValue({ rpc });
+
+    await expect(
+      deleteStudyMvpCloudCourse(sampleState, "course-a", 0),
+    ).rejects.toThrow("expected Study revision is invalid for course deletion");
+
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("reports a stale revision instead of silently overwriting newer data", async () => {
