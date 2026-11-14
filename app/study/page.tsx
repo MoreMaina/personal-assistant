@@ -217,10 +217,10 @@ function pillClass(value: string): string {
 }
 
 const STUDY_FORM_CONTROL_CLASS =
-  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500";
+  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-3 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 study-form-control--soft";
 
 const STUDY_FORM_CONTROL_COMPACT_CLASS =
-  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500";
+  "w-full rounded-xl border border-[#d8ccb8] bg-white px-3 py-2.5 text-sm font-semibold text-stone-800 placeholder:text-stone-400 shadow-sm transition-colors focus:border-[#557c61] focus:outline-none focus:ring-2 focus:ring-[#dce8d8] disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 study-form-control--soft";
 
 function SectionHeading({
   eyebrow,
@@ -2536,43 +2536,25 @@ function MixedPracticeSection({
             />
           )}
 
-          <div className="mt-6 border-t border-[var(--border)] pt-5">
+          <div className="study-section-completion mt-5 border-t border-[var(--border)] pt-4">
             <p className="text-sm font-semibold text-[var(--p6-text-secondary)]">
               {guidedPracticeStatusMessage}
             </p>
-            <ul aria-label="Mixed-practice readiness" className="mt-3 space-y-2 text-sm">
-              <li>
-                <strong>{allAllocationsRecorded ? "Ready" : "Pending"}:</strong>{" "}
-                {allAllocationsRecorded
-                  ? "Actual minutes have been recorded for every planned mixed-practice block."
-                  : "Record the planned actual minutes for every mixed-practice block."}
-              </li>
-              <li>
-                <strong>{allGuidedQuestionsCompleted ? "Ready" : canCompleteWithoutQuestions ? "Recorded limitation" : "Pending"}:</strong>{" "}
-                {allGuidedQuestionsCompleted
-                  ? "Every frozen selected question has an attempt recorded."
-                  : canCompleteWithoutQuestions
-                    ? "No eligible questions were available for one or more blocks; this limitation will be saved."
-                    : blockingGuidedSelection?.selectionIssue === "missing-questions"
-                      ? "Restore the original frozen question selection before continuing."
-                      : blockingGuidedSelection?.selectionIssue === "allocation-too-short"
-                        ? "Increase the planned time or reduce question estimates."
-                        : "Complete the selected questions before closing this section."}
-              </li>
-            </ul>
-            <button
-              type="button"
-              disabled={
-                !allAllocationsRecorded ||
-                (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
-              }
-              onClick={finishSection}
-              className="study-primary-action mt-3 rounded-xl border border-[#006d77] bg-[#006d77] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#005a63] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {canCompleteWithoutQuestions
-                ? "Complete without questions"
-                : "Complete mixed-practice section"}
-            </button>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                disabled={
+                  !allAllocationsRecorded ||
+                  (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
+                }
+                onClick={finishSection}
+                className="study-primary-action study-section-complete-action rounded-xl disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {canCompleteWithoutQuestions
+                  ? "Complete without questions"
+                  : "Complete mixed-practice section"}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -2919,11 +2901,11 @@ function SamplerSection({
         </p>
       ) : (
         <>
-          <div className="mb-5 rounded-2xl bg-white p-4">
-            <h3 className="font-extrabold text-[#23412f]">
+          <div className="mb-4 rounded-xl bg-[var(--p6-surface-subtle)] px-3 py-2.5">
+            <h3 className="text-sm font-extrabold text-[var(--p6-text)]">
               Today&apos;s Sampler allocation
             </h3>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-1 space-y-0">
               {items.map((item) => {
                 const planned = plannedMinutesFor(item);
                 const logged = loggedMinutesFor(item.subject_id);
@@ -2931,10 +2913,10 @@ function SamplerSection({
                 return (
                   <li
                     key={item.id}
-                    className="flex flex-wrap justify-between gap-2 rounded-xl bg-[#efe4d1] p-3 text-sm font-semibold"
+                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-[var(--p6-border-decorative)] py-2 text-sm font-semibold first:border-0"
                   >
                     <span>Sampler and analysis</span>
-                    <span>
+                    <span className="whitespace-nowrap text-right tabular-nums">
                       {logged} / {planned} min recorded
                     </span>
                     <span className="w-full text-xs font-medium text-stone-600">
@@ -3025,23 +3007,25 @@ function SamplerSection({
             />
           )}
 
-          <div className="mt-6 border-t border-[#e4dac9] pt-5">
-            <p className="text-sm font-semibold text-stone-600">
+          <div className="study-section-completion mt-5 border-t border-[#e4dac9] pt-4">
+            <p className="text-sm font-semibold text-[var(--p6-text-secondary)]">
               {samplerStatusMessage}
             </p>
-            <button
-              type="button"
-              disabled={
-                !allAllocationsRecorded ||
-                (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
-              }
-              onClick={finishSection}
-              className="mt-3 rounded-xl bg-[#23412f] px-5 py-3 text-sm font-extrabold text-white hover:bg-[#31573f] disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {canCompleteWithoutQuestions
-                ? "Complete without questions"
-                : "Complete Sampler section"}
-            </button>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                disabled={
+                  !allAllocationsRecorded ||
+                  (!allGuidedQuestionsCompleted && !canCompleteWithoutQuestions)
+                }
+                onClick={finishSection}
+                className="study-section-complete-action rounded-xl disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {canCompleteWithoutQuestions
+                  ? "Complete without questions"
+                  : "Complete Sampler section"}
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -4539,7 +4523,7 @@ function movePlanningItemTo(
           title={planningMode ? "Daily time budget" : "Today's saved worklist"}
           detail={
             planningMode
-              ? "Build a plan from due reviews and unfinished work. Each saved plan is kept as a dated snapshot."
+              ? "Plan due reviews and unfinished work."
               : ""
           }
         />
@@ -4578,15 +4562,13 @@ function movePlanningItemTo(
             </p>
           </div>
           <div className="study-page__summary-item">
-            <p className="study-page__summary-label">Trial</p>
+            <p className="study-page__summary-label">Trial ends</p>
             <p className="study-page__summary-value">
-              {state.settings.trial_start_date
-                ? `${formatStudyDateLabel(state.settings.trial_start_date)}${
-                    state.settings.trial_end_date
-                      ? ` – ${formatStudyDateLabel(state.settings.trial_end_date)}`
-                      : ""
-                  }`
-                : "Not started"}
+              {state.settings.trial_end_date
+                ? formatStudyDateLabel(state.settings.trial_end_date)
+                : state.settings.trial_start_date
+                  ? "Date not set"
+                  : "Not started"}
             </p>
           </div>
         </div>
@@ -5013,7 +4995,7 @@ function movePlanningItemTo(
                         setIsAdditionalPlanning(false);
                         setPlanningOrder([]);
                       }}
-                      className="rounded-xl border border-[#d8ccb8] bg-white px-5 py-3 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
+                      className="study-plan-cancel-action rounded-xl border border-[#d8ccb8] bg-white px-4 py-2.5 text-sm font-extrabold text-stone-700 hover:bg-stone-50"
                     >
                       Cancel replan
                     </button>

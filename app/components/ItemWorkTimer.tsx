@@ -770,17 +770,12 @@ export function ItemWorkTimer({
 
   return (
     <div
-      className="item-work-timer mt-3 rounded-xl border border-[#e4dac9] bg-[#fffaf1] p-3"
+      className="item-work-timer item-work-timer--compact mt-3"
       aria-label={`Work tracker for ${itemName}`}
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
-            Work tracker
-          </p>
-        </div>
+      <div className="item-work-timer__mode-row">
         <div
-          className="inline-flex rounded-xl border border-[#d8ccb8] bg-white p-1"
+          className="item-work-timer__mode-group"
           role="group"
           aria-label="Choose timer or stopwatch"
         >
@@ -788,7 +783,7 @@ export function ItemWorkTimer({
             type="button"
             aria-pressed={mode === "timer"}
             onClick={() => setMode("timer")}
-            className={`item-work-tracker__mode ${mode === "timer" ? "item-work-tracker__mode--active" : ""}`}
+            className={`item-work-timer__mode ${mode === "timer" ? "item-work-timer__mode--active" : ""}`}
           >
             Timer
           </button>
@@ -796,17 +791,17 @@ export function ItemWorkTimer({
             type="button"
             aria-pressed={mode === "stopwatch"}
             onClick={() => setMode("stopwatch")}
-            className={`item-work-tracker__mode ${mode === "stopwatch" ? "item-work-tracker__mode--active" : ""}`}
+            className={`item-work-timer__mode ${mode === "stopwatch" ? "item-work-timer__mode--active" : ""}`}
           >
             Stopwatch
           </button>
         </div>
       </div>
 
-      {mode === "timer" ? (
-        <div className="item-work-timer__controls grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-          <div className="min-w-0">
-            {editingDuration ? (
+      <div className="item-work-timer__action-row">
+        <div className="item-work-timer__clock-slot">
+          {mode === "timer" ? (
+            editingDuration ? (
               <form
                 className="item-work-timer__duration-editor"
                 onSubmit={(event) => {
@@ -814,7 +809,10 @@ export function ItemWorkTimer({
                   saveDurationEdit();
                 }}
               >
-                <label className="sr-only" htmlFor={`work-timer-duration-${itemId}`}>
+                <label
+                  className="sr-only"
+                  htmlFor={`work-timer-duration-${itemId}`}
+                >
                   Timer duration in minutes
                 </label>
                 <input
@@ -837,17 +835,29 @@ export function ItemWorkTimer({
                     }
                   }}
                   className="item-work-timer__duration-input"
-                  aria-describedby={durationError ? `work-timer-duration-error-${itemId}` : undefined}
+                  aria-describedby={
+                    durationError
+                      ? `work-timer-duration-error-${itemId}`
+                      : undefined
+                  }
                 />
-                <span className="text-sm font-semibold text-[var(--p6-text-secondary)]">minutes</span>
+                <span className="sr-only">minutes</span>
                 <button type="submit" className="item-work-timer__inline-action">
                   Set
                 </button>
-                <button type="button" onClick={cancelDurationEdit} className="item-work-timer__inline-action item-work-timer__inline-action--quiet">
+                <button
+                  type="button"
+                  onClick={cancelDurationEdit}
+                  className="item-work-timer__inline-action item-work-timer__inline-action--quiet"
+                >
                   Cancel
                 </button>
                 {durationError && (
-                  <p id={`work-timer-duration-error-${itemId}`} role="alert" className="item-work-timer__duration-error">
+                  <p
+                    id={`work-timer-duration-error-${itemId}`}
+                    role="alert"
+                    className="item-work-timer__duration-error"
+                  >
                     {durationError}
                   </p>
                 )}
@@ -861,91 +871,89 @@ export function ItemWorkTimer({
                   setDurationError("");
                   setEditingDuration(true);
                 }}
-                className="item-work-timer__clock rounded-lg px-1 text-2xl font-bold tabular-nums focus-visible:outline-2 disabled:cursor-default disabled:opacity-100"
+                className="item-work-timer__clock"
                 aria-label={`Edit ${itemName} timer duration. ${timeLabel} remaining.`}
                 title={isRunning ? "Pause the timer to edit its duration" : "Edit timer duration"}
               >
                 {hydrated ? timeLabel : "--:--"}
+                <span className="item-work-timer__edit-mark" aria-hidden="true">
+                  ✎
+                </span>
               </button>
-            )}
-            <p className="mt-1 text-xs font-medium text-[var(--p6-text-secondary)]">
-              {isRunning
-                ? "Running"
-                : remainingMs === 0 && entry.completedAtMs !== null
-                  ? "Time complete"
-                  : anotherTimerRunning
-                    ? "Ready · starting this timer will pause the other activity"
-                    : "Ready · select the time to edit duration"}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <button
-              type="button"
-              disabled={!hydrated}
-              onClick={toggleTimer}
-              className="item-work-timer__primary-action"
-            >
-              {isRunning ? "Pause" : "Start"}
-            </button>
-            <button
-              type="button"
-              disabled={!hydrated}
-              onClick={() => reset(itemId, safeDefault)}
-              className="item-work-timer__reset-action"
-            >
-              Reset
-            </button>
-          </div>
-
-          {remainingMs === 0 && entry.completedAtMs !== null && (
+            )
+          ) : (
             <p
-              role="status"
-              aria-live="polite"
-              className="sm:col-span-2 rounded-lg bg-emerald-50 p-2 text-xs font-extrabold text-emerald-900"
+              className="item-work-timer__clock item-work-timer__clock--static"
+              aria-label={`${stopwatchTimeLabel} elapsed`}
             >
-              Timer complete. Record your actual work separately.
+              {hydrated ? stopwatchTimeLabel : "--:--:--"}
             </p>
           )}
         </div>
-      ) : (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-2xl font-extrabold tabular-nums text-[#23412f]">
-              {hydrated ? stopwatchTimeLabel : "--:--:--"}
-            </p>
-            <p className="mt-1 text-xs font-bold text-stone-500">
-              {stopwatchIsRunning
-                ? "Running"
-                : anotherStopwatchRunning
-                  ? "Paused · another item is running"
-                  : "Ready"}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={!hydrated}
-              onClick={() =>
-                stopwatchIsRunning
-                  ? pauseStopwatch(itemId)
-                  : startStopwatch(itemId)
+
+        <div className="item-work-timer__action-group">
+          <button
+            type="button"
+            disabled={!hydrated}
+            onClick={() => {
+              if (mode === "timer") {
+                toggleTimer();
+              } else if (stopwatchIsRunning) {
+                pauseStopwatch(itemId);
+              } else {
+                startStopwatch(itemId);
               }
-              className="item-work-timer__primary-action"
-            >
-              {stopwatchIsRunning ? "Pause" : "Start"}
-            </button>
-            <button
-              type="button"
-              disabled={!hydrated}
-              onClick={() => resetStopwatch(itemId)}
-              className="rounded-lg border border-[#d8ccb8] bg-white px-3 py-2 text-sm font-extrabold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
-            >
-              Reset
-            </button>
-          </div>
+            }}
+            className="item-work-timer__primary-action"
+            title={
+              mode === "timer"
+                ? anotherTimerRunning
+                  ? "Starting this timer will pause the other activity"
+                  : isRunning ? "Pause timer" : "Start timer"
+                : anotherStopwatchRunning
+                  ? "Starting this stopwatch will pause the other stopwatch"
+                  : stopwatchIsRunning ? "Pause stopwatch" : "Start stopwatch"
+            }
+          >
+            {mode === "timer"
+              ? isRunning ? "Pause" : "Start"
+              : stopwatchIsRunning ? "Pause" : "Start"}
+          </button>
+
+          <button
+            type="button"
+            disabled={!hydrated}
+            onClick={() => {
+              if (mode === "timer") {
+                reset(itemId, safeDefault);
+              } else {
+                resetStopwatch(itemId);
+              }
+            }}
+            className="item-work-timer__reset-action"
+            aria-label={`Reset ${itemName} ${mode}`}
+            title="Reset"
+          >
+            <span aria-hidden="true">↺</span>
+          </button>
         </div>
-      )}
+      </div>
+
+      <p className="sr-only" role="status" aria-live="polite">
+        {mode === "timer"
+          ? isRunning
+            ? "Timer running"
+            : remainingMs === 0 && entry.completedAtMs !== null
+              ? "Timer complete"
+              : anotherTimerRunning
+                ? "Another activity is running"
+                : "Timer ready"
+          : stopwatchIsRunning
+            ? "Stopwatch running"
+            : anotherStopwatchRunning
+              ? "Another stopwatch is running"
+              : "Stopwatch ready"}
+      </p>
     </div>
   );
 }

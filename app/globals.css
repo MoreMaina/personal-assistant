@@ -5828,3 +5828,329 @@ body,
   box-shadow: none !important;
   transform: none !important;
 }
+
+
+/* Study mobile refinement: stable micro-tracker and calmer planning. */
+.app-content .item-work-timer.item-work-timer--compact {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem !important;
+  border: 0 !important;
+  border-radius: 0.9rem !important;
+  background: var(--p6-surface-subtle) !important;
+  box-shadow: none !important;
+}
+
+.app-content .item-work-timer__mode-row {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+}
+
+.app-content .item-work-timer__mode-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--p6-surface);
+}
+
+.app-content .item-work-timer__mode {
+  display: inline-flex;
+  min-height: 2.75rem !important;
+  min-width: 4.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.75rem !important;
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  font-size: 0.82rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  box-shadow: none !important;
+}
+
+.app-content .item-work-timer__mode--active {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-content .item-work-timer__action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+
+.app-content .item-work-timer__clock-slot {
+  display: flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+}
+
+.app-content .item-work-timer__clock {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.4rem !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--p6-primary) !important;
+  font-size: 1.3rem !important;
+  font-weight: var(--p6-weight-bold) !important;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: none !important;
+}
+
+.app-content .item-work-timer__clock--static {
+  cursor: default;
+}
+
+.app-content .item-work-timer__edit-mark {
+  color: var(--p6-text-secondary);
+  font-size: 0.9rem;
+}
+
+.app-content .item-work-timer__action-group {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.app-content .item-work-timer__primary-action {
+  display: inline-flex;
+  min-width: 4.25rem;
+  min-height: 2.75rem !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.8rem !important;
+  border: 1px solid var(--p6-primary) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  font-size: 0.88rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  box-shadow: none !important;
+}
+
+.app-content .item-work-timer__reset-action {
+  display: inline-flex;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  font-size: 1.35rem !important;
+  line-height: 1;
+  box-shadow: none !important;
+}
+
+.app-content .item-work-timer__duration-editor {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.app-content .item-work-timer__duration-input {
+  width: 4.5rem !important;
+  min-width: 4.5rem !important;
+  min-height: 2.75rem !important;
+  padding: 0.4rem 0.5rem !important;
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  font-size: 1rem !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-content .item-work-timer__inline-action {
+  min-height: 2.5rem !important;
+  padding: 0.35rem 0.6rem !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  font-size: 0.8rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+}
+
+.app-content .item-work-timer__inline-action--quiet {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+}
+
+.app-content .item-work-timer__duration-error {
+  flex-basis: 100%;
+  color: #b42318;
+  font-size: var(--p6-font-metadata);
+}
+
+/* Study form fields use a soft fill rather than dark outlines. */
+.app-content .study-page .study-form-control--soft {
+  border: 1px solid transparent !important;
+  background: var(--p6-surface-subtle) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .study-form-control--soft:focus {
+  border-color: var(--p6-primary) !important;
+  outline: 3px solid rgba(0, 109, 119, 0.16) !important;
+  outline-offset: 1px;
+}
+
+/* Completion actions stay compact and right-aligned. */
+.app-content .study-page .study-section-completion {
+  display: block;
+}
+
+.app-content .study-page button.study-section-complete-action,
+.app-content .study-page button.study-primary-action.study-section-complete-action {
+  display: inline-flex;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100%;
+  min-height: 2.75rem !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1rem !important;
+  border: 1px solid var(--p6-primary) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  font-size: 0.88rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.2;
+  box-shadow: none !important;
+}
+
+/* Move the plan drag control next to the title, on the left. */
+.app-content .study-page .study-plan-item--reorderable {
+  padding-right: 1rem !important;
+  padding-left: 4.75rem !important;
+}
+
+.app-content .study-page .study-plan-item__drag-handle {
+  top: 1rem !important;
+  right: auto !important;
+  left: 0.75rem !important;
+  transform: none !important;
+}
+
+.app-content .study-page .study-plan-item__drag-handle:active {
+  transform: none !important;
+}
+
+/* Keep replan actions side by side instead of making Save full width. */
+.app-content .study-page .study-plan-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.app-content .study-page .study-plan-actions button.study-primary-action {
+  width: auto !important;
+  min-width: 0 !important;
+  min-height: 2.75rem !important;
+  padding: 0.55rem 1rem !important;
+  font-size: 0.9rem !important;
+}
+
+.app-content .study-page .study-plan-actions .study-plan-cancel-action {
+  order: -1;
+  min-height: 2.75rem !important;
+  margin-right: auto;
+  padding: 0.5rem 0.8rem !important;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  font-size: 0.85rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+}
+
+.app-content .study-page .study-plan-actions > p {
+  flex-basis: 100%;
+}
+
+/* A readable mobile metadata list replaces three narrow columns. */
+@media (max-width: 48rem) {
+  .app-content .study-page .study-page__summary-banner {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-content .study-page .study-page__summary-item {
+    display: grid;
+    grid-template-columns: minmax(5.75rem, 0.8fr) minmax(0, 1.4fr);
+    align-items: center;
+    gap: 0.3rem 0.75rem;
+    padding: 0.65rem 0.85rem !important;
+  }
+
+  .app-content .study-page .study-page__summary-item + .study-page__summary-item {
+    border-top: 1px solid var(--p6-border-decorative);
+    border-left: 0;
+  }
+
+  .app-content .study-page .study-page__summary-label {
+    font-size: 0.72rem !important;
+  }
+
+  .app-content .study-page .study-page__summary-value {
+    margin: 0 !important;
+    font-size: 0.92rem !important;
+    line-height: 1.25;
+    overflow-wrap: normal;
+  }
+
+  .app-content .study-page .study-page__budget-progress,
+  .app-content .study-page .study-page__budget-progress-label {
+    grid-column: 1 / -1;
+  }
+
+  .app-content .study-page .study-page__budget-progress-label {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable {
+    padding-right: 0.75rem !important;
+    padding-left: 4rem !important;
+  }
+
+  .app-content .study-page .study-plan-item__drag-handle {
+    top: 0.85rem !important;
+    left: 0.5rem !important;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .app-content .study-page .study-plan-actions {
+    display: flex !important;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+}
