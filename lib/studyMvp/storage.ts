@@ -996,6 +996,88 @@ export function assertStudyStateIntegrity(
     }
   }
 
+  const intervals = state.settings.intervals_days;
+
+  if (
+    !Array.isArray(intervals) ||
+    intervals.length !== 5 ||
+    intervals.some((days) => !Number.isSafeInteger(days) || days < 1) ||
+    intervals.some(
+      (days, index) =>
+        index > 0 && days <= (intervals[index - 1] ?? 0),
+    )
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Review intervals must be five positive, strictly increasing whole-day values.",
+    );
+  }
+
+  const settings = state.settings;
+
+  if (
+    !Number.isSafeInteger(settings.daily_budget_min) ||
+    settings.daily_budget_min < 1
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Daily study budget must be a positive whole number of minutes.",
+    );
+  }
+
+  if (
+    !Number.isSafeInteger(settings.review_reserve_min) ||
+    settings.review_reserve_min < 0 ||
+    settings.review_reserve_min > settings.daily_budget_min
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Review reserve must be a whole number between zero and the daily budget.",
+    );
+  }
+
+  if (
+    !Number.isSafeInteger(settings.repair_recovery_cap_min) ||
+    settings.repair_recovery_cap_min < 0 ||
+    settings.repair_recovery_cap_min > settings.daily_budget_min
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Repair and recovery cap must be a whole number between zero and the daily budget.",
+    );
+  }
+
+  if (
+    !Number.isSafeInteger(settings.gate_threshold_pct) ||
+    settings.gate_threshold_pct < 60 ||
+    settings.gate_threshold_pct > 100
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Gate threshold must be a whole percentage from 60 to 100.",
+    );
+  }
+
+  if (
+    !Number.isSafeInteger(settings.defer_limit) ||
+    settings.defer_limit < 1
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Defer limit must be a positive whole number.",
+    );
+  }
+
+  if (
+    settings.last_final_exam_date !== null &&
+    !isDateOnly(settings.last_final_exam_date)
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Last final exam date must be a valid calendar date or left blank.",
+    );
+  }
+
   const activeAcademicYear = state.settings.active_academic_year ?? null;
   const activeAcademicSemester = state.settings.active_academic_semester ?? null;
   if (
@@ -1995,6 +2077,7 @@ const LOCKED_TRIAL_ENGINE_SETTINGS = new Set<
   "default_assignment_session_target_min",
   "intervals_days",
   "gate_threshold_pct",
+  "last_final_exam_date",
   "defer_limit",
   "skip_rate_threshold_pct_p45",
 ]);
@@ -2006,15 +2089,22 @@ export interface ApprovedEngineBugFix {
   newVersion: string;
 }
 
-export function changeStudySettings(
+export interface StudySettingsChangeOptions {
+  now?: ISODateTime;
+  idFactory?: (prefix: string) => EntityId;
+  approvedEngineBugFix?: ApprovedEngineBugFix;
+}
+
+/**
+ * Apply an audited settings change to a supplied state without writing
+ * to browser storage. Cloud-backed callers persist the returned state
+ * through their normal state persistence path.
+ */
+export function applyStudySettingsChange(
+  current: StudyMvpState,
   patch: Partial<StudySettings>,
   reason: string,
-  options: {
-    now?: ISODateTime;
-    idFactory?: (prefix: string) => EntityId;
-    approvedEngineBugFix?: ApprovedEngineBugFix;
-  } = {},
-  storage: StorageLike = browserStorage(),
+  options: StudySettingsChangeOptions = {},
 ): StudyMvpState {
   const cleanReason = reason.trim();
 
@@ -2025,11 +2115,8 @@ export function changeStudySettings(
     );
   }
 
-  const now =
-    options.now ?? new Date().toISOString();
-
-  const idFactory =
-    options.idFactory ?? defaultIdFactory;
+  const now = options.now ?? new Date().toISOString();
+  const idFactory = options.idFactory ?? defaultIdFactory;
 
   if (!hasTimezone(now)) {
     throw new StudyStorageError(
@@ -2038,118 +2125,129 @@ export function changeStudySettings(
     );
   }
 
-  return updateStudyMvpState((current) => {
-    const changedFields = (
-      Object.keys(patch) as Array<keyof StudySettings>
-    ).filter(
-      (key) =>
-        stableJson(current.settings[key]) !==
-        stableJson(patch[key]),
-    );
+  const changedFields = (
+    Object.keys(patch) as Array<keyof StudySettings>
+  ).filter(
+    (key) =>
+      stableJson(current.settings[key]) !==
+      stableJson(patch[key]),
+  );
 
-    if (changedFields.length === 0) {
-      return current;
+  if (changedFields.length === 0) return current;
+
+  const localDate = localDateOfTimestamp(
+    now,
+    current.settings.timezone,
+  );
+
+  const trialActive =
+    current.settings.trial_start_date !== null &&
+    current.settings.trial_end_date !== null &&
+    localDate >= current.settings.trial_start_date &&
+    localDate <= current.settings.trial_end_date;
+
+  const lockedChangedFields = changedFields.filter(
+    (field) => LOCKED_TRIAL_ENGINE_SETTINGS.has(field),
+  );
+
+  const bugFix = options.approvedEngineBugFix;
+
+  if (trialActive && lockedChangedFields.length > 0) {
+    if (!bugFix) {
+      throw new StudyStorageError(
+        "immutable-history",
+        `The engine is frozen during the trial. Locked settings cannot change: ${lockedChangedFields.join(", ")}.`,
+      );
     }
 
-    const localDate = localDateOfTimestamp(
-      now,
-      current.settings.timezone,
-    );
-
-    const trialActive =
-      current.settings.trial_start_date !== null &&
-      current.settings.trial_end_date !== null &&
-      localDate >= current.settings.trial_start_date &&
-      localDate <= current.settings.trial_end_date;
-
-    const lockedChangedFields = changedFields.filter(
-      (field) => LOCKED_TRIAL_ENGINE_SETTINGS.has(field),
-    );
-
-    const bugFix = options.approvedEngineBugFix;
-
-    if (trialActive && lockedChangedFields.length > 0) {
-      if (!bugFix) {
-        throw new StudyStorageError(
-          "immutable-history",
-          `The engine is frozen during the trial. Locked settings cannot change: ${lockedChangedFields.join(", ")}.`,
-        );
-      }
-
-      if (
-        !bugFix.bug.trim() ||
-        !bugFix.why_trial_could_not_continue.trim() ||
-        !bugFix.change.trim() ||
-        !bugFix.newVersion.trim()
-      ) {
-        throw new StudyStorageError(
-          "invalid-shape",
-          "An approved in-trial engine fix requires the bug, reason the trial cannot continue, change description, and new version.",
-        );
-      }
+    if (
+      !bugFix.bug.trim() ||
+      !bugFix.why_trial_could_not_continue.trim() ||
+      !bugFix.change.trim() ||
+      !bugFix.newVersion.trim()
+    ) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "An approved in-trial engine fix requires the bug, reason the trial cannot continue, change description, and new version.",
+      );
     }
+  }
 
-    const previousValues: Partial<StudySettings> = {};
-    const newValues: Partial<StudySettings> = {};
+  const previousValues: Partial<StudySettings> = {};
+  const newValues: Partial<StudySettings> = {};
 
-    for (const field of changedFields) {
-      (previousValues as Record<string, unknown>)[field] =
-        structuredClone(current.settings[field]);
+  for (const field of changedFields) {
+    (previousValues as Record<string, unknown>)[field] =
+      structuredClone(current.settings[field]);
 
-      (newValues as Record<string, unknown>)[field] =
-        structuredClone(patch[field]);
-    }
+    (newValues as Record<string, unknown>)[field] =
+      structuredClone(patch[field]);
+  }
 
-    let nextSettings: StudySettings = {
-      ...current.settings,
-      ...patch,
+  let nextSettings: StudySettings = {
+    ...current.settings,
+    ...patch,
+  };
+
+  let engineChangeHistory = current.settings.engine_change_history;
+
+  if (trialActive && lockedChangedFields.length > 0 && bugFix) {
+    const record: EngineChangeRecord = {
+      id: idFactory("engine-change"),
+      date: now,
+      previous_version: current.settings.engine_version,
+      new_version: bugFix.newVersion,
+      bug: bugFix.bug.trim(),
+      why_trial_could_not_continue:
+        bugFix.why_trial_could_not_continue.trim(),
+      change: bugFix.change.trim(),
     };
 
-    let engineChangeHistory =
-      current.settings.engine_change_history;
+    engineChangeHistory = [...engineChangeHistory, record];
 
-    if (trialActive && lockedChangedFields.length > 0 && bugFix) {
-      const record: EngineChangeRecord = {
-        id: idFactory("engine-change"),
-        date: now,
-        previous_version: current.settings.engine_version,
-        new_version: bugFix.newVersion,
-        bug: bugFix.bug.trim(),
-        why_trial_could_not_continue:
-          bugFix.why_trial_could_not_continue.trim(),
-        change: bugFix.change.trim(),
-      };
-
-      engineChangeHistory = [
-        ...engineChangeHistory,
-        record,
-      ];
-
-      nextSettings = {
-        ...nextSettings,
-        engine_version: bugFix.newVersion,
-        engine_change_history: engineChangeHistory,
-      };
-    }
-
-    const record: SettingsChangeRecord = {
-      id: idFactory("settings-change"),
-      changed_at: now,
-      reason: cleanReason,
-      changed_fields: changedFields.map(String),
-      previous_values: previousValues,
-      new_values: newValues,
+    nextSettings = {
+      ...nextSettings,
+      engine_version: bugFix.newVersion,
+      engine_change_history: engineChangeHistory,
     };
+  }
 
-    return {
-      ...current,
-      settings: nextSettings,
-      settings_change_history: [
-        ...current.settings_change_history,
-        record,
-      ],
-    };
-  }, storage);
+  const auditRecord: SettingsChangeRecord = {
+    id: idFactory("settings-change"),
+    changed_at: now,
+    reason: cleanReason,
+    changed_fields: changedFields.map(String),
+    previous_values: previousValues,
+    new_values: newValues,
+  };
+
+  const next: StudyMvpState = {
+    ...current,
+    settings: nextSettings,
+    settings_change_history: [
+      ...current.settings_change_history,
+      auditRecord,
+    ],
+  };
+
+  assertStudyStateIntegrity(next);
+  return next;
+}
+
+/**
+ * Browser-storage wrapper retained for existing local callers and tests.
+ */
+export function changeStudySettings(
+  patch: Partial<StudySettings>,
+  reason: string,
+  options: StudySettingsChangeOptions = {},
+  storage: StorageLike = browserStorage(),
+): StudyMvpState {
+  return updateStudyMvpState(
+    (current) =>
+      applyStudySettingsChange(current, patch, reason, options),
+    storage,
+  );
 }
 
 /**

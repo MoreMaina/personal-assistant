@@ -400,7 +400,7 @@ export interface StudySettings {
   recovery_block_min: number;
   default_assignment_session_target_min: number;
 
-  intervals_days: [1, 3, 7, 14, 30];
+  intervals_days: [number, number, number, number, number];
   gate_threshold_pct: number;
   defer_limit: number;
   skip_rate_threshold_pct_p45: number;

@@ -3051,6 +3051,7 @@ export default function StudyMvpPage() {
   } = useCloudStudyState();
 
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [trialStartDateSelection, setTrialStartDateSelection] = useState<string | null>(null);
   const starterScaffoldCleanupAttempted = useRef(false);
 
   useEffect(() => {
@@ -3166,6 +3167,38 @@ function openCatalogTools() {
         state.settings.timezone,
       )
     : "";
+
+  const chosenTrialStartDate = trialStartDateSelection ?? today;
+  const trialStart = state?.settings.trial_start_date ?? null;
+  const trialEnd = state?.settings.trial_end_date ?? null;
+
+  const isWithinTrial = (date: string) =>
+    Boolean(trialStart && trialEnd && date >= trialStart && date <= trialEnd);
+
+  const trialHasRecordedActivity = Boolean(
+    state && trialStart && trialEnd && (
+      state.task_events.some((event) =>
+        isWithinTrial(localDateOfTimestamp(event.logged_at, state.settings.timezone))
+      ) ||
+      state.work_sessions.some((session) =>
+        isWithinTrial(localDateOfTimestamp(session.logged_at, state.settings.timezone))
+      ) ||
+      (state.daily_plan_history ?? []).some((snapshot) =>
+        isWithinTrial(snapshot.date)
+      ) ||
+      (state.daily_plan_executions ?? []).some((execution) =>
+        isWithinTrial(execution.date)
+      ) ||
+      state.weekly_metrics.some((metric) =>
+        metric.week_start <= trialEnd && metric.week_end >= trialStart
+      )
+    )
+  );
+
+  const canResetTrialSetup = Boolean(
+    trialStart && trialEnd && !trialHasRecordedActivity &&
+    today && today <= trialEnd
+  );
 
   const todaysPlanSnapshots = state && today
     ? (state.daily_plan_history ?? [])
@@ -3726,22 +3759,83 @@ function movePlanningItemTo(
   }
 
   function startTrial() {
+    const startDate = chosenTrialStartDate;
+
     if (!state || state.settings.trial_start_date) return;
 
-    const currentDate = today;
+    if (!startDate || !today || startDate > today) {
+      setProblem("Choose the day you actually begin using the Study plan. Future dates cannot start the trial yet.");
+      return;
+    }
+
     persist(
       {
         ...state,
         settings: {
           ...state.settings,
-          trial_start_date: currentDate,
-          trial_end_date: addCalendarDays(currentDate, 27),
-          week4_evaluation_start: addCalendarDays(currentDate, 21),
-          week4_evaluation_end: addCalendarDays(currentDate, 27),
+          trial_start_date: startDate,
+          trial_end_date: addCalendarDays(startDate, 27),
+          week4_evaluation_start: addCalendarDays(startDate, 21),
+          week4_evaluation_end: addCalendarDays(startDate, 27),
         },
       },
-      "The four-week engine trial has started.",
+      `The four-week trial has started from ${startDate}.`,
     );
+  }
+
+  function resetTrialSetup() {
+    if (!state || !canResetTrialSetup || !trialStart || !trialEnd) return;
+
+    if (!window.confirm(
+      `Reset the trial dates (${trialStart} to ${trialEnd})? No study activity or weekly evidence has been recorded in this period. You can then choose the correct first day.`
+    )) return;
+
+    const changedAt = new Date().toISOString();
+    const reason = "Reset accidentally configured trial dates before any trial activity or weekly evidence existed.";
+    const changedFields = [
+      "trial_start_date",
+      "trial_end_date",
+      "week4_evaluation_start",
+      "week4_evaluation_end",
+    ];
+
+    const changeRecord = {
+      id: newId("settings_change"),
+      changed_at: changedAt,
+      reason,
+      changed_fields: changedFields,
+      previous_values: {
+        trial_start_date: trialStart,
+        trial_end_date: trialEnd,
+        week4_evaluation_start: state.settings.week4_evaluation_start,
+        week4_evaluation_end: state.settings.week4_evaluation_end,
+      },
+      new_values: {
+        trial_start_date: null,
+        trial_end_date: null,
+        week4_evaluation_start: null,
+        week4_evaluation_end: null,
+      },
+    };
+
+    const nextState = {
+      ...state,
+      settings: {
+        ...state.settings,
+        trial_start_date: null,
+        trial_end_date: null,
+        week4_evaluation_start: null,
+        week4_evaluation_end: null,
+      },
+      settings_change_history: [
+        ...state.settings_change_history,
+        changeRecord,
+      ],
+    };
+
+    if (persist(nextState, "Trial dates reset. Choose the actual first day when you are ready to begin.")) {
+      setTrialStartDateSelection(null);
+    }
   }
 
   function importCountLabels(
@@ -4503,21 +4597,83 @@ function movePlanningItemTo(
       )}
 
       {state.courses.length > 0 && !state.settings.trial_start_date && (
-        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <section className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <div>
             <h2 className="font-extrabold text-amber-950">
-              Engine trial has not started
+              Start your four-week study trial
             </h2>
-            <p className="mt-1 text-sm font-semibold text-amber-900">
-              Start the four-week evaluation period when you are ready.
+            <p className="mt-1 text-sm text-amber-900">
+              Choose the day you actually begin following this study plan.
+              Selecting a date does not start the trial; it starts only when you confirm below.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-[minmax(220px,300px)_1fr] sm:items-end">
+            <label className="block text-sm font-bold text-amber-950">
+              First day of your trial
+              <input
+                type="date"
+                value={chosenTrialStartDate}
+                max={today || undefined}
+                onChange={(event) => setTrialStartDateSelection(event.target.value)}
+                className="mt-2 block w-full rounded-xl border border-amber-300 bg-white px-3 py-3 text-base text-stone-900"
+              />
+            </label>
+
+            <div className="rounded-xl border border-amber-200 bg-white/80 p-3 text-sm text-stone-700">
+              {chosenTrialStartDate ? (
+                <>
+                  <p>
+                    <strong>Four-week period:</strong>{" "}
+                    {formatStudyDateLabel(chosenTrialStartDate)} –{" "}
+                    {formatStudyDateLabel(addCalendarDays(chosenTrialStartDate, 27))}
+                  </p>
+                  <p className="mt-1">
+                    <strong>Week 4 evaluation:</strong>{" "}
+                    {formatStudyDateLabel(addCalendarDays(chosenTrialStartDate, 21))} –{" "}
+                    {formatStudyDateLabel(addCalendarDays(chosenTrialStartDate, 27))}
+                  </p>
+                </>
+              ) : (
+                "Choose a start date to preview your four-week period."
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={startTrial}
+            disabled={!chosenTrialStartDate || !today || chosenTrialStartDate > today}
+            className="rounded-xl bg-amber-900 px-5 py-3 text-sm font-extrabold text-white hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Confirm start and begin four-week trial
+          </button>
+          <p className="text-xs text-amber-900">
+            Your chosen date becomes Day 0. The trial settings are then frozen,
+            except for documented blocking bug fixes.
+          </p>
+        </section>
+      )}
+
+      {state.courses.length > 0 && state.settings.trial_start_date && canResetTrialSetup && (
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50 p-5">
+          <div>
+            <h2 className="font-extrabold text-sky-950">
+              Trial dates are set, but no study activity is recorded yet
+            </h2>
+            <p className="mt-1 text-sm text-sky-900">
+              Currently set to {formatStudyDateLabel(trialStart!)} –{" "}
+              {formatStudyDateLabel(trialEnd!)}. If you set this by mistake,
+              reset the dates and choose the actual first day before you begin.
+              This option disappears once study activity or weekly evidence is recorded.
             </p>
           </div>
           <button
             type="button"
-            onClick={startTrial}
-            className="rounded-xl bg-amber-900 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-amber-950"
+            onClick={resetTrialSetup}
+            className="rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-extrabold text-sky-950 hover:bg-sky-100"
           >
-            Start four-week trial
+            Reset trial dates
           </button>
         </section>
       )}

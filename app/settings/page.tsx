@@ -23,7 +23,7 @@ import {
   type Semester,
 } from "@/lib/studyStorage";
 
-import { defaultIdFactory } from "@/lib/studyMvp/reviewEngine";
+import { defaultIdFactory, localDateOfTimestamp } from "@/lib/studyMvp/reviewEngine";
 import { setActiveAcademicPeriod } from "@/lib/studyMvp/academicPeriod";
 import {
   TOPIC_CSV_HEADERS,
@@ -31,6 +31,7 @@ import {
   importTopicCatalogText,
   type TopicImportDiagnostic,
 } from "@/lib/studyMvp/csvImport";
+import { applyStudySettingsChange } from "@/lib/studyMvp/storage";
 import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 
 export default function GeneralSettingsPage() {
@@ -50,6 +51,36 @@ export default function GeneralSettingsPage() {
     persist: persistStudyState,
     persistCourseDeletion,
   } = useCloudStudyState();
+
+  const [studyDailyBudgetDraft, setStudyDailyBudgetDraft] = useState("180");
+  const [studyReviewReserveDraft, setStudyReviewReserveDraft] = useState("30");
+  const [studyRepairCapDraft, setStudyRepairCapDraft] = useState("30");
+  const [studyGateThresholdDraft, setStudyGateThresholdDraft] = useState("60");
+  const [studyDeferLimitDraft, setStudyDeferLimitDraft] = useState("3");
+  const [studyIntervalsDraft, setStudyIntervalsDraft] = useState<
+    [string, string, string, string, string]
+  >(["1", "3", "7", "14", "30"]);
+  const [studyLastFinalDateDraft, setStudyLastFinalDateDraft] = useState("");
+  const [studySettingsReason, setStudySettingsReason] = useState(
+    "Configure Study System MVP v1.2 before starting the four-week trial.",
+  );
+  const [studySettingsMessage, setStudySettingsMessage] = useState("");
+  const [studySettingsError, setStudySettingsError] = useState("");
+
+  useEffect(() => {
+    if (!studyState) return;
+
+    const settings = studyState.settings;
+    setStudyDailyBudgetDraft(String(settings.daily_budget_min));
+    setStudyReviewReserveDraft(String(settings.review_reserve_min));
+    setStudyRepairCapDraft(String(settings.repair_recovery_cap_min));
+    setStudyGateThresholdDraft(String(settings.gate_threshold_pct));
+    setStudyDeferLimitDraft(String(settings.defer_limit));
+    setStudyIntervalsDraft(settings.intervals_days.map(String) as [
+      string, string, string, string, string,
+    ]);
+    setStudyLastFinalDateDraft(settings.last_final_exam_date ?? "");
+  }, [studyState]);
 
   const [catalogImportText, setCatalogImportText] = useState("");
   const [catalogImportDiagnostics, setCatalogImportDiagnostics] =
@@ -392,6 +423,187 @@ export default function GeneralSettingsPage() {
     }
   }
 
+  const studySettingsToday = studyState
+    ? localDateOfTimestamp(
+        new Date().toISOString(),
+        studyState.settings.timezone,
+      )
+    : "";
+
+  const studyTrialActive = Boolean(
+    studyState?.settings.trial_start_date &&
+    studyState.settings.trial_end_date &&
+    studySettingsToday >= studyState.settings.trial_start_date &&
+    studySettingsToday <= studyState.settings.trial_end_date,
+  );
+
+  const studySettingsDisabled = Boolean(
+    !studyState ||
+    studyLoadingError ||
+    studySyncConflict ||
+    studyTrialActive,
+  );
+
+  function saveStudyEngineSettings() {
+    setStudySettingsError("");
+    setStudySettingsMessage("");
+
+    if (!studyState || studyLoadingError || studySyncConflict) {
+      setStudySettingsError(
+        "Study data is not ready. Resolve the loading or sync issue before saving.",
+      );
+      return;
+    }
+
+    if (studyTrialActive) {
+      setStudySettingsError(
+        "Study engine settings are frozen during the four-week trial.",
+      );
+      return;
+    }
+
+    try {
+      function wholeNumber(
+        raw: string,
+        label: string,
+        minimum: number,
+      ): number {
+        const value = raw.trim();
+        if (!/^\\d+$/.test(value)) {
+          throw new Error(`${label} must be a whole number.`);
+        }
+
+        const parsed = Number(value);
+        if (!Number.isSafeInteger(parsed) || parsed < minimum) {
+          throw new Error(
+            `${label} must be at least ${minimum}.`,
+          );
+        }
+        return parsed;
+      }
+
+      const dailyBudget = wholeNumber(
+        studyDailyBudgetDraft,
+        "Daily study budget",
+        1,
+      );
+      const reviewReserve = wholeNumber(
+        studyReviewReserveDraft,
+        "Review reserve",
+        0,
+      );
+      const repairCap = wholeNumber(
+        studyRepairCapDraft,
+        "Repair and recovery cap",
+        0,
+      );
+      const gateThreshold = wholeNumber(
+        studyGateThresholdDraft,
+        "Gate threshold",
+        60,
+      );
+      const deferLimit = wholeNumber(
+        studyDeferLimitDraft,
+        "Defer limit",
+        1,
+      );
+
+      if (reviewReserve > dailyBudget) {
+        throw new Error(
+          "Review reserve cannot exceed the daily study budget.",
+        );
+      }
+      if (repairCap > dailyBudget) {
+        throw new Error(
+          "Repair and recovery cap cannot exceed the daily study budget.",
+        );
+      }
+      if (gateThreshold > 100) {
+        throw new Error("Gate threshold cannot exceed 100%.");
+      }
+
+      if (
+        studyIntervalsDraft.some(
+          (value) => !/^\\d+$/.test(value.trim()),
+        )
+      ) {
+        throw new Error(
+          "Enter all five review intervals as whole numbers of days.",
+        );
+      }
+
+      const parsedIntervals = studyIntervalsDraft.map(Number);
+
+      if (
+        parsedIntervals.some(
+          (days) => !Number.isSafeInteger(days) || days < 1,
+        ) ||
+        parsedIntervals.some(
+          (days, index) =>
+            index > 0 && days <= (parsedIntervals[index - 1] ?? 0),
+        )
+      ) {
+        throw new Error(
+          "Review intervals must be positive and increase from left to right.",
+        );
+      }
+
+      const intervals = parsedIntervals as [
+        number, number, number, number, number,
+      ];
+
+      const reason = studySettingsReason.trim();
+      if (!reason) {
+        throw new Error("Enter a reason for this settings change.");
+      }
+
+      const nextState = applyStudySettingsChange(
+        studyState,
+        {
+          daily_budget_min: dailyBudget,
+          review_reserve_min: reviewReserve,
+          repair_recovery_cap_min: repairCap,
+          gate_threshold_pct: gateThreshold,
+          defer_limit: deferLimit,
+          intervals_days: intervals,
+          last_final_exam_date: studyLastFinalDateDraft.trim() || null,
+        },
+        reason,
+        {
+          now: new Date().toISOString(),
+          idFactory: defaultIdFactory,
+        },
+      );
+
+      if (nextState === studyState) {
+        setStudySettingsMessage("No Study settings have changed.");
+        return;
+      }
+
+      const persisted = persistStudyState(
+        nextState,
+        "Study engine settings saved with an audit record.",
+      );
+
+      if (!persisted) {
+        setStudySettingsError(
+          "The settings could not be saved. Check the Study sync status and try again.",
+        );
+        return;
+      }
+
+      setStudySettingsMessage(
+        "Study settings saved locally and queued for cloud synchronization. The change has been added to the audit history.",
+      );
+    } catch (error) {
+      setStudySettingsError(
+        error instanceof Error
+          ? error.message
+          : "Study settings could not be saved.",
+      );
+    }
+  }
+
   return (
     <main className="mx-auto w-full max-w-3xl space-y-6 px-1 pb-10">
       <header className="space-y-2">
@@ -523,6 +735,309 @@ export default function GeneralSettingsPage() {
           )}
         </div>
       </form>
+
+      <section
+        aria-labelledby="study-engine-settings-heading"
+        className="space-y-5 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6"
+      >
+        <header className="space-y-1">
+          <h2
+            id="study-engine-settings-heading"
+            className="text-xl font-extrabold"
+          >
+            Study System settings
+          </h2>
+          <p className="text-sm leading-relaxed text-[var(--ink-soft)]">
+            Set the study time limits, review intervals and final exam cutoff
+            used by the MVP v1.2 study planner.
+          </p>
+        </header>
+
+        {studyTrialActive && (
+          <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+            The four-week trial is active. Engine settings are locked until
+            the trial period ends.
+          </p>
+        )}
+
+        {studyLoadingError && (
+          <p role="alert" className="text-sm text-red-700">
+            Study data could not be loaded: {studyLoadingError}
+          </p>
+        )}
+
+        {studySyncConflict && (
+          <p role="alert" className="text-sm text-amber-800">
+            Resolve the Study browser/cloud conflict before changing these settings.
+          </p>
+        )}
+
+        {studyProblem && (
+          <p role="alert" className="text-sm text-amber-800">
+            {studyProblem}
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="space-y-1">
+            <span className="block text-sm font-bold">
+              Daily study budget (minutes)
+            </span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              value={studyDailyBudgetDraft}
+              onChange={(event) => {
+                setStudyDailyBudgetDraft(event.target.value);
+                setStudySettingsMessage("");
+              }}
+              disabled={studySettingsDisabled}
+              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base disabled:opacity-60"
+            />
+            <span className="block text-xs text-[var(--muted)]">
+              One shared limit for all planned study work.
+            </span>
+          </label>
+
+          <label className="space-y-1">
+            <span className="block text-sm font-bold">
+              Review reserve (minutes)
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              value={studyReviewReserveDraft}
+              onChange={(event) => {
+                setStudyReviewReserveDraft(event.target.value);
+                setStudySettingsMessage("");
+              }}
+              disabled={studySettingsDisabled}
+              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base disabled:opacity-60"
+            />
+            <span className="block text-xs text-[var(--muted)]">
+              Capacity reserved for priority 1–3 reviews, within the daily budget.
+            </span>
+          </label>
+
+          <label className="space-y-1">
+            <span className="block text-sm font-bold">
+              Repair and recovery cap (minutes)
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              value={studyRepairCapDraft}
+              onChange={(event) => {
+                setStudyRepairCapDraft(event.target.value);
+                setStudySettingsMessage("");
+              }}
+              disabled={studySettingsDisabled}
+              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base disabled:opacity-60"
+            />
+            <span className="block text-xs text-[var(--muted)]">
+              Corrective work and backlog recovery share this cap.
+            </span>
+          </label>
+
+          <label className="space-y-1">
+            <span className="block text-sm font-bold">
+              Gate pass threshold (% Green)
+            </span>
+            <input
+              type="number"
+              min="60"
+              max="100"
+              step="1"
+              inputMode="numeric"
+              value={studyGateThresholdDraft}
+              onChange={(event) => {
+                setStudyGateThresholdDraft(event.target.value);
+                setStudySettingsMessage("");
+              }}
+              disabled={studySettingsDisabled}
+              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base disabled:opacity-60"
+            />
+            <span className="block text-xs text-[var(--muted)]">
+              At least 60% Green is required by the locked specification.
+            </span>
+          </label>
+
+          <label className="space-y-1">
+            <span className="block text-sm font-bold">
+              Maximum deferrals before a forced decision
+            </span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              inputMode="numeric"
+              value={studyDeferLimitDraft}
+              onChange={(event) => {
+                setStudyDeferLimitDraft(event.target.value);
+                setStudySettingsMessage("");
+              }}
+              disabled={studySettingsDisabled}
+              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base disabled:opacity-60"
+            />
+            <span className="block text-xs text-[var(--muted)]">
+              The default is three deferrals.
+            </span>
+          </label>
+
+          <label className="space-y-1">
+            <span className="block text-sm font-bold">
+              Last final exam date
+            </span>
+            <input
+              type="date"
+              value={studyLastFinalDateDraft}
+              onChange={(event) => {
+                setStudyLastFinalDateDraft(event.target.value);
+                setStudySettingsMessage("");
+              }}
+              disabled={studySettingsDisabled}
+              className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base disabled:opacity-60"
+            />
+            <span className="block text-xs text-[var(--muted)]">
+              Leave blank to use the latest final exam in your exam register.
+            </span>
+          </label>
+        </div>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-bold">
+            Review intervals (days after the previous successful review)
+          </legend>
+          <p className="text-xs leading-relaxed text-[var(--muted)]">
+            Enter five positive whole numbers in increasing order. Defaults:
+            1, 3, 7, 14, 30.
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {studyIntervalsDraft.map((value, index) => (
+              <label key={index} className="space-y-1">
+                <span className="block text-xs font-semibold text-[var(--ink-soft)]">
+                  Stage {index + 1}
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  value={value}
+                  onChange={(event) => {
+                    setStudyIntervalsDraft((current) =>
+                      current.map((item, itemIndex) =>
+                        itemIndex === index ? event.target.value : item,
+                      ) as [string, string, string, string, string],
+                    );
+                    setStudySettingsMessage("");
+                  }}
+                  disabled={studySettingsDisabled}
+                  className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base disabled:opacity-60"
+                />
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <label className="block space-y-1">
+          <span className="block text-sm font-bold">
+            Reason for this settings change
+          </span>
+          <textarea
+            rows={2}
+            value={studySettingsReason}
+            onChange={(event) => {
+              setStudySettingsReason(event.target.value);
+              setStudySettingsMessage("");
+            }}
+            disabled={studySettingsDisabled}
+            className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-3 text-base disabled:opacity-60"
+          />
+          <span className="block text-xs text-[var(--muted)]">
+            This reason, the old values and the new values are saved in the audit history.
+          </span>
+        </label>
+
+        {studySettingsError && (
+          <p role="alert" className="rounded-xl bg-[var(--accent-soft)] p-3 text-sm font-semibold text-[var(--accent-dark)]">
+            {studySettingsError}
+          </p>
+        )}
+
+        {studySettingsMessage && (
+          <p role="status" className="rounded-xl bg-[var(--surface)] p-3 text-sm font-semibold text-[var(--primary-dark)]">
+            {studySettingsMessage}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={saveStudyEngineSettings}
+          disabled={studySettingsDisabled}
+          className="min-h-11 rounded-full bg-[var(--primary)] px-5 py-3 font-bold text-white disabled:opacity-50"
+        >
+          Save Study settings
+        </button>
+
+        <div className="border-t border-[var(--border)] pt-4">
+          <h3 className="font-bold">Recent Study settings changes</h3>
+          {!studyState || studyState.settings_change_history.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              No Study settings changes have been recorded.
+            </p>
+          ) : (
+            <ol className="mt-3 space-y-3">
+              {studyState.settings_change_history
+                .slice()
+                .reverse()
+                .slice(0, 5)
+                .map((record) => (
+                  <li
+                    key={record.id}
+                    className="rounded-xl border border-[var(--border)] p-3"
+                  >
+                    <p className="text-xs text-[var(--muted)]">
+                      {new Date(record.changed_at).toLocaleString()}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold">
+                      {record.reason}
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs text-[var(--ink-soft)]">
+                      {record.changed_fields.map((field) => {
+                        const previous = (
+                          record.previous_values as Record<string, unknown>
+                        )[field];
+                        const next = (
+                          record.new_values as Record<string, unknown>
+                        )[field];
+                        const display = (value: unknown) =>
+                          Array.isArray(value)
+                            ? value.join(", ")
+                            : value === null || value === undefined
+                              ? "Not set"
+                              : String(value);
+
+                        return (
+                          <li key={field}>
+                            {field.replaceAll("_", " ")}: {display(previous)}
+                            {" → "}{display(next)}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
+                ))}
+            </ol>
+          )}
+        </div>
+      </section>
 
       <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">

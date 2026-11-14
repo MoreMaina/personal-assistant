@@ -427,6 +427,43 @@ describe("review scheduling", () => {
     }
   });
 
+  it("uses the configured first interval after a passed gate", () => {
+    const decision = createReviewAfterGate({
+      topicId: "topic-1",
+      gatePassedDate: "2026-10-19",
+      lastFinalExamDate: "2026-12-15",
+      intervalsDays: [2, 5, 9, 16, 30],
+      selectedTaskIds: ["a", "b", "c"],
+      estimatedDurationMin: 15,
+      priority: 2,
+      idFactory: fixedIds,
+    });
+
+    expect(decision.kind).toBe("scheduled");
+
+    if (decision.kind === "scheduled") {
+      expect(decision.review_event.intended_due_date).toBe("2026-10-21");
+    }
+  });
+
+  it("uses the configured interval when advancing to the next stage", () => {
+    const decision = createNextReviewAfterSuccess({
+      sourceReview: makeReview({ stage: 2 }),
+      completedDate: "2026-10-20",
+      lastFinalExamDate: "2026-12-15",
+      intervalsDays: [1, 3, 9, 16, 30],
+      selectedTaskIds: ["next-a", "next-b"],
+      estimatedDurationMin: 10,
+      idFactory: fixedIds,
+    });
+
+    expect(decision.kind).toBe("scheduled");
+
+    if (decision.kind === "scheduled") {
+      expect(decision.review_event.intended_due_date).toBe("2026-10-29");
+    }
+  });
+
   it("does not schedule ordinary reviews beyond the last final", () => {
     const decision = createReviewAfterGate({
       topicId: "topic-1",

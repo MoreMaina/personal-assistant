@@ -5,6 +5,7 @@ import { buildStudyDailyPlan } from "./dashboard";
 import {
   appendTaskEvents,
   appendWeeklyMetricsSnapshot,
+  applyStudySettingsChange,
   changeStudySettings,
   removeUnusedStarterScaffold,
   createEmptyStudyState,
@@ -249,7 +250,21 @@ describe("safe local persistence", () => {
     expect(loadStudyMvpState(storage)).toEqual(state);
   });
 
-    it("accepts and preserves a valid course archive timestamp", () => {
+    it("rejects an invalid review interval sequence", () => {
+    const storage = new MemoryStorage();
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    state.settings.intervals_days = [1, 3, 3, 14, 30];
+
+    expect(() => saveStudyMvpState(state, storage)).toThrow(
+      /Review intervals must be five positive, strictly increasing whole-day values/,
+    );
+  });
+
+  it("accepts and preserves a valid course archive timestamp", () => {
     const storage = new MemoryStorage();
     const state = createEmptyStudyState({
       now: NOW,
@@ -1012,6 +1027,81 @@ describe("Study storage: saved daily plan history", () => {
 });
 
 describe("settings audit and trial freeze", () => {
+  it("applies audited settings changes to a state without mutating the source", () => {
+    const original = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    const updated = applyStudySettingsChange(
+      original,
+      {
+        daily_budget_min: 160,
+        review_reserve_min: 25,
+        repair_recovery_cap_min: 20,
+        gate_threshold_pct: 65,
+        defer_limit: 2,
+        intervals_days: [2, 5, 9, 16, 30],
+        last_final_exam_date: "2026-12-15",
+      },
+      "Configure the study engine before the trial.",
+      {
+        now: NOW,
+        idFactory: (prefix) => `${prefix}-pure`,
+      },
+    );
+
+    expect(original.settings.daily_budget_min).toBe(180);
+    expect(updated.settings.daily_budget_min).toBe(160);
+    expect(updated.settings.intervals_days).toEqual([2, 5, 9, 16, 30]);
+    expect(updated.settings.last_final_exam_date).toBe("2026-12-15");
+    expect(updated.settings_change_history).toHaveLength(1);
+    expect(updated.settings_change_history[0].changed_fields).toEqual(
+      expect.arrayContaining([
+        "daily_budget_min",
+        "review_reserve_min",
+        "repair_recovery_cap_min",
+        "gate_threshold_pct",
+        "defer_limit",
+        "intervals_days",
+        "last_final_exam_date",
+      ]),
+    );
+    expect(updated.settings_change_history[0].previous_values.daily_budget_min).toBe(180);
+    expect(updated.settings_change_history[0].new_values.daily_budget_min).toBe(160);
+  });
+
+  it("freezes the final exam date during an active trial", () => {
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+    state.settings.trial_start_date = "2026-10-01";
+    state.settings.trial_end_date = "2026-10-28";
+
+    expect(() =>
+      applyStudySettingsChange(
+        state,
+        { last_final_exam_date: "2026-12-20" },
+        "Change final date.",
+        { now: NOW },
+      ),
+    ).toThrow(/engine is frozen during the trial/);
+  });
+
+  it("rejects a review reserve above the daily budget", () => {
+    const storage = new MemoryStorage();
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+    state.settings.review_reserve_min = 181;
+
+    expect(() => saveStudyMvpState(state, storage)).toThrow(
+      /Review reserve must be a whole number/,
+    );
+  });
+
   it("records a reason, old values, and new values for settings changes", () => {
     const storage = new MemoryStorage();
 

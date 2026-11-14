@@ -19,6 +19,36 @@ export const REVIEW_INTERVALS_DAYS = [
   1, 3, 7, 14, 30,
 ] as const;
 
+type ReviewIntervalsDays = readonly [
+  number,
+  number,
+  number,
+  number,
+  number,
+];
+
+function resolveReviewIntervalsDays(
+  intervals?: readonly number[],
+): ReviewIntervalsDays {
+  const values = intervals ?? REVIEW_INTERVALS_DAYS;
+
+  const invalid =
+    values.length !== 5 ||
+    values.some((days) => !Number.isSafeInteger(days) || days < 1) ||
+    values.some(
+      (days, index) =>
+        index > 0 && days <= (values[index - 1] ?? 0),
+    );
+
+  if (invalid) {
+    throw new Error(
+      "Review intervals must be five positive, strictly increasing whole-day values.",
+    );
+  }
+
+  return values as ReviewIntervalsDays;
+}
+
 export type IdFactory = (prefix: string) => EntityId;
 
 export const defaultIdFactory: IdFactory = (prefix) => {
@@ -748,14 +778,18 @@ export function createReviewAfterGate(options: {
   topicId: EntityId;
   gatePassedDate: ISODate;
   lastFinalExamDate: ISODate | null;
+  intervalsDays?: readonly number[];
   selectedTaskIds: readonly EntityId[];
   estimatedDurationMin: number;
   priority: TaskPriority;
   idFactory?: IdFactory;
   now?: ISODateTime;
 }): ScheduleDecision {
+  const firstIntervalDays =
+    resolveReviewIntervalsDays(options.intervalsDays)[0];
+
   const next = moveSundayToMonday(
-    addCalendarDays(options.gatePassedDate, 1),
+    addCalendarDays(options.gatePassedDate, firstIntervalDays),
   );
 
   if (
@@ -800,6 +834,7 @@ export function createNextReviewAfterSuccess(options: {
   sourceReview: ReviewEvent;
   completedDate: ISODate;
   lastFinalExamDate: ISODate | null;
+  intervalsDays?: readonly number[];
   selectedTaskIds: readonly EntityId[];
   estimatedDurationMin: number;
   priority?: TaskPriority;
@@ -817,7 +852,8 @@ export function createNextReviewAfterSuccess(options: {
   }
 
   const targetStage = (source.stage + 1) as ReviewStage;
-  const interval = REVIEW_INTERVALS_DAYS[targetStage - 1];
+  const interval =
+    resolveReviewIntervalsDays(options.intervalsDays)[targetStage - 1];
 
   const next = moveSundayToMonday(
     addCalendarDays(options.completedDate, interval),
@@ -956,6 +992,7 @@ export function transitionReview(options: {
   completionDate: ISODate;
   currentTopicStatus: TopicStatus;
   lastFinalExamDate: ISODate | null;
+  intervalsDays?: readonly number[];
 
   nextSelectedTaskIds: readonly EntityId[];
   nextEstimatedDurationMin: number;
@@ -1055,6 +1092,7 @@ export function transitionReview(options: {
     sourceReview: review,
     completedDate: options.completionDate,
     lastFinalExamDate: options.lastFinalExamDate,
+    intervalsDays: options.intervalsDays,
     selectedTaskIds: options.nextSelectedTaskIds,
     estimatedDurationMin: options.nextEstimatedDurationMin,
     priority: options.priority ?? review.current_priority,

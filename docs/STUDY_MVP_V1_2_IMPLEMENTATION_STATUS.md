@@ -400,3 +400,82 @@ Date: 2026-11-14
 Preserve all untracked helper scripts and local Supabase configuration.
 Never use git add . or git add -A.
 Do not reset Supabase, run production migrations, merge to main or deploy production without explicit coordination.
+
+## Checkpoint: Batch 1 — implementation verification
+Date: 2026-11-14 23:31 EAT
+
+### Batch result
+- Branch: `study-mvp-v1-2-completion`
+- HEAD before handoff update: `89309e9e530cf760a658ae4331c0b2b3cd9f772a`
+- Locked specification: unchanged.
+- `git diff --check`: passed.
+- `npx tsc --noEmit`: passed.
+- `npm test`: passed — [22m [1m[32m47 passed[39m[22m[90m (47)[39m; [22m [1m[32m487 passed[39m[22m[90m (487)[39m.
+- `npm run build`: passed; route summary includes `/study/metrics` and `/settings`.
+- Vite may continue to print its existing `configLoader: native` / CommonJS warning; it is non-blocking when the command exits successfully.
+
+### Implementation included in this batch
+- The five review intervals are editable as positive, strictly increasing whole-day values.
+- The configured intervals flow into first-review scheduling and subsequent review progression.
+- Study settings updates use the pure audited state-update helper and the cloud-backed persistence path.
+- The final-exam date is locked with the other engine settings during an active trial.
+- The seven pre-trial controls are present in General Settings, with validation and recent audit history.
+- Manual trial start-date selection and plain-English descriptions for the eight metrics are included in the current working changes.
+
+### Tracked files changed at verification
+- `app/settings/page.tsx`
+- `app/study/metrics/page.tsx`
+- `app/study/page.tsx`
+- `lib/studyMvp/reviewEngine.test.ts`
+- `lib/studyMvp/reviewEngine.ts`
+- `lib/studyMvp/storage.test.ts`
+- `lib/studyMvp/storage.ts`
+- `lib/studyMvp/types.ts`
+- `lib/studyMvp/workflow.test.ts`
+- `lib/studyMvp/workflow.ts`
+
+### Untracked files observed — preserve
+- `__pycache__/`
+- `apply-consolidated-study-batches.py`
+- `apply-final-course-deletion-and-ui-polish.py`
+- `apply-next-ui-polish.py`
+- `apply-study-mobile-refinement.py`
+- `apply-today-calendar-palette6-batch.py`
+- `apply-today-palette6-pilot.py`
+- `apply-today-palette6-responsive-pilot.py`
+- `complete_study_mvp_batch1.py`
+- `fix-consolidated-study-test-errors-v2.py`
+- `fix-jsx-apostrophe-lint.py`
+- `p6-backup-jsx-repair.py`
+- `p6-final-touch-targets-and-google-dot-v2.py`
+- `p6-global-consistency-batch-v3.py`
+- `p6-study-accessibility-refinement.py`
+- `p6-study-workflow-minimal-batch.py`
+- `p6-study-workspace-refinement.py`
+- `rebased-study-ui-calendar-course-management.py`
+- `remove-study-catalog-instructions.py`
+- `study-mobile-mixed-course-menu-batch.py`
+- `supabase/.gitignore`
+- `supabase/config.toml`
+
+### Still outstanding before Week 1
+- Vercel Preview review of Settings, audit history, interval behavior, metrics flags, evidence saving and JSON export.
+- Full acceptance trace: H1–H5, I1–I5, J1–J4, K1–K3 and L1–L2.
+- Separate phone timing for attempt and decision logging.
+- Offline / slow-network behavior verification for the Supabase-backed persistence divergence.
+- CSV catalogue import timing and 120-topic / 600-review-event performance benchmark.
+- Do not start the four-week trial until the blocking pre-trial checks are complete.
+
+### Final review checkpoint — Batch 1
+Date: 2026-11-14
+
+- Reviewed the complete staged implementation diff before final staging.
+- Two narrow review corrections were applied and re-tested: a null `last_final_exam_date` now remains blank in Settings so the exam-register fallback stays dynamic; metric 3's explanation now correctly describes the deferral percentage it displays.
+- After those corrections, `git diff --check`, `npx tsc --noEmit`, `npm test` (47 files / 487 tests), and `npm run build` all passed.
+- The two review corrections are included in the staged Settings and metrics files.
+- The final staged set contains exactly the 11 intended Batch 1 paths; `git diff --cached --check` passed.
+- Helper scripts, the generated review patch, `__pycache__/`, and local Supabase configuration remain untracked and preserved.
+- No commit, push, deployment, migration, or Supabase operation has been performed.
+
+### Next action
+Commit the reviewed Batch 1 changes on `study-mvp-v1-2-completion`, then push that feature branch to obtain a Vercel Preview. Record the resulting commit SHA and Preview URL/status in this handoff. Do not merge to `main` or deploy production. Batch 2 remains Preview validation and the pre-trial readiness checks; do not start the four-week trial until all blocking acceptance checks are complete.

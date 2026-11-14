@@ -164,6 +164,18 @@ describe("Study workflow: review attempts", () => {
     expect(result.state.task_events.filter((event) => event.event_type === "review_scheduled")).toHaveLength(1);
   });
 
+  it("uses the saved interval sequence when advancing a review", () => {
+    let state = makeState();
+    state.settings.intervals_days = [1, 3, 9, 14, 30];
+
+    state = reviewAttempt(state, "task-a").state;
+    state = reviewAttempt(state, "task-b").state;
+    const result = reviewAttempt(state, "task-c");
+
+    expect(result.outcome).toBe("advance");
+    expect(result.state.review_events[1].intended_due_date).toBe("2026-10-29");
+  });
+
   it("schedules a substantive Yellow retry at the held stage", () => {
     let state = makeState();
     state = reviewAttempt(state, "task-a").state;
