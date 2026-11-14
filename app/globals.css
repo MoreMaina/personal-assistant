@@ -6154,3 +6154,150 @@ body,
     gap: 0.5rem;
   }
 }
+
+/* Desktop navigation: neutral surface and restrained teal accents. */
+@media (min-width: 48.0625rem) {
+  .app-sidebar,
+  body:has(.today-page) .app-sidebar,
+  body:has(.calendar-page) .app-sidebar {
+    background: var(--p6-surface) !important;
+    color: var(--p6-text) !important;
+    border-right: 1px solid var(--p6-border-decorative);
+    box-shadow: 2px 0 12px rgba(26, 43, 47, 0.035);
+  }
+
+  .app-sidebar .assistant-button,
+  body:has(.today-page) .assistant-button,
+  body:has(.calendar-page) .assistant-button {
+    border: 1px solid var(--p6-border-decorative) !important;
+    background: var(--p6-surface-subtle) !important;
+    color: var(--p6-text) !important;
+    box-shadow: none !important;
+  }
+
+  .app-sidebar .assistant-button:hover,
+  body:has(.today-page) .assistant-button:hover,
+  body:has(.calendar-page) .assistant-button:hover {
+    transform: none;
+    background: var(--p6-surface-selected) !important;
+    box-shadow: none !important;
+  }
+
+  .assistant-button__mark,
+  .topbar__brand-mark {
+    position: relative;
+    border: 0 !important;
+    border-radius: 13px !important;
+    background: var(--p6-primary) !important;
+    color: #ffffff !important;
+    font-weight: 900;
+    letter-spacing: -0.08em;
+  }
+
+  .assistant-button__mark::after,
+  .topbar__brand-mark::after {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    color: #e8bd68;
+    content: "✦";
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0;
+  }
+
+  .assistant-button__text strong {
+    color: var(--p6-text);
+  }
+
+  .assistant-button__text span {
+    color: var(--p6-text-secondary);
+    opacity: 1;
+  }
+
+  .sidebar-nav__link,
+  body:has(.today-page) .sidebar-nav__link,
+  body:has(.calendar-page) .sidebar-nav__link {
+    border: 1px solid transparent !important;
+    border-radius: var(--p6-radius-md);
+    background: transparent !important;
+    color: var(--p6-text-secondary) !important;
+    font-weight: var(--p6-weight-semibold);
+    box-shadow: none !important;
+  }
+
+  .sidebar-nav__link:hover,
+  body:has(.today-page) .sidebar-nav__link:hover,
+  body:has(.calendar-page) .sidebar-nav__link:hover {
+    transform: none !important;
+    background: var(--p6-surface-subtle) !important;
+    color: var(--p6-text) !important;
+  }
+
+  .sidebar-nav__link--active,
+  body:has(.today-page) .sidebar-nav__link--active,
+  body:has(.calendar-page) .sidebar-nav__link--active {
+    border-color: var(--p6-border-decorative) !important;
+    background: var(--p6-surface-selected) !important;
+    color: var(--p6-primary) !important;
+    box-shadow: inset 3px 0 0 var(--p6-primary) !important;
+  }
+
+  .sidebar-note,
+  body:has(.today-page) .sidebar-note,
+  body:has(.calendar-page) .sidebar-note {
+    border-top-color: var(--p6-border-decorative) !important;
+    color: var(--p6-text-secondary) !important;
+  }
+
+  .sidebar-note__leaf,
+  body:has(.today-page) .sidebar-note__leaf,
+  body:has(.calendar-page) .sidebar-note__leaf {
+    color: var(--p6-primary) !important;
+  }
+
+  .app-utilities__trigger,
+  body:has(.today-page) .app-utilities__trigger,
+  body:has(.calendar-page) .app-utilities__trigger {
+    border: 1px solid var(--p6-border-decorative) !important;
+    border-radius: 13px !important;
+    background: var(--p6-surface) !important;
+    color: var(--p6-text-secondary) !important;
+    box-shadow: none !important;
+    transition:
+      background var(--p6-motion-base) var(--p6-ease-standard),
+      color var(--p6-motion-base) var(--p6-ease-standard);
+  }
+
+  .app-utilities__trigger:hover,
+  body:has(.today-page) .app-utilities__trigger:hover,
+  body:has(.calendar-page) .app-utilities__trigger:hover {
+    transform: none !important;
+    background: var(--p6-surface-selected) !important;
+    color: var(--p6-primary) !important;
+  }
+
+  .app-content .app-utilities__panel {
+    border: 1px solid var(--p6-border-decorative) !important;
+    border-radius: 16px !important;
+    background: var(--p6-surface) !important;
+    color: var(--p6-text) !important;
+    box-shadow: var(--p6-elevation-dropdown) !important;
+  }
+
+  .app-content .app-utilities__action {
+    color: var(--p6-text) !important;
+  }
+
+  .app-content .app-utilities__action:hover {
+    background: var(--p6-surface-subtle) !important;
+    color: var(--p6-primary) !important;
+  }
+
+  .assistant-button:focus-visible,
+  .sidebar-nav__link:focus-visible,
+  .app-utilities__trigger:focus-visible {
+    outline: 3px solid rgba(0, 109, 119, 0.28);
+    outline-offset: 3px;
+  }
+}
