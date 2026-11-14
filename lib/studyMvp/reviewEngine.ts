@@ -691,6 +691,7 @@ function buildScheduledReview(
 
     review_event_id: reviewId,
     retrieval_task_id: null,
+    review_selected_task_ids_snapshot: [...options.selectedTaskIds],
 
     gate_session_id: null,
     gate_selected_task_ids_snapshot: null,

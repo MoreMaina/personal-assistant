@@ -289,6 +289,8 @@ export interface TaskEvent {
 
   review_event_id: EntityId | null;
   retrieval_task_id: EntityId | null;
+  /** Immutable review question selection snapshot. */
+  review_selected_task_ids_snapshot?: EntityId[];
 
   gate_session_id: EntityId | null;
   gate_selected_task_ids_snapshot: EntityId[] | null;
@@ -415,6 +417,17 @@ export interface StudySettings {
   engine_change_history: EngineChangeRecord[];
 }
 
+export interface WeeklyMetricSampleCounts {
+  overall_on_time: { completed: number; due: number };
+  priority_1_3_on_time: { completed: number; due: number };
+  deferral_rate: { deferred_events: number; due_events: number };
+  total_deferral_decisions: number;
+  duration_error: Partial<Record<RetrievalTaskType, number>>;
+  overdue_critical_backlog_events: number;
+  priority_1_3_skips: number;
+  priority_4_5_skip_rate: { skipped_events: number; due_events: number };
+}
+
 export interface WeekMetrics {
   week_number: number;
   week_start: ISODate;
@@ -440,6 +453,15 @@ export interface WeekMetrics {
   priority_4_5_skip_rate_pct: number | null;
 
   notes: string;
+  /** Reporting timezone frozen when this weekly snapshot was calculated. */
+  timezone?: string;
+
+  /** Denominators and sample counts used by the dashboard. */
+  sample_counts?: WeeklyMetricSampleCounts;
+
+  /** Data-integrity warnings found during reconstruction. */
+  data_quality_issues?: string[];
+
 
   /**
    * Frozen evidence used to produce this snapshot.

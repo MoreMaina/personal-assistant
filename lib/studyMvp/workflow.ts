@@ -162,6 +162,7 @@ function buildReviewAttemptEvent(
     subject_id: task.id,
     review_event_id: review.id,
     retrieval_task_id: task.id,
+    review_selected_task_ids_snapshot: [...review.selected_task_ids],
     gate_session_id: null,
     gate_selected_task_ids_snapshot: null,
     skill_demonstrated_without_hints: null,

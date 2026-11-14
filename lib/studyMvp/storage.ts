@@ -252,6 +252,28 @@ function validateTaskEventShape(
     event.event_type === "attempt" ||
     event.event_type === "gate_attempt";
 
+  if (event.review_selected_task_ids_snapshot !== undefined) {
+    const selected = event.review_selected_task_ids_snapshot;
+    if (
+      !isStringArray(selected) ||
+      selected.length < 2 ||
+      selected.length > 3 ||
+      new Set(selected).size !== selected.length ||
+      (
+        event.event_type === "attempt" &&
+        (
+          !isNonEmptyString(event.retrieval_task_id) ||
+          !selected.includes(event.retrieval_task_id)
+        )
+      )
+    ) {
+      throw new StudyStorageError(
+        "invalid-event",
+        "A review event must preserve its original selected task IDs.",
+      );
+    }
+  }
+
   if (isRetrievalAttempt) {
     if (!isAttemptResult(event.result) || event.result === null) {
       throw new StudyStorageError(

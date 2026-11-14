@@ -4457,6 +4457,14 @@ function movePlanningItemTo(
         <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">
           Study workspace
         </h1>
+        <div className="mt-4">
+          <Link
+            href="/study/metrics"
+            className="inline-flex rounded-xl border border-[#b8c9c5] bg-[#f4f8f5] px-4 py-2 text-sm font-bold text-[#23412f] hover:bg-[#e9f1eb]"
+          >
+            Weekly metrics &amp; trial evidence →
+          </Link>
+        </div>
       </header>
 
       {notice && (

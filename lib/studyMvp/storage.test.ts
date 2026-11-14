@@ -488,6 +488,131 @@ describe("safe local persistence", () => {
     expect(loadStudyMvpState(storage).task_events).toHaveLength(1);
   });
 
+  it("preserves selected task IDs on scheduled reviews and attempts", () => {
+    const storage = new MemoryStorage();
+
+    saveStudyMvpState(
+      createEmptyStudyState({
+        now: NOW,
+        timezone: "UTC",
+      }),
+      storage,
+    );
+
+    const selectedTaskIds = ["task-1", "task-2"];
+
+    const scheduledEvent = validEvent({
+      id: "scheduled-review-event",
+      event_type: "review_scheduled",
+      subject_type: "review_event",
+      subject_id: "review-1",
+      retrieval_task_id: null,
+      review_selected_task_ids_snapshot: [...selectedTaskIds],
+      task_type_at_event: null,
+      actual_duration_min: null,
+      result: null,
+      yellow_gap_severity: null,
+      critical_error_flag: null,
+    });
+
+    const attemptEvent = validEvent({
+      id: "review-attempt-event",
+      review_selected_task_ids_snapshot: [...selectedTaskIds],
+    });
+
+    const result = appendTaskEvents(
+      [scheduledEvent, attemptEvent],
+      storage,
+    );
+
+    expect(result.task_events).toHaveLength(2);
+    expect(result.task_events[0].review_selected_task_ids_snapshot)
+      .toEqual(selectedTaskIds);
+    expect(result.task_events[1].review_selected_task_ids_snapshot)
+      .toEqual(selectedTaskIds);
+  });
+
+  it("rejects invalid review question selection snapshots", () => {
+    const storage = new MemoryStorage();
+
+    saveStudyMvpState(
+      createEmptyStudyState({
+        now: NOW,
+        timezone: "UTC",
+      }),
+      storage,
+    );
+
+    const invalidSelections = [
+      ["task-1"],
+      ["task-1", "task-2", "task-3", "task-4"],
+      ["task-1", "task-1"],
+    ];
+
+    invalidSelections.forEach((selection, index) => {
+      expect(() =>
+        appendTaskEvents(
+          [
+            validEvent({
+              id: `invalid-selection-${index}`,
+              review_selected_task_ids_snapshot: selection,
+            }),
+          ],
+          storage,
+        ),
+      ).toThrow(/original selected task IDs/);
+    });
+  });
+
+  it("rejects an attempt for a task outside its frozen review selection", () => {
+    const storage = new MemoryStorage();
+
+    saveStudyMvpState(
+      createEmptyStudyState({
+        now: NOW,
+        timezone: "UTC",
+      }),
+      storage,
+    );
+
+    expect(() =>
+      appendTaskEvents(
+        [
+          validEvent({
+            review_selected_task_ids_snapshot: [
+              "task-2",
+              "task-3",
+            ],
+          }),
+        ],
+        storage,
+      ),
+    ).toThrow(/original selected task IDs/);
+  });
+
+  it("continues to accept legacy events without review selection snapshots", () => {
+    const storage = new MemoryStorage();
+
+    saveStudyMvpState(
+      createEmptyStudyState({
+        now: NOW,
+        timezone: "UTC",
+      }),
+      storage,
+    );
+
+    const legacyEvent = validEvent();
+
+    expect(legacyEvent.review_selected_task_ids_snapshot)
+      .toBeUndefined();
+
+    const result = appendTaskEvents([legacyEvent], storage);
+
+    expect(result.task_events).toHaveLength(1);
+    expect(result.task_events[0].review_selected_task_ids_snapshot)
+      .toBeUndefined();
+  });
+
   it("makes duplicate identical TaskEvent insertion idempotent", () => {
     const storage = new MemoryStorage();
     saveStudyMvpState(

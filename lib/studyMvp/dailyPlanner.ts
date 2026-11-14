@@ -55,6 +55,7 @@ interface PlanningTaskBase {
   id: EntityId;
   subjectId?: EntityId;
   priority: TaskPriority;
+  priorityAtScheduling?: TaskPriority;
 
   importance?: TopicImportance;
   weaknessFlag?: boolean;
@@ -814,7 +815,7 @@ function createMutableItem(
     priority: task.priority,
     priority_at_scheduling:
       task.kind === "review"
-        ? task.priority
+        ? task.priorityAtScheduling ?? task.priority
         : null,
 
     intended_due_date:
