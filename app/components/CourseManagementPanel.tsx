@@ -5,6 +5,7 @@ import CardMenu, { type CardMenuAction } from "@/app/components/CardMenu";
 import { defaultIdFactory } from "@/lib/studyMvp/reviewEngine";
 import { assignCourseToAcademicPeriod } from "@/lib/studyMvp/academicPeriod";
 import { setCourseArchivedAt } from "@/lib/studyMvp/storage";
+import { deleteCourseStudyData } from "@/lib/studyMvp/courseDeletion";
 import type { StudyMvpState } from "@/lib/studyMvp/types";
 
 interface CourseManagementPanelProps {
@@ -13,6 +14,7 @@ interface CourseManagementPanelProps {
   syncConflict?: boolean;
   problem?: string;
   persist: (next: StudyMvpState, successMessage?: string) => boolean;
+  persistCourseDeletion: (next: StudyMvpState, courseId: string, successMessage?: string) => Promise<boolean>;
 }
 
 export default function CourseManagementPanel({
@@ -21,11 +23,13 @@ export default function CourseManagementPanel({
   syncConflict = false,
   problem,
   persist,
+  persistCourseDeletion,
 }: CourseManagementPanelProps) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [quickCourseName, setQuickCourseName] = useState("");
   const [quickCourseCode, setQuickCourseCode] = useState("");
+  const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   const [courseFilter, setCourseFilter] = useState<"current" | "unassigned" | "all">("current");
   const activeYear = state?.settings.active_academic_year ?? null;
   const activeSemester = state?.settings.active_academic_semester ?? null;
@@ -147,6 +151,41 @@ export default function CourseManagementPanel({
     }
   }
 
+  async function permanentlyDeleteCourse(courseId: string, courseName: string) {
+    if (!state || loadingError || syncConflict || deletingCourseId) return;
+
+    const confirmation = window.prompt(
+      `Permanently delete "${courseName}" and its linked Study data? This removes its units, topics, lectures, retrieval tasks, related practice history, assignments and exams. Saved daily-plan snapshots remain as historical records. A full pre-deletion cloud recovery snapshot is created automatically. Restoring it later may replace newer Study changes.
+
+Type the course name exactly to continue:`,
+    );
+    if (confirmation !== courseName) {
+      if (confirmation !== null) setNotice("Permanent deletion cancelled: the course name did not match.");
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setDeletingCourseId(courseId);
+    try {
+      const next = deleteCourseStudyData(state, courseId);
+      const saved = await persistCourseDeletion(
+        next,
+        courseId,
+        `Permanently deleted "${courseName}" and its linked Study data.`,
+      );
+      if (saved) {
+        setNotice(`Permanently deleted "${courseName}" and its linked Study data.`);
+      } else {
+        setError("The course was not deleted. Check the Study sync status and try again.");
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The course could not be permanently deleted.");
+    } finally {
+      setDeletingCourseId(null);
+    }
+  }
+
   function changeCoursePeriod(
     courseId: string,
     courseName: string,
@@ -255,18 +294,18 @@ export default function CourseManagementPanel({
               ? `Year ${course.academic_year} · Semester ${course.academic_semester}`
               : "Unassigned";
             return (
-              <article key={course.id} className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
+              <article key={course.id} className="course-management__course-card relative flex min-h-20 flex-col gap-3 rounded-xl bg-[var(--surface-soft)] p-4 pr-14 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
                   <p className="font-extrabold text-[var(--ink)]">{course.name}{course.code ? ` (${course.code})` : ""}</p>
                   <p className="mt-1 text-xs font-bold text-[var(--muted)]">
                     {periodLabel} · {archived ? "Archived" : "Active"}
                     {archived && course.archived_at ? ` · ${new Date(course.archived_at).toLocaleDateString()}` : ""}
                   </p>
                 </div>
-                <div className="flex items-center justify-end">
+                <div className="course-management__course-actions absolute right-3 top-3 flex items-center justify-end">
                   <CardMenu
                     title={`Actions for ${course.name}`}
-                    disabled={!state || Boolean(loadingError) || syncConflict}
+                    disabled={!state || Boolean(loadingError) || syncConflict || deletingCourseId !== null}
                     actions={[
                       {
                         label: "Edit course details",
@@ -289,6 +328,11 @@ export default function CourseManagementPanel({
                         label: archived ? "Restore course" : "Archive course",
                         onSelect: () => archiveOrRestore(course.id, course.name, archived),
                       },
+                      {
+                        label: "Permanently delete course",
+                        destructive: true,
+                        onSelect: () => { void permanentlyDeleteCourse(course.id, course.name); },
+                      },
                     ] satisfies CardMenuAction[]}
                   />
                 </div>
@@ -298,7 +342,7 @@ export default function CourseManagementPanel({
         </div>
       )}
       <p className="mt-3 text-xs leading-relaxed text-[var(--muted)]">
-        Archive is reversible and keeps all records. Permanent deletion is temporarily unavailable while the server-side deletion procedure is hardened; use Archive to remove a course from active Study work without erasing its history.
+        Archive is reversible. Permanent deletion removes the course and linked Study records, keeps saved plan snapshots, and stores a pre-deletion cloud recovery copy.
       </p>
     </section>
   );

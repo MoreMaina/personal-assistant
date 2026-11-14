@@ -3108,6 +3108,15 @@ const hasRecordedTodaysWork =
       ) === today,
   );
 
+const loggedTodayMinutes = (state?.work_sessions ?? [])
+  .filter((session) =>
+    localDateOfTimestamp(session.logged_at, studyTimezone) === today,
+  )
+  .reduce(
+    (total, session) => total + Math.max(0, session.actual_duration_min),
+    0,
+  );
+
     const plannedSectionIds = [
     ...new Set(
       (latestTodaysPlan?.plan.items ?? [])
@@ -4193,9 +4202,8 @@ function movePlanningItemTo(
           </button>
 
           <p className="mt-4 text-xs leading-5 text-stone-600">
-            Migration creates the cloud record only if another session has
-            not created one first. If cloud data appears before migration
-            completes, the app will stop and ask you to resolve the difference.
+            Migration creates a cloud record only if none exists. If another
+            session creates one first, setup pauses so you can resolve the conflict.
           </p>
         </section>
       </main>
@@ -4423,10 +4431,30 @@ function movePlanningItemTo(
               {today ? formatStudyDateLabel(today) : "Loading…"}
             </p>
           </div>
-          <div className="study-page__summary-item">
+          <div className="study-page__summary-item study-page__summary-item--budget">
             <p className="study-page__summary-label">Daily budget</p>
             <p className="study-page__summary-value">
               {state.settings.daily_budget_min} min
+            </p>
+            <div
+              className="study-page__budget-progress"
+              role="progressbar"
+              aria-label="Recorded Study work against daily budget"
+              aria-valuemin={0}
+              aria-valuemax={Math.max(1, state.settings.daily_budget_min)}
+              aria-valuenow={Math.min(loggedTodayMinutes, state.settings.daily_budget_min)}
+            >
+              <span
+                className="study-page__budget-progress-fill"
+                style={{
+                  width: `${state.settings.daily_budget_min > 0
+                    ? Math.min(100, (loggedTodayMinutes / state.settings.daily_budget_min) * 100)
+                    : 0}%`,
+                }}
+              />
+            </div>
+            <p className="study-page__budget-progress-label">
+              {loggedTodayMinutes} / {state.settings.daily_budget_min} min recorded
             </p>
           </div>
           <div className="study-page__summary-item">
@@ -5315,10 +5343,9 @@ function movePlanningItemTo(
                         ) : (
                           <>
                             <p className="text-sm font-semibold text-amber-900">
-                              At least one original question record is missing or belongs
-                              to another topic. This session will not substitute a new
-                              question set. Export a full JSON backup before recovering
-                              the original catalog record.
+                              An original question is missing or linked to another topic.
+                              No replacement will be used. Export a full JSON backup
+                              before restoring the original catalog record.
                             </p>
                             <a
                               href="#catalog"

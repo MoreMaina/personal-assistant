@@ -1075,13 +1075,11 @@ export default function BackupRecoveryPage() {
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm font-bold text-[var(--muted)]">
-              When a storage reader detects malformed data, the original
-              raw value is preserved here in this browser before a fallback
-              is returned. These copies are local to this browser and are
-              not synced to the cloud. Download them somewhere private and
-              safe before clearing browser data. They are raw recovery
-              material, not files that can be directly restored through
-              the normal backup importer.
+              If malformed data is detected, its original value is saved
+              on this device before fallback. These copies aren't synced
+              to the cloud. Download them somewhere safe before clearing
+              browser data. They're raw recovery data and can't be imported
+              through the normal backup tool.
             </p>
           </div>
 

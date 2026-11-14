@@ -685,6 +685,7 @@ export function ItemWorkTimer({
     start,
     pause,
     reset,
+    setDuration,
     startStopwatch,
     pauseStopwatch,
     resetStopwatch,
@@ -727,6 +728,37 @@ export function ItemWorkTimer({
   const timeLabel = formatTime(remainingMs);
 
   const [mode, setMode] = useState<"timer" | "stopwatch">("timer");
+  const [editingDuration, setEditingDuration] = useState(false);
+  const [durationDraft, setDurationDraft] = useState(String(entry.durationMinutes));
+  const [durationError, setDurationError] = useState("");
+
+  useEffect(() => {
+    if (!editingDuration) {
+      setDurationDraft(String(entry.durationMinutes));
+      setDurationError("");
+    }
+  }, [entry.durationMinutes, editingDuration]);
+
+  function saveDurationEdit() {
+    const minutes = Number(durationDraft);
+    if (!validDuration(minutes)) {
+      setDurationError("Enter a whole number from 1 to 1,440 minutes.");
+      return;
+    }
+    if (isRunning) {
+      setDurationError("Pause the timer before changing its duration.");
+      return;
+    }
+    setDuration(itemId, minutes);
+    setDurationError("");
+    setEditingDuration(false);
+  }
+
+  function cancelDurationEdit() {
+    setDurationDraft(String(entry.durationMinutes));
+    setDurationError("");
+    setEditingDuration(false);
+  }
 
   function toggleTimer() {
     if (isRunning) {
@@ -745,9 +777,6 @@ export function ItemWorkTimer({
         <div>
           <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
             Work tracker
-          </p>
-          <p className="mt-1 text-xs font-semibold text-stone-500">
-            Choose how you want to track this activity.
           </p>
         </div>
         <div
@@ -775,51 +804,110 @@ export function ItemWorkTimer({
       </div>
 
       {mode === "timer" ? (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+        <div className="item-work-timer__controls grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="min-w-0">
+            {editingDuration ? (
+              <form
+                className="item-work-timer__duration-editor"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  saveDurationEdit();
+                }}
+              >
+                <label className="sr-only" htmlFor={`work-timer-duration-${itemId}`}>
+                  Timer duration in minutes
+                </label>
+                <input
+                  id={`work-timer-duration-${itemId}`}
+                  autoFocus
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={1440}
+                  step={1}
+                  value={durationDraft}
+                  onChange={(event) => {
+                    setDurationDraft(event.target.value);
+                    setDurationError("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      cancelDurationEdit();
+                    }
+                  }}
+                  className="item-work-timer__duration-input"
+                  aria-describedby={durationError ? `work-timer-duration-error-${itemId}` : undefined}
+                />
+                <span className="text-sm font-semibold text-[var(--p6-text-secondary)]">minutes</span>
+                <button type="submit" className="item-work-timer__inline-action">
+                  Set
+                </button>
+                <button type="button" onClick={cancelDurationEdit} className="item-work-timer__inline-action item-work-timer__inline-action--quiet">
+                  Cancel
+                </button>
+                {durationError && (
+                  <p id={`work-timer-duration-error-${itemId}`} role="alert" className="item-work-timer__duration-error">
+                    {durationError}
+                  </p>
+                )}
+              </form>
+            ) : (
               <button
                 type="button"
-                disabled={!hydrated}
-                onClick={toggleTimer}
-                className="item-work-timer__clock rounded-lg px-1 text-2xl font-bold tabular-nums text-[#23412f] focus-visible:outline-2 disabled:opacity-50"
-                aria-label={`${isRunning ? "Pause" : "Start"} ${itemName} timer. ${timeLabel} remaining.`}
-                title={`${isRunning ? "Pause" : "Start"} timer`}
+                disabled={!hydrated || isRunning}
+                onClick={() => {
+                  setDurationDraft(String(entry.durationMinutes));
+                  setDurationError("");
+                  setEditingDuration(true);
+                }}
+                className="item-work-timer__clock rounded-lg px-1 text-2xl font-bold tabular-nums focus-visible:outline-2 disabled:cursor-default disabled:opacity-100"
+                aria-label={`Edit ${itemName} timer duration. ${timeLabel} remaining.`}
+                title={isRunning ? "Pause the timer to edit its duration" : "Edit timer duration"}
               >
                 {hydrated ? timeLabel : "--:--"}
               </button>
-              <p className="mt-1 text-xs font-medium text-stone-500">
-                {isRunning
-                  ? "Running · tap the clock to pause"
-                  : remainingMs === 0 && entry.completedAtMs !== null
-                    ? "Time complete"
-                    : anotherTimerRunning
-                      ? "Paused · another item is running"
-                      : "Ready · tap the clock to start"}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={!hydrated}
-                onClick={() => reset(itemId, safeDefault)}
-                className="rounded-lg border border-[#d8ccb8] bg-white px-3 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:opacity-50"
-              >
-                Reset
-              </button>
-            </div>
+            )}
+            <p className="mt-1 text-xs font-medium text-[var(--p6-text-secondary)]">
+              {isRunning
+                ? "Running"
+                : remainingMs === 0 && entry.completedAtMs !== null
+                  ? "Time complete"
+                  : anotherTimerRunning
+                    ? "Ready · starting this timer will pause the other activity"
+                    : "Ready · select the time to edit duration"}
+            </p>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <button
+              type="button"
+              disabled={!hydrated}
+              onClick={toggleTimer}
+              className="item-work-timer__primary-action"
+            >
+              {isRunning ? "Pause" : "Start"}
+            </button>
+            <button
+              type="button"
+              disabled={!hydrated}
+              onClick={() => reset(itemId, safeDefault)}
+              className="item-work-timer__reset-action"
+            >
+              Reset
+            </button>
+          </div>
+
           {remainingMs === 0 && entry.completedAtMs !== null && (
             <p
               role="status"
               aria-live="polite"
-              className="mt-3 rounded-lg bg-emerald-50 p-2 text-xs font-extrabold text-emerald-900"
+              className="sm:col-span-2 rounded-lg bg-emerald-50 p-2 text-xs font-extrabold text-emerald-900"
             >
               Timer complete. Record your actual work separately.
             </p>
           )}
-        </>
+        </div>
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -843,7 +931,7 @@ export function ItemWorkTimer({
                   ? pauseStopwatch(itemId)
                   : startStopwatch(itemId)
               }
-              className="rounded-lg bg-[#23412f] px-3 py-2 text-sm font-extrabold text-white hover:bg-[#183021] disabled:opacity-50"
+              className="item-work-timer__primary-action"
             >
               {stopwatchIsRunning ? "Pause" : "Start"}
             </button>

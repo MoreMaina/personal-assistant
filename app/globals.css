@@ -5651,3 +5651,180 @@ body,
 .card-menu__panel[aria-label^="Actions for "] button.card-menu__action--destructive {
   color: #b42318 !important;
 }
+
+/* Final stability-batch polish: targeted soft surfaces and compact Study controls. */
+.app-content .study-page .study-page__summary-item {
+  padding: 0.75rem 1rem !important;
+}
+.app-content .study-page .study-page__budget-progress {
+  height: 0.35rem;
+  margin-top: 0.45rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--p6-surface-subtle);
+}
+.app-content .study-page .study-page__budget-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--p6-primary);
+  transition: width 180ms ease;
+}
+.app-content .study-page .study-page__budget-progress-label {
+  margin-top: 0.3rem;
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-metadata);
+  line-height: 1.25;
+}
+
+.app-content .course-management .course-management__course-card {
+  border: 0 !important;
+  background: var(--p6-surface-subtle) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .course-management .course-management__course-actions {
+  z-index: 1;
+}
+
+/* CardMenu already implements smart flip positioning and per-item icons. */
+.card-menu__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.card-menu__heading {
+  color: var(--p6-text-secondary) !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.075em !important;
+}
+.card-menu__panel button.card-menu__action--destructive {
+  color: #b42318 !important;
+}
+
+/* The final cascade keeps Workspace tabs flat, with only the selected tab filled. */
+.app-content .workspace-page [aria-label="Workspace section"] {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+  gap: 0.5rem !important;
+}
+.app-content .workspace-page [aria-label="Workspace section"] button {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .workspace-page [aria-label="Workspace section"] button[aria-pressed="true"] {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Reading forms use a soft fill instead of a visible box outline. */
+.app-content .reading-detail-page input,
+.app-content .reading-detail-page textarea,
+.app-content .reading-detail-page select {
+  border: 1px solid transparent !important;
+  background: var(--p6-surface-subtle) !important;
+}
+.app-content .reading-detail-page input:focus-visible,
+.app-content .reading-detail-page textarea:focus-visible,
+.app-content .reading-detail-page select:focus-visible {
+  border-color: var(--p6-primary) !important;
+}
+
+/* Work Tracker: explicit actions, compact toggle, and a consistent teal active state. */
+.app-content .item-work-timer {
+  padding: 0.875rem !important;
+}
+.app-content .item-work-timer > .mb-3 {
+  margin-bottom: 0.625rem !important;
+}
+.app-content .item-work-timer__mode {
+  min-height: 2.5rem !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+}
+.app-content .item-work-timer__mode--active {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+.app-content .item-work-timer__primary-action,
+.app-content .item-work-timer__inline-action {
+  display: inline-flex;
+  min-height: 2.75rem !important;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--p6-primary) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  padding: 0.55rem 0.9rem !important;
+  font-size: 0.9rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__primary-action:hover:not(:disabled),
+.app-content .item-work-timer__inline-action:hover:not(:disabled) {
+  background: var(--p6-primary-hover) !important;
+}
+.app-content .item-work-timer__primary-action:disabled,
+.app-content .item-work-timer__inline-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.app-content .item-work-timer__reset-action,
+.app-content .item-work-timer__inline-action--quiet {
+  display: inline-flex;
+  min-height: 2.75rem !important;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  padding: 0.55rem 0.9rem !important;
+  font-size: 0.9rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__duration-editor {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.app-content .item-work-timer__duration-input {
+  width: 5.5rem !important;
+  min-height: 2.75rem !important;
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  padding: 0.5rem 0.65rem !important;
+  font-size: 1rem !important;
+}
+.app-content .item-work-timer__duration-error {
+  flex-basis: 100%;
+  color: #b42318;
+  font-size: var(--p6-font-metadata);
+}
+
+/* Add-event keeps its pale amber cue without the heavy orange drop-shadow. */
+.app-content .calendar-overview button.calendar-day-action--event,
+.app-content .calendar-overview button.calendar-day-action--event:hover {
+  box-shadow: none !important;
+  border: 1px solid rgba(148, 98, 0, 0.18) !important;
+}
+
+/* Study primary actions: remove legacy forest hover shadows. */
+.app-content .study-page button.action-primary--forest:hover:not(:disabled),
+.app-content .study-page button[class~="bg-[#23412f]"]:hover:not(:disabled) {
+  box-shadow: none !important;
+  transform: none !important;
+}

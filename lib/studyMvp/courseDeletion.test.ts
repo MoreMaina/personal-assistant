@@ -179,6 +179,82 @@ describe("permanent course deletion", () => {
     expect(next.courses.map((course) => course.id)).toEqual(["course-b"]);
   });
 
+  it("preserves saved daily-plan history and completion records when their course is deleted", () => {
+    const state = createEmptyStudyState({ now: NOW, timezone: "UTC" });
+    state.courses.push(
+      { id: "course-a", name: "Economics", code: "ECO", color: "#557C8A", created_at: NOW },
+    );
+    state.units.push({ id: "unit-a", course_id: "course-a", code: "A", name: "Unit A", order_index: 1 });
+    state.topics.push(makeTopic("topic-a", "unit-a"));
+
+    const savedPlan = {
+      id: "plan-a",
+      date: "2026-10-23",
+      version: 1,
+      saved_at: NOW,
+      plan: {
+        date: "2026-10-23",
+        budget_minutes: 60,
+        allocated_minutes: 30,
+        remaining_budget_minutes: 30,
+        items: [{
+          id: "plan-item-a",
+          subject_id: "topic-a",
+          kind: "initial_learning" as const,
+          subject_type: "initial_learning" as const,
+          review_event_id: null,
+          priority: 2 as const,
+          priority_at_scheduling: null,
+          intended_due_date: null,
+          current_due_date: null,
+          defer_count: 0,
+          estimated_minutes: 30,
+          allocated_minutes: 30,
+          remaining_minutes: 0,
+          selected_question_ids: [],
+          allocated_question_ids: [],
+          remaining_question_ids: [],
+          analysis_minutes: 0,
+          disposition: "DO" as const,
+          category: "DO" as const,
+          reason: null,
+          re_entry_condition: null,
+          forced_disposition: null,
+          decision_source: null,
+          decision_required: false,
+          cap_override_used: false,
+        }],
+        initial_review_reserve_minutes: 0,
+        initial_mixed_reserve_minutes: 0,
+        review_reserve_used_minutes: 0,
+        mixed_reserve_used_minutes: 0,
+        can_finalize: true,
+        unresolved_decisions: [],
+        has_silent_drops: false,
+        has_conflicting_dispositions: false,
+        priority_1_3_skip_count: 0,
+        plan_review_flag: false,
+        mixed_minimum_reduced: false,
+        repair_cap_override_used: false,
+        warnings: [],
+      },
+    };
+    state.daily_plan_history = [savedPlan];
+    state.daily_plan_executions = [{
+      id: "execution-a",
+      date: "2026-10-23",
+      plan_snapshot_id: "plan-a",
+      completed_section_ids: [],
+      updated_at: NOW,
+    }];
+
+    const next = deleteCourseStudyData(state, "course-a");
+
+    expect(next.courses).toHaveLength(0);
+    expect(next.daily_plan_history).toEqual([savedPlan]);
+    expect(next.daily_plan_executions).toEqual(state.daily_plan_executions);
+  });
+
   it("rejects a course ID that does not exist", () => {
     const state = createEmptyStudyState({ now: NOW, timezone: "UTC" });
     expect(() => deleteCourseStudyData(state, "missing-course")).toThrow(/was not found/);

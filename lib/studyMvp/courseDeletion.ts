@@ -1,6 +1,5 @@
 import { assertStudyStateIntegrity } from "./storage";
 import { localDateOfTimestamp } from "./reviewEngine";
-import type { DailyPlan } from "./dailyPlanner";
 import type { StudyMvpState, TaskEvent } from "./types";
 
 function sharedPracticeSessionKey(
@@ -46,39 +45,6 @@ function taskEventBelongsToCourse(
     case "topic_consolidation":
     case "initial_learning":
       return topicIds.has(event.subject_id);
-    default:
-      return false;
-  }
-}
-
-function planItemBelongsToCourse(
-  item: DailyPlan["items"][number],
-  topicIds: ReadonlySet<string>,
-  taskIds: ReadonlySet<string>,
-  reviewIds: ReadonlySet<string>,
-  assignmentIds: ReadonlySet<string>,
-): boolean {
-  if (item.review_event_id && reviewIds.has(item.review_event_id)) return true;
-  if (
-    item.selected_question_ids.some((id) => taskIds.has(id)) ||
-    item.allocated_question_ids.some((id) => taskIds.has(id)) ||
-    item.remaining_question_ids.some((id) => taskIds.has(id))
-  ) return true;
-
-  switch (item.subject_type) {
-    case "review_event":
-      return reviewIds.has(item.subject_id);
-    case "retrieval_task":
-      return taskIds.has(item.subject_id);
-    case "gate_attempt":
-      return taskIds.has(item.subject_id) || topicIds.has(item.subject_id);
-    case "assignment":
-      return assignmentIds.has(item.subject_id);
-    case "corrective_task":
-      return taskIds.has(item.subject_id) || topicIds.has(item.subject_id);
-    case "topic_consolidation":
-    case "initial_learning":
-      return topicIds.has(item.subject_id);
     default:
       return false;
   }
@@ -206,44 +172,10 @@ export function deleteCourseStudyData(
   const remainingTaskEvents = state.task_events.filter(
     (event) => !deletedTaskEventIds.has(event.id),
   );
-  const affectedDailyPlanSnapshotIds = new Set<string>();
-  const dailyPlanHistory = state.daily_plan_history?.map((snapshot) => {
-    const removedItemIds = new Set<string>();
-    const items = snapshot.plan.items.filter((item) => {
-      const remove = planItemBelongsToCourse(item, topicIds, taskIds, reviewIds, assignmentIds);
-      if (remove) removedItemIds.add(item.id);
-      return !remove;
-    });
-    if (items.length === snapshot.plan.items.length) return snapshot;
-    affectedDailyPlanSnapshotIds.add(snapshot.id);
 
-    const allocated = items.reduce((total, item) => total + item.allocated_minutes, 0);
-    return {
-      ...snapshot,
-      plan: {
-        ...snapshot.plan,
-        items,
-        allocated_minutes: allocated,
-        remaining_budget_minutes: Math.max(0, snapshot.plan.budget_minutes - allocated),
-        unresolved_decisions: snapshot.plan.unresolved_decisions.filter(
-          (id) => !removedItemIds.has(id),
-        ),
-        review_reserve_used_minutes: items
-          .filter((item) => item.kind === "review")
-          .reduce((total, item) => total + item.allocated_minutes, 0),
-        mixed_reserve_used_minutes: items
-          .filter((item) => item.kind === "mixed_practice")
-          .reduce((total, item) => total + item.allocated_minutes, 0),
-        priority_1_3_skip_count: items.filter(
-          (item) => item.priority <= 3 && item.category === "SKIP",
-        ).length,
-      },
-    };
-  });
-
-  // Snapshots retain unrelated items. Section-level completion markers for
-  // snapshots that contained deleted items are removed because they cannot
-  // be attributed to an individual course safely.
+  // Saved daily-plan snapshots and their completion records are immutable
+  // historical evidence. Keep them unchanged; the automatic cloud recovery
+  // snapshot also preserves the complete pre-deletion Study state.
   const remainingWeeklyMetrics = state.weekly_metrics.filter((metric) =>
     !metric.source_event_ids.some((id) => deletedTaskEventIds.has(id)) &&
     !metric.source_snapshot.some((event) => deletedTaskEventIds.has(event.id)),
@@ -273,14 +205,6 @@ export function deleteCourseStudyData(
         coverage_topics: item.coverage_topics.filter((id) => !topicIds.has(id)),
       })),
     weekly_metrics: remainingWeeklyMetrics,
-    ...(dailyPlanHistory ? { daily_plan_history: dailyPlanHistory } : {}),
-    ...(state.daily_plan_executions
-      ? {
-          daily_plan_executions: state.daily_plan_executions.filter(
-            (execution) => !affectedDailyPlanSnapshotIds.has(execution.plan_snapshot_id),
-          ),
-        }
-      : {}),
   };
 
   // Keep the exact original schema and all unrelated course data intact.

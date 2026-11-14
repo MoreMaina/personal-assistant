@@ -411,11 +411,6 @@ export default function CalendarOverview({
             kind: "google",
             date,
             title: googleEvent.title,
-            detail: [
-              googleEvent.calendarName,
-              googleEvent.location,
-            ].filter(Boolean).join(" · "),
-            notes: googleEvent.description,
             googleEvent,
           });
         }
@@ -452,11 +447,6 @@ export default function CalendarOverview({
           dateKey(googleEnd) === eventDate
             ? formatGoogleTime(googleEnd)
             : undefined,
-        detail: [
-          googleEvent.calendarName,
-          googleEvent.location,
-        ].filter(Boolean).join(" · "),
-        notes: googleEvent.description,
         googleEvent,
       });
     }
@@ -1130,7 +1120,7 @@ export default function CalendarOverview({
                         : entry.kind === "event"
                           ? "border-[#946200] bg-[#fff8d9]"
                           : entry.kind === "google"
-                            ? "border-[#6750a4] bg-[#f5f0ff]"
+                            ? "border-[#946200] bg-[#fff8d9]"
                             : "border-[var(--accent-dark)] bg-[var(--accent-soft)]"
                   }`}
                 >
@@ -1180,16 +1170,6 @@ export default function CalendarOverview({
                         <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--ink-soft)]">
                           {entry.notes}
                         </p>
-                      )}
-                      {entry.googleEvent?.htmlLink && (
-                        <a
-                          href={entry.googleEvent.htmlLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 inline-block text-sm font-bold text-[#6750a4] underline"
-                        >
-                          Open in Google Calendar
-                        </a>
                       )}
                       {entry.cancelled && (
                         <p className="mt-2 text-xs font-extrabold text-[var(--muted)]">

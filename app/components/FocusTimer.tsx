@@ -328,7 +328,7 @@ export default function FocusTimer() {
           </div>
 
           <p className="mt-3 text-xs font-medium leading-5 text-stone-500">
-            Focus for 25 minutes, take a 5-minute short break, and take a 15-minute break after four focus sessions. This timer runs across pages and reloads on this device; it does not record completed Study, Reading, or Project work.
+            Focus for 25 minutes, take a 5-minute break, and take 15 minutes after four sessions. The timer persists across pages and reloads on this device, but doesn't log Study, Reading, or Project work.
           </p>
 
           {completionMessage && (

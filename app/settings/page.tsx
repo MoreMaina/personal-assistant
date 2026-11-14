@@ -45,6 +45,7 @@ export default function GeneralSettingsPage() {
     syncConflict: studySyncConflict,
     problem: studyProblem,
     persist: persistStudyState,
+    persistCourseDeletion,
   } = useCloudStudyState();
 
   const [catalogImportText, setCatalogImportText] = useState("");
@@ -534,6 +535,7 @@ export default function GeneralSettingsPage() {
             syncConflict={Boolean(studySyncConflict)}
             problem={studyProblem || undefined}
             persist={persistStudyState}
+            persistCourseDeletion={persistCourseDeletion}
           />
         </div>
       </details>
