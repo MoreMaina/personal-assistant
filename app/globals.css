@@ -7100,16 +7100,17 @@ body:has(.study-metrics-page) .app-utilities__trigger {
   color: var(--p6-primary) !important;
 }
 
-/* Align the content rails for Reading, Book/Essay detail, Study and Metrics. */
+/* These route roots fill the single shared .page-shell content rail.
+   Do not add a second horizontal gutter inside the shared app container. */
 .app-content .workspace-page__container,
 .app-content .reading-detail-page,
 .app-content .study-page,
 .app-content .study-metrics-page {
   box-sizing: border-box;
   width: 100%;
-  max-width: 72rem !important;
-  margin-inline: auto;
-  padding-inline: clamp(1.25rem, 1rem + 1.2vw, 2rem) !important;
+  max-width: none !important;
+  margin-inline: 0;
+  padding-inline: 0 !important;
 }
 .app-content .reading-detail-page__panel,
 .app-content .reading-detail-page__note {
