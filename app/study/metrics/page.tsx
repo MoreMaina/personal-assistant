@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useCloudStudyState } from "@/lib/studyMvp/useCloudStudyState";
 import {
@@ -71,171 +71,431 @@ function formatPercent(value: number | null | undefined): string {
   return value === null || value === undefined ? "—" : `${value.toFixed(1)}%`;
 }
 
-function MetricTable({ snapshot }: { snapshot: WeekMetrics }) {
-  const counts = snapshot.sample_counts;
 
-  const rows = [
-    {
-      number: "1",
-      label: "Reviews finished on time",
-      description: "Of the reviews due this week, what percentage did you complete on the day they were due?",
-      value: formatPercent(snapshot.overall_on_time_completion_pct),
-      target: "≥80%",
-      sample: counts
-        ? `${counts.overall_on_time.completed} / ${counts.overall_on_time.due} completed on time`
-        : "Sample counts unavailable",
-    },
-    {
-      number: "2",
-      label: "Important reviews finished on time",
-      description: "The same check, but only for the reviews your planner marks as most important (priorities 1–3).",
-      value: formatPercent(snapshot.priority_1_3_on_time_completion_pct),
-      target: "≥80%",
-      sample: counts
-        ? `${counts.priority_1_3_on_time.completed} / ${counts.priority_1_3_on_time.due} completed on time`
-        : "Sample counts unavailable",
-    },
-    {
-      number: "3",
-      label: "Reviews you postponed",
-      description: "What percentage of reviews due this week did you postpone at least once? Each review counts once, even if you postponed it several times.",
-      value: formatPercent(snapshot.deferral_rate_pct),
-      target: "≤20%",
-      sample: counts
-        ? `${counts.deferral_rate.deferred_events} / ${counts.deferral_rate.due_events} distinct reviews deferred`
-        : "Sample counts unavailable",
-    },
-    {
-      number: "4",
-      label: "Times you pressed Defer",
-      description: "Counts every postpone decision. Putting off the same review three times counts as three decisions.",
-      value: String(snapshot.total_deferral_decisions),
-      target: "Track",
-      sample: "Individual DEFER and override-defer events",
-    },
-  ];
+type MetricTrendPoint = {
+  week_number: number;
+  week_start: string;
+  week_end: string;
+  snapshot: WeekMetrics | null;
+  saved: boolean;
+  closed: boolean;
+};
+
+function formatShortDate(value: string): string {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function MetricProgress({
+  value,
+  target,
+  lowerIsBetter = false,
+}: {
+  value: number | null;
+  target: number;
+  lowerIsBetter?: boolean;
+}) {
+  if (value === null) {
+    return (
+      <p className="mt-2 text-xs text-stone-500">
+        No due reviews available to measure yet.
+      </p>
+    );
+  }
+
+  const bounded = Math.max(0, Math.min(100, value));
+  const onTarget = lowerIsBetter ? value <= target : value >= target;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b border-stone-200 text-xs uppercase tracking-wide text-stone-500">
-            <th className="px-3 py-3">#</th>
-            <th className="px-3 py-3">What it tells you</th>
-            <th className="px-3 py-3">Result</th>
-            <th className="px-3 py-3">Target</th>
-            <th className="px-3 py-3">Sample / denominator</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.number} className="border-b border-stone-100">
-              <td className="px-3 py-4 font-bold text-stone-500">{row.number}</td>
-              <td className="px-3 py-4">
-                <p className="font-semibold text-stone-900">{row.label}</p>
-                <p className="mt-1 max-w-md text-xs leading-5 text-stone-600">{row.description}</p>
-              </td>
-              <td className="px-3 py-4 font-bold tabular-nums">{row.value}</td>
-              <td className="px-3 py-4 text-stone-600">{row.target}</td>
-              <td className="px-3 py-4 text-stone-600">{row.sample}</td>
-            </tr>
-          ))}
+    <div
+      className="relative mt-2 h-2 overflow-hidden rounded-full bg-stone-100"
+      role="img"
+      aria-label={`${value.toFixed(1)} percent; target ${lowerIsBetter ? "at most" : "at least"} ${target} percent`}
+    >
+      <div
+        className={`h-full rounded-full ${
+          onTarget ? "bg-teal-600" : "bg-amber-500"
+        }`}
+        style={{ width: `${bounded}%` }}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-0 w-0.5 bg-stone-800"
+        style={{ left: `${target}%` }}
+      />
+    </div>
+  );
+}
 
-          <tr className="border-b border-stone-100">
-            <td className="px-3 py-4 font-bold text-stone-500">5</td>
-            <td className="px-3 py-4 font-semibold text-stone-900">
-              How close your time estimates were
-              <p className="mt-1 max-w-md text-xs font-normal leading-5 text-stone-600">
-                Compares the time you expected with the time you actually spent,
-                separately for each question type. A smaller percentage means
-                your estimate was closer. We show a result after at least five attempts.
-              </p>
-            </td>
-            <td colSpan={3} className="px-3 py-4">
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {TASK_TYPES.map((type) => {
-                  const count = snapshot.duration_error_sample_counts[type] ?? 0;
-                  const value = snapshot.median_duration_error_pct[type];
+function MetricRow({
+  number,
+  label,
+  value,
+  target,
+  sample,
+  description,
+  progressValue,
+  progressTarget,
+  lowerIsBetter,
+  valueTone = "default",
+  children,
+}: {
+  number: string;
+  label: string;
+  value: string;
+  target: string;
+  sample: string;
+  description: string;
+  progressValue?: number | null;
+  progressTarget?: number;
+  lowerIsBetter?: boolean;
+  valueTone?: "default" | "danger";
+  children?: ReactNode;
+}) {
+  return (
+    <details className="group px-3 py-3 sm:px-4">
+      <summary className="flex cursor-pointer list-none items-center gap-3 marker:hidden [&::-webkit-details-marker]:hidden">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600">
+          {number}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-stone-900">
+            {label}
+          </span>
+          <span className="mt-0.5 block text-xs text-stone-500">
+            {target} · {sample}
+          </span>
+          {progressValue !== undefined && progressTarget !== undefined && (
+            <MetricProgress
+              value={progressValue}
+              target={progressTarget}
+              lowerIsBetter={lowerIsBetter}
+            />
+          )}
+        </span>
+        <span
+          className={`shrink-0 text-right text-lg font-extrabold tabular-nums ${
+            valueTone === "danger" ? "text-rose-700" : "text-stone-950"
+          }`}
+        >
+          {value}
+        </span>
+        <span
+          aria-hidden="true"
+          className="ml-1 shrink-0 text-sm text-stone-400 transition-transform group-open:rotate-180"
+        >
+          ▾
+        </span>
+      </summary>
 
-                  return (
-                    <div key={type} className="rounded-lg bg-stone-50 px-3 py-2">
-                      <p className="text-xs font-semibold capitalize text-stone-600">
-                        {type.replace(/_/g, " ")}
-                      </p>
-                      <p className="mt-1 font-bold tabular-nums text-stone-900">
-                        {count < 5 || value === null || value === undefined
-                          ? "Insufficient data"
-                          : formatPercent(value)}
-                      </p>
-                      <p className="text-xs text-stone-500">{count} / 5 samples</p>
-                    </div>
-                  );
-                })}
+      <div className="ml-10 mt-3 space-y-2 border-t border-stone-100 pt-3">
+        <p className="text-sm leading-5 text-stone-600">{description}</p>
+        <p className="text-xs text-stone-500">
+          Target: {target}. Sample: {sample}.
+        </p>
+        {children}
+      </div>
+    </details>
+  );
+}
+
+function DurationErrorBreakdown({ snapshot }: { snapshot: WeekMetrics }) {
+  return (
+    <div className="mt-3 space-y-3">
+      {TASK_TYPES.map((type) => {
+        const count = snapshot.duration_error_sample_counts[type] ?? 0;
+        const value = snapshot.median_duration_error_pct[type];
+        const enoughData = count >= 5 && value !== null && value !== undefined;
+        const bounded = enoughData
+          ? Math.max(0, Math.min(100, value))
+          : 0;
+
+        return (
+          <div key={type} className="space-y-1">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs font-semibold capitalize text-stone-700">
+                {type.replace(/_/g, " ")}
+              </span>
+              <span className="text-xs font-bold tabular-nums text-stone-800">
+                {enoughData ? `${value.toFixed(1)}%` : "Insufficient data"}
+                <span className="ml-2 font-normal text-stone-500">
+                  n={count}
+                </span>
+              </span>
+            </div>
+            <div
+              className="relative h-2 overflow-hidden rounded-full bg-stone-100"
+              role="img"
+              aria-label={
+                enoughData
+                  ? `${type}: ${value.toFixed(1)} percent median duration error from ${count} samples`
+                  : `${type}: insufficient data, ${count} samples`
+              }
+            >
+              {enoughData && (
+                <div
+                  className={`h-full rounded-full ${
+                    value <= 25 ? "bg-teal-600" : "bg-amber-500"
+                  }`}
+                  style={{ width: `${bounded}%` }}
+                />
+              )}
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-0 w-0.5 bg-stone-800"
+                style={{ left: "25%" }}
+              />
+            </div>
+          </div>
+        );
+      })}
+      <p className="text-xs text-stone-500">
+        Each question type needs at least five attempts. The dark marker shows
+        the 25% target.
+      </p>
+    </div>
+  );
+}
+
+function TrendSeries({
+  title,
+  points,
+  getValue,
+  format,
+  fixedScale,
+  target,
+}: {
+  title: string;
+  points: MetricTrendPoint[];
+  getValue: (snapshot: WeekMetrics) => number | null;
+  format: (value: number) => string;
+  fixedScale?: number;
+  target?: number;
+}) {
+  const values = points
+    .map((point) => point.snapshot ? getValue(point.snapshot) : null)
+    .filter((value): value is number => value !== null);
+
+  const scale = fixedScale ?? Math.max(1, ...values);
+
+  return (
+    <section className="rounded-xl bg-stone-50 p-3 sm:p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-stone-800">{title}</h3>
+        {target !== undefined && (
+          <span className="text-xs text-stone-500">Target: {target}</span>
+        )}
+      </div>
+
+      <div className="mt-3 grid grid-cols-4 gap-3">
+        {points.map((point) => {
+          const value = point.snapshot ? getValue(point.snapshot) : null;
+          const height = value === null
+            ? 0
+            : Math.max(value === 0 ? 3 : 7, Math.min(100, (value / scale) * 100));
+
+          return (
+            <div
+              key={point.week_number}
+              className="flex min-w-0 flex-col items-center gap-1"
+            >
+              <span className="text-xs font-bold tabular-nums text-stone-800">
+                {value === null ? "—" : format(value)}
+              </span>
+              <div className="flex h-16 w-full items-end overflow-hidden rounded-md bg-white">
+                {value !== null && (
+                  <div
+                    className="w-full rounded-t bg-teal-600"
+                    style={{ height: `${height}%` }}
+                    role="img"
+                    aria-label={`Week ${point.week_number}: ${format(value)}`}
+                  />
+                )}
               </div>
-              <p className="mt-2 text-xs text-stone-500">Target: ≤25%</p>
-            </td>
-          </tr>
+              <span className="text-xs font-semibold text-stone-600">
+                W{point.week_number}
+              </span>
+              <span className="text-[10px] text-stone-400">
+                {point.saved ? "Saved" : point.closed ? "Calculated" : point.snapshot ? "Live" : "Upcoming"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
-          <tr className="border-b border-stone-100">
-            <td className="px-3 py-4 font-bold text-stone-500">6</td>
-            <td className="px-3 py-4 font-semibold text-stone-900">
-              <p className="font-semibold text-stone-900">Important overdue work still waiting</p>
-              <p className="mt-1 max-w-md text-xs font-normal leading-5 text-stone-600">
-                The estimated minutes of high-priority reviews that are past due
-                and still unfinished.
-              </p>
-            </td>
-            <td className="px-3 py-4 font-bold tabular-nums">
-              {snapshot.overdue_critical_backlog_min} min
-            </td>
-            <td className="px-3 py-4 text-stone-600">
-              No increase for 2 consecutive weeks
-            </td>
-            <td className="px-3 py-4 text-stone-600">
-              {counts?.overdue_critical_backlog_events ?? "—"} unfinished priority 1–3 reviews
-            </td>
-          </tr>
+function FourWeekTrend({ points }: { points: MetricTrendPoint[] }) {
+  if (points.length === 0) return null;
 
-          <tr className="border-b border-stone-100">
-            <td className="px-3 py-4 font-bold text-stone-500">7</td>
-            <td className="px-3 py-4 font-semibold text-stone-900">
-              <p className="font-semibold text-stone-900">Important reviews you skipped</p>
-              <p className="mt-1 max-w-md text-xs font-normal leading-5 text-stone-600">
-                The number of high-priority reviews due this week that you
-                explicitly chose to skip. Reopening one later does not erase
-                the earlier skip.
-              </p>
-            </td>
-            <td className="px-3 py-4 font-bold tabular-nums">
-              {snapshot.priority_1_3_skip_count}
-            </td>
-            <td className="px-3 py-4 text-stone-600">0</td>
-            <td className="px-3 py-4 text-stone-600">
-              Distinct priority 1–3 reviews explicitly skipped
-            </td>
-          </tr>
+  return (
+    <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+      <div>
+        <h2 className="font-bold text-stone-950">Four-week progress</h2>
+        <p className="mt-1 text-xs leading-5 text-stone-500">
+          Compare performance across the trial. Saved weekly snapshots remain
+          authoritative; unsaved weeks are reconstructed from immutable events.
+        </p>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+        <TrendSeries
+          title="On-time completion"
+          points={points}
+          getValue={(item) => item.overall_on_time_completion_pct}
+          format={(value) => `${value.toFixed(0)}%`}
+          fixedScale={100}
+          target={80}
+        />
+        <TrendSeries
+          title="Deferral rate"
+          points={points}
+          getValue={(item) => item.deferral_rate_pct}
+          format={(value) => `${value.toFixed(0)}%`}
+          fixedScale={100}
+          target={20}
+        />
+        <TrendSeries
+          title="Individual Defer decisions"
+          points={points}
+          getValue={(item) => item.total_deferral_decisions}
+          format={(value) => String(Math.round(value))}
+        />
+        <TrendSeries
+          title="Overdue important backlog"
+          points={points}
+          getValue={(item) => item.overdue_critical_backlog_min}
+          format={(value) => `${Math.round(value)}m`}
+        />
+      </div>
+    </section>
+  );
+}
 
-          <tr className="border-b border-stone-100">
-            <td className="px-3 py-4 font-bold text-stone-500">8</td>
-            <td className="px-3 py-4 font-semibold text-stone-900">
-              <p className="font-semibold text-stone-900">Less urgent reviews you skipped</p>
-              <p className="mt-1 max-w-md text-xs font-normal leading-5 text-stone-600">
-                Of the lower-priority reviews due this week, what percentage
-                did you choose to skip?
-              </p>
-            </td>
-            <td className="px-3 py-4 font-bold tabular-nums">
-              {formatPercent(snapshot.priority_4_5_skip_rate_pct)}
-            </td>
-            <td className="px-3 py-4 text-stone-600">≤15%</td>
-            <td className="px-3 py-4 text-stone-600">
-              {counts
-                ? `${counts.priority_4_5_skip_rate.skipped_events} / ${counts.priority_4_5_skip_rate.due_events} distinct reviews skipped`
-                : "Sample counts unavailable"}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+function MetricDashboard({
+  snapshot,
+  trend,
+}: {
+  snapshot: WeekMetrics;
+  trend: MetricTrendPoint[];
+}) {
+  const counts = snapshot.sample_counts;
+
+  const durationTypesWithEnoughData = TASK_TYPES.filter((type) => {
+    const count = snapshot.duration_error_sample_counts[type] ?? 0;
+    const value = snapshot.median_duration_error_pct[type];
+    return count >= 5 && value !== null && value !== undefined;
+  }).length;
+
+  return (
+    <div className="space-y-4">
+      <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <div>
+            <h2 className="font-bold text-stone-950">Eight trial measures</h2>
+            <p className="text-xs text-stone-500">
+              Tap a measure for its explanation and sample details.
+            </p>
+          </div>
+          <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-600">
+            Week {snapshot.week_number}
+          </span>
+        </div>
+        <div className="divide-y divide-stone-100">
+          <MetricRow
+            number="1"
+            label="Reviews finished on time"
+            value={formatPercent(snapshot.overall_on_time_completion_pct)}
+            target="≥80%"
+            sample={counts
+              ? `${counts.overall_on_time.completed}/${counts.overall_on_time.due} on time`
+              : "Sample unavailable"}
+            description="Of the reviews due this week, what percentage did you complete on the day they were due? The original intended due date is used, even if a review was later deferred."
+            progressValue={snapshot.overall_on_time_completion_pct}
+            progressTarget={80}
+          />
+          <MetricRow
+            number="2"
+            label="Important reviews finished on time"
+            value={formatPercent(snapshot.priority_1_3_on_time_completion_pct)}
+            target="≥80%"
+            sample={counts
+              ? `${counts.priority_1_3_on_time.completed}/${counts.priority_1_3_on_time.due} on time`
+              : "Sample unavailable"}
+            description="The on-time completion measure limited to reviews whose priority was 1–3 when they were scheduled."
+            progressValue={snapshot.priority_1_3_on_time_completion_pct}
+            progressTarget={80}
+          />
+          <MetricRow
+            number="3"
+            label="Reviews you postponed"
+            value={formatPercent(snapshot.deferral_rate_pct)}
+            target="≤20%"
+            sample={counts
+              ? `${counts.deferral_rate.deferred_events}/${counts.deferral_rate.due_events} deferred`
+              : "Sample unavailable"}
+            description="The percentage of distinct reviews due this week that you deferred at least once. Repeated deferrals of the same review count once here."
+            progressValue={snapshot.deferral_rate_pct}
+            progressTarget={20}
+            lowerIsBetter
+          />
+          <MetricRow
+            number="4"
+            label="Times you pressed Defer"
+            value={String(snapshot.total_deferral_decisions)}
+            target="Track"
+            sample="Individual defer decisions"
+            description="Counts each DEFER decision separately. Deferring one review three times counts as three decisions."
+          />
+          <MetricRow
+            number="5"
+            label="How close your time estimates were"
+            value={`${durationTypesWithEnoughData}/6 ready`}
+            target="≤25% · n≥5"
+            sample="Median error by question type"
+            description="Compares estimated and actual attempt duration separately for each retrieval-task type. A smaller percentage means the estimate was closer. A result is shown only after at least five valid attempts of that type."
+          >
+            <DurationErrorBreakdown snapshot={snapshot} />
+          </MetricRow>
+          <MetricRow
+            number="6"
+            label="Important overdue work still waiting"
+            value={`${snapshot.overdue_critical_backlog_min} min`}
+            target="No increase for 2 weeks"
+            sample={`${counts?.overdue_critical_backlog_events ?? "—"} unfinished reviews`}
+            description="The estimated minutes of priority 1–3 reviews that were overdue and still unfinished at the end of this reporting week. Compare the four-week trend below."
+          />
+          <MetricRow
+            number="7"
+            label="Important reviews you skipped"
+            value={String(snapshot.priority_1_3_skip_count)}
+            target="0"
+            sample={`${counts?.priority_1_3_skips ?? snapshot.priority_1_3_skip_count} skipped reviews`}
+            description="The number of priority 1–3 reviews you explicitly chose to skip. Reopening a skipped review later does not erase the historical skip."
+            valueTone={snapshot.priority_1_3_skip_count > 0 ? "danger" : "default"}
+          />
+          <MetricRow
+            number="8"
+            label="Less urgent reviews you skipped"
+            value={formatPercent(snapshot.priority_4_5_skip_rate_pct)}
+            target="≤15%"
+            sample={counts
+              ? `${counts.priority_4_5_skip_rate.skipped_events}/${counts.priority_4_5_skip_rate.due_events} skipped`
+              : "Sample unavailable"}
+            description="Of the priority 4–5 reviews due this week, what percentage did you explicitly skip?"
+            progressValue={snapshot.priority_4_5_skip_rate_pct}
+            progressTarget={15}
+            lowerIsBetter
+          />
+        </div>
+      </section>
+
+      <FourWeekTrend points={trend} />
     </div>
   );
 }
@@ -310,6 +570,71 @@ export default function StudyMetricsPage() {
       };
     }
   }, [state, period, weekNumber, timezone]);
+
+  const weeklyTrend = useMemo<MetricTrendPoint[]>(() => {
+    if (!state || !trialStart || !today) return [];
+
+    return [1, 2, 3, 4].map((week) => {
+      const weekStart = addDays(trialStart, (week - 1) * 7);
+      const weekEnd = addDays(weekStart, 6);
+      const saved = state.weekly_metrics.find(
+        (item) =>
+          item.week_number === week &&
+          item.week_start === weekStart,
+      ) ?? null;
+      const closed = today > weekEnd;
+
+      if (saved) {
+        return {
+          week_number: week,
+          week_start: weekStart,
+          week_end: weekEnd,
+          snapshot: saved,
+          saved: true,
+          closed,
+        };
+      }
+
+      if (weekStart > today) {
+        return {
+          week_number: week,
+          week_start: weekStart,
+          week_end: weekEnd,
+          snapshot: null,
+          saved: false,
+          closed: false,
+        };
+      }
+
+      try {
+        const result = calculateWeeklyMetrics({
+          week_number: week,
+          week_start: weekStart,
+          week_end: weekEnd,
+          timezone,
+          events: state.task_events,
+        });
+
+        return {
+          week_number: week,
+          week_start: weekStart,
+          week_end: weekEnd,
+          snapshot: result.snapshot,
+          saved: false,
+          closed,
+        };
+      } catch {
+        return {
+          week_number: week,
+          week_start: weekStart,
+          week_end: weekEnd,
+          snapshot: null,
+          saved: false,
+          closed,
+        };
+      }
+    });
+  }, [state, trialStart, today, timezone]);
 
   const savedSnapshot = state && period
     ? state.weekly_metrics.find(
@@ -551,22 +876,11 @@ export default function StudyMetricsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-      <header className="rounded-3xl border border-[#d5e1e4] bg-white p-5 sm:p-7">
+    <main className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-6 sm:py-6">
+      <header className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">
-              Study system · Trial evidence
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-stone-950">
-              Weekly metrics
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-stone-600">
-              Eight measures calculated from immutable TaskEvent history.
-              Saved weekly snapshots preserve the evidence used at evaluation time.
-            </p>
-          </div>
-          <span className="rounded-full border px-3 py-1 text-xs font-semibold text-stone-600">
+          <h1 className="text-2xl font-bold text-stone-950">Weekly metrics</h1>
+          <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">
             {cloudSyncStatus === "synced"
               ? "Cloud synced"
               : cloudSyncStatus === "syncing"
@@ -576,15 +890,17 @@ export default function StudyMetricsPage() {
                   : "Cloud status needs attention"}
           </span>
         </div>
-
-        <div className="mt-5 flex flex-wrap gap-3">
+        <p className="mt-1 text-xs leading-5 text-stone-500">
+          Eight measures from immutable TaskEvent history. Saved snapshots preserve evaluation evidence.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <Link
             href="/study"
-            className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold text-stone-800 hover:bg-stone-50"
+            className="rounded-full bg-stone-100 px-3 py-2 text-xs font-bold text-stone-700 hover:bg-stone-200"
           >
             ← Study workspace
           </Link>
-          <label className="flex items-center gap-3 text-sm font-semibold text-stone-700">
+          <label className="flex items-center gap-2 text-xs font-semibold text-stone-600">
             Reporting week
             <select
               value={weekNumber}
@@ -592,7 +908,7 @@ export default function StudyMetricsPage() {
                 setWeekNumber(Number(event.target.value));
                 setActionMessage("");
               }}
-              className="rounded-xl border border-stone-300 bg-white px-3 py-2"
+              className="rounded-full border-0 bg-stone-100 px-3 py-2 text-sm font-bold text-stone-800 focus:ring-2 focus:ring-teal-600"
             >
               {[1, 2, 3, 4].map((week) => (
                 <option key={week} value={week}>Week {week}</option>
@@ -600,10 +916,9 @@ export default function StudyMetricsPage() {
             </select>
           </label>
         </div>
-
         {period && (
-          <p className="mt-3 text-sm text-stone-600">
-            {period.start} – {period.end} · {timezone}
+          <p className="mt-2 text-xs text-stone-500">
+            {formatShortDate(period.start)} – {formatShortDate(period.end)} · {timezone}
           </p>
         )}
       </header>
@@ -639,7 +954,7 @@ export default function StudyMetricsPage() {
         </section>
       ) : (
         <>
-          <section className="rounded-2xl border border-stone-200 bg-white p-5">
+          <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-stone-950">
@@ -693,14 +1008,11 @@ export default function StudyMetricsPage() {
             )}
           </section>
 
-          <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
-            <div className="border-b border-stone-200 px-5 py-4">
-              <h2 className="font-bold text-stone-950">Eight trial measures</h2>
-            </div>
-            <MetricTable snapshot={snapshot} />
+          <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
+            <MetricDashboard snapshot={snapshot} trend={weeklyTrend} />
           </section>
 
-          <section className="rounded-2xl border border-stone-200 bg-white p-5">
+          <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
             <h2 className="font-bold text-stone-950">Dashboard flags</h2>
             {flags.length === 0 ? (
               <p className="mt-3 text-sm text-stone-600">

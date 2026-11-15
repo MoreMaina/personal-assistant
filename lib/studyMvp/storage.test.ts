@@ -15,6 +15,7 @@ import {
   recordWorkSession,
   saveStudyMvpState,
   setCourseArchivedAt,
+  startStudyTrial,
   STUDY_MVP_STORAGE_KEY,
   StudyStorageError,
   type StorageLike,
@@ -1084,6 +1085,99 @@ describe("settings audit and trial freeze", () => {
         state,
         { last_final_exam_date: "2026-12-20" },
         "Change final date.",
+        { now: NOW },
+      ),
+    ).toThrow(/engine is frozen during the trial/);
+  });
+
+  it("starts a four-week trial with exact dates and an audit record", () => {
+    const original = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    const started = startStudyTrial(
+      original,
+      "2026-10-20",
+      "2026-10-23",
+      {
+        now: NOW,
+        idFactory: (prefix) => `${prefix}-trial`,
+      },
+    );
+
+    expect(started.settings.trial_start_date).toBe("2026-10-20");
+    expect(started.settings.trial_end_date).toBe("2026-11-16");
+    expect(started.settings.week4_evaluation_start).toBe("2026-11-10");
+    expect(started.settings.week4_evaluation_end).toBe("2026-11-16");
+
+    expect(started.settings_change_history).toHaveLength(1);
+
+    const audit = started.settings_change_history[0];
+
+    expect(audit.changed_fields).toEqual([
+      "trial_start_date",
+      "trial_end_date",
+      "week4_evaluation_start",
+      "week4_evaluation_end",
+    ]);
+
+    expect(audit.previous_values).toMatchObject({
+      trial_start_date: null,
+      trial_end_date: null,
+      week4_evaluation_start: null,
+      week4_evaluation_end: null,
+    });
+
+    expect(audit.new_values).toMatchObject({
+      trial_start_date: "2026-10-20",
+      trial_end_date: "2026-11-16",
+      week4_evaluation_start: "2026-11-10",
+      week4_evaluation_end: "2026-11-16",
+    });
+
+    expect(audit.reason).toContain("2026-10-20");
+    expect(original.settings.trial_start_date).toBeNull();
+    expect(original.settings_change_history).toHaveLength(0);
+  });
+
+  it("rejects a future trial start date", () => {
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    expect(() =>
+      startStudyTrial(
+        state,
+        "2026-10-24",
+        "2026-10-23",
+        { now: NOW },
+      ),
+    ).toThrow(/Future dates cannot start the trial yet/);
+
+    expect(state.settings.trial_start_date).toBeNull();
+    expect(state.settings_change_history).toHaveLength(0);
+  });
+
+  it("freezes engine settings immediately after trial start", () => {
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    const started = startStudyTrial(
+      state,
+      "2026-10-20",
+      "2026-10-23",
+      { now: NOW },
+    );
+
+    expect(() =>
+      applyStudySettingsChange(
+        started,
+        { intervals_days: [2, 5, 9, 16, 30] },
+        "Attempt to change review intervals during the trial.",
         { now: NOW },
       ),
     ).toThrow(/engine is frozen during the trial/);

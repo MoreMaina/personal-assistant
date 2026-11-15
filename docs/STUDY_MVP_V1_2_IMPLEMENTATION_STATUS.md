@@ -1,9 +1,178 @@
 Study MVP v1.2 — Implementation Status & Conversation Handoff
-Last updated: 14 November 2026 (Africa/Nairobi)
+Last updated: 15 November 2026 (Africa/Nairobi)
 Repository: MoreMaina/personal-assistant
 Working branch: study-mvp-v1-2-completion
 Last known branch base: origin/main at merge commit db139f52a139819184b4e5c44302e3c7dfe0aa93
 Purpose: Preserve project intent, decisions, verified implementation state, risks, and the exact next action across conversations.
+
+## Latest authoritative checkpoint — 15 November 2026
+
+**This checkpoint supersedes older interim status statements and
+immediate-next-action instructions below.** Earlier checkpoints are
+retained as historical project evidence.
+
+### Git and working-tree state
+
+- Repository: MoreMaina/personal-assistant
+- Branch: `study-mvp-v1-2-completion`
+- Local HEAD: `78fb66037446`
+- Local origin tracking reference: `78fb66037446`
+- Latest implementation changes remain uncommitted.
+- No commit, push, merge, deployment or database operation was
+  performed during this implementation step.
+
+Tracked files modified relative to HEAD:
+
+- `app/settings/page.tsx`
+- `app/study/metrics/page.tsx`
+- `app/study/page.tsx`
+- `docs/STUDY_MVP_V1_2_IMPLEMENTATION_STATUS.md`
+- `lib/studyMvp/storage.test.ts`
+- `lib/studyMvp/storage.ts`
+
+Staged files at the time of this update:
+
+- None
+
+Full working-tree status after this handoff update:
+
+```text
+M app/settings/page.tsx
+ M app/study/metrics/page.tsx
+ M app/study/page.tsx
+ M docs/STUDY_MVP_V1_2_IMPLEMENTATION_STATUS.md
+ M lib/studyMvp/storage.test.ts
+ M lib/studyMvp/storage.ts
+?? __pycache__/apply-study-mobile-refinement.cpython-314.pyc
+?? apply-consolidated-study-batches.py
+?? apply-final-course-deletion-and-ui-polish.py
+?? apply-next-ui-polish.py
+?? apply-study-mobile-refinement.py
+?? apply-today-calendar-palette6-batch.py
+?? apply-today-palette6-pilot.py
+?? apply-today-palette6-responsive-pilot.py
+?? finalize_study_mvp_batch1_handoff.py
+?? fix-consolidated-study-test-errors-v2.py
+?? fix-jsx-apostrophe-lint.py
+?? fix_study_mvp_batch1_review_findings.py
+?? p6-backup-jsx-repair.py
+?? p6-final-touch-targets-and-google-dot-v2.py
+?? p6-global-consistency-batch-v3.py
+?? p6-study-accessibility-refinement.py
+?? p6-study-workflow-minimal-batch.py
+?? rebased-study-ui-calendar-course-management.py
+?? repair_study_mvp_batch1_handoff.py
+?? study-mobile-mixed-course-menu-batch.py
+?? study-mvp-batch1-review.patch
+?? supabase/.gitignore
+?? supabase/config.toml
+```
+
+All untracked helper scripts, Python cache files and local Supabase
+configuration must be preserved. None has been staged or deleted.
+
+### Implementation completed locally
+
+1. Settings numeric validation:
+   - Corrected both incorrectly escaped integer-validation
+     regular expressions in `app/settings/page.tsx`.
+   - Valid whole-number inputs can now pass the numeric regex checks.
+   - Preview persistence and audit behaviour still require functional
+     validation.
+
+2. Metrics interface:
+   - Redesigned `app/study/metrics/page.tsx` as a compact hybrid
+     dashboard.
+   - Includes eight metric summaries, expandable details,
+     target-aware progress, duration readiness, four-week trends,
+     and data-quality information.
+   - Includes the individual Defer decisions trend.
+   - Existing weekly flags, snapshots and CSV/JSON export behaviour
+     remain in the implementation and require Preview verification.
+   - This interface change is local and has not been deployed.
+
+3. Trial-start audit:
+   - Added pure helper `startStudyTrial()` in
+     `lib/studyMvp/storage.ts`.
+   - Uses the shared `applyStudySettingsChange()` audit mechanism.
+   - Validates ISO calendar dates.
+   - Rejects future dates and already-configured trial dates.
+   - Calculates trial end at start + 27 days.
+   - Calculates Week 4 evaluation start at start + 21 days.
+   - Calculates Week 4 evaluation end at start + 27 days.
+   - Records previous values, new values, timestamp and reason
+     in settings audit history.
+   - Integrated the helper into `app/study/page.tsx`.
+   - Preserved the existing explicit date-selection and persistence
+     workflow.
+   - Added three tests in `lib/studyMvp/storage.test.ts` covering
+     exact date calculations, audit history, future-date rejection
+     and engine locking after trial start.
+
+### Exact automated verification — 15 November 2026
+
+| Check | Result |
+|---|---|
+| `git diff --check` | Passed |
+| `npx tsc --noEmit` | Passed |
+| `npm test` | 47 files, 490 tests passed |
+| `npm run build` | Passed |
+| Next.js routes | Includes `/settings`, `/study`, `/study/metrics` |
+
+The existing Vite warning concerning native config loading and
+CommonJS syntax remains non-blocking.
+
+These results were supplied by the user from the Codespaces terminal
+after the three-file trial-audit patch was applied.
+
+### Still unverified
+
+- The current local implementation has not yet been pushed to Preview.
+- Settings save, reload persistence, audit history and all seven
+  editable controls need functional Preview verification.
+- Custom intervals need end-to-end verification for initial and
+  subsequent review scheduling.
+- Metrics selection, weekly flags, snapshots and CSV/JSON exports
+  need functional Preview verification.
+- Trial date persistence, audit history and engine lock need Preview
+  verification.
+- Preview and Production share the Supabase project. Obtain and
+  verify a readable Study JSON backup before controlled write tests.
+- H1-H5, I1-I5, J1-J4, K1-K3 and L1-L2 require explicit acceptance
+  traceability.
+- Attempt and decision logging times must be measured separately.
+- Offline, slow-network, reconnect and retry behaviour remains
+  unverified.
+- Catalogue import and onboarding timing remain unverified.
+- The 120-topic / 600-review-event performance requirement remains
+  unverified.
+- No claim of offline support or Week 1 readiness is justified yet.
+
+No actual trial has been started. No Supabase writes, resets,
+migrations, production deployment or merge to main were performed.
+
+### Delivery status
+
+**Batch 1 — implementation:** The latest local implementation patch
+and automated verification passed. Final combined diff review,
+explicit staging, commit, push and Preview preparation remain.
+
+**Batch 2 — functional validation:** Not complete. Continue from
+the user's existing Preview experience and focus on the outstanding
+functional behaviours. Do not repeat basic page-loading checks
+unnecessarily.
+
+### One immediate next task
+
+Review the complete six-file intended change set, including this
+handoff update, and inspect the actual working tree. Stage only
+individually reviewed intended files. Commit and push to the feature
+branch only after reviewing the staged diff and confirming checks.
+
+Do not stage helper scripts or local Supabase configuration.
+Do not merge to main, deploy Production, or start the four-week
+trial before the mandatory readiness checks pass.
+
 Read STUDY_SYSTEM_MVP_V1_2_FINAL.md first. It is the complete locked normative reference. This file is a living implementation log; update it as code and verification results change. Never treat an unverified item as complete.
 1. Project objective
 Finish Study System App — MVP v1.2 inside the Personal Assistant repository, then run the locked four-week trial. Do not broaden scope or redesign unrelated parts of the product.

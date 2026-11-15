@@ -3,6 +3,7 @@ import {
 } from "../storageRecovery";
 
 import {
+  addCalendarDays,
   defaultIdFactory,
   localDateOfTimestamp,
 } from "./reviewEngine";
@@ -2232,6 +2233,60 @@ export function applyStudySettingsChange(
 
   assertStudyStateIntegrity(next);
   return next;
+}
+
+/**
+ * Build a new Study state for the user-confirmed trial start.
+ * Calculates all four trial dates and records the change
+ * through the standard settings audit mechanism.
+ *
+ * This function does not persist anything.
+ */
+export function startStudyTrial(
+  current: StudyMvpState,
+  startDate: ISODate,
+  today: ISODate,
+  options: StudySettingsChangeOptions = {},
+): StudyMvpState {
+  if (!isDateOnly(startDate) || !isDateOnly(today)) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Trial dates must be valid ISO calendar dates.",
+    );
+  }
+
+  if (
+    current.settings.trial_start_date !== null ||
+    current.settings.trial_end_date !== null ||
+    current.settings.week4_evaluation_start !== null ||
+    current.settings.week4_evaluation_end !== null
+  ) {
+    throw new StudyStorageError(
+      "immutable-history",
+      "Trial dates are already configured. Reset them before starting another trial.",
+    );
+  }
+
+  if (startDate > today) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Future dates cannot start the trial yet.",
+    );
+  }
+
+  const settingsPatch: Partial<StudySettings> = {
+    trial_start_date: startDate,
+    trial_end_date: addCalendarDays(startDate, 27),
+    week4_evaluation_start: addCalendarDays(startDate, 21),
+    week4_evaluation_end: addCalendarDays(startDate, 27),
+  };
+
+  return applyStudySettingsChange(
+    current,
+    settingsPatch,
+    `User-confirmed the actual trial start date ${startDate} for the four-week Study MVP v1.2 trial.`,
+    options,
+  );
 }
 
 /**

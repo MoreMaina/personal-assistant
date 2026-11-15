@@ -469,7 +469,7 @@ export default function GeneralSettingsPage() {
         minimum: number,
       ): number {
         const value = raw.trim();
-        if (!/^\\d+$/.test(value)) {
+        if (!/^\d+$/.test(value)) {
           throw new Error(`${label} must be a whole number.`);
         }
 
@@ -524,7 +524,7 @@ export default function GeneralSettingsPage() {
 
       if (
         studyIntervalsDraft.some(
-          (value) => !/^\\d+$/.test(value.trim()),
+          (value) => !/^\d+$/.test(value.trim()),
         )
       ) {
         throw new Error(

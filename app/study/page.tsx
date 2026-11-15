@@ -54,6 +54,7 @@ import {
 import {
   exportStudyMvpJSON,
   removeUnusedStarterScaffold,
+  startStudyTrial,
 } from "@/lib/studyMvp/storage";
 import { unlinkClassesFromStudyUnits } from "@/lib/classStorage";
 
@@ -3768,19 +3769,24 @@ function movePlanningItemTo(
       return;
     }
 
-    persist(
-      {
-        ...state,
-        settings: {
-          ...state.settings,
-          trial_start_date: startDate,
-          trial_end_date: addCalendarDays(startDate, 27),
-          week4_evaluation_start: addCalendarDays(startDate, 21),
-          week4_evaluation_end: addCalendarDays(startDate, 27),
-        },
-      },
-      `The four-week trial has started from ${startDate}.`,
-    );
+    try {
+      const nextState = startStudyTrial(
+        state,
+        startDate,
+        today,
+      );
+
+      persist(
+        nextState,
+        `The four-week trial has started from ${startDate}.`,
+      );
+    } catch (error) {
+      setProblem(
+        error instanceof Error
+          ? error.message
+          : "Could not start the four-week trial.",
+      );
+    }
   }
 
   function resetTrialSetup() {
