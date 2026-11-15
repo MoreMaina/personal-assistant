@@ -7360,3 +7360,17 @@ body:has(.study-metrics-page) .app-utilities__trigger {
     font-size: 0.78rem !important;
   }
 }
+
+/* Shared outer page width for Study, Metrics and the Reading workspace.
+   The inner Palette 6 rails already provide their own responsive gutters.
+   This removes the legacy 820px parent cap while matching the 65rem
+   visible content width used by Today and Calendar. */
+body:has(.study-page) .app-content > .page-shell,
+body:has(.study-metrics-page) .app-content > .page-shell,
+body:has(.workspace-page) .app-content > .page-shell,
+body:has(.reading-detail-page) .app-content > .page-shell {
+  box-sizing: border-box;
+  width: min(100%, 69rem);
+  max-width: 69rem;
+  padding-inline: 0;
+}
