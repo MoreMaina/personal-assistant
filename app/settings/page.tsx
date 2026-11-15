@@ -615,7 +615,7 @@ export default function GeneralSettingsPage() {
       </header>
 
       <form onSubmit={handleSave} className="space-y-6">
-        <details open className="rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
+        <details className="rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
           <summary className="cursor-pointer text-xl font-bold">
             Academic details
           </summary>

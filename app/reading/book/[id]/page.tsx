@@ -890,13 +890,13 @@ function BookDetailContent() {
               Understand the whole, examine what matters, then test what you learned.
             </p>
           </div>
-          {book.status !== "Finished" && (
+          {book.status === "Want to read" && (
             <button
               type="button"
               className="reading-detail-page__action action-primary--terracotta"
               onClick={startReading}
             >
-              {book.status === "Want to read" ? "Start reading" : "Continue reading"}
+              Start reading
             </button>
           )}
         </div>

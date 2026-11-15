@@ -6922,3 +6922,441 @@ body:has(.study-metrics-page) .mobile-nav__content--active {
     padding: 1rem;
   }
 }
+
+/* APP-WIDE PALETTE 6 SHARED CONSISTENCY FIX — 2026-11-15 */
+
+/* Remove the old thick dark outline from rounded cards and sections. */
+.app-content .card,
+.app-content section.rounded-2xl:not([role="alert"]):not([role="status"]),
+.app-content section.rounded-xl:not([role="alert"]):not([role="status"]) {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+/* One neutral Palette 6 shell across Reading, Study and all other routes.
+   The body:has selectors intentionally outrank the earlier route-specific
+   green-shell rules. */
+body:has(.study-page) .app-sidebar,
+body:has(.workspace-page) .app-sidebar,
+body:has(.reading-detail-page) .app-sidebar,
+body:has(.study-metrics-page) .app-sidebar {
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  border-right: 1px solid var(--p6-border-decorative) !important;
+  box-shadow: 2px 0 12px rgba(26, 43, 47, 0.035) !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button,
+body:has(.workspace-page) .app-sidebar .assistant-button,
+body:has(.reading-detail-page) .app-sidebar .assistant-button,
+body:has(.study-metrics-page) .app-sidebar .assistant-button {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button:hover,
+body:has(.workspace-page) .app-sidebar .assistant-button:hover,
+body:has(.reading-detail-page) .app-sidebar .assistant-button:hover,
+body:has(.study-metrics-page) .app-sidebar .assistant-button:hover {
+  transform: none !important;
+  background: var(--p6-surface-selected) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button__mark,
+body:has(.workspace-page) .app-sidebar .assistant-button__mark,
+body:has(.reading-detail-page) .app-sidebar .assistant-button__mark,
+body:has(.study-metrics-page) .app-sidebar .assistant-button__mark,
+body:has(.study-page) .topbar__brand-mark,
+body:has(.workspace-page) .topbar__brand-mark,
+body:has(.reading-detail-page) .topbar__brand-mark,
+body:has(.study-metrics-page) .topbar__brand-mark {
+  border: 0 !important;
+  border-radius: 13px !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button__text strong,
+body:has(.workspace-page) .app-sidebar .assistant-button__text strong,
+body:has(.reading-detail-page) .app-sidebar .assistant-button__text strong,
+body:has(.study-metrics-page) .app-sidebar .assistant-button__text strong,
+body:has(.study-page) .app-sidebar .sidebar-note,
+body:has(.workspace-page) .app-sidebar .sidebar-note,
+body:has(.reading-detail-page) .app-sidebar .sidebar-note,
+body:has(.study-metrics-page) .app-sidebar .sidebar-note,
+body:has(.study-page) .app-sidebar .sidebar-note p,
+body:has(.workspace-page) .app-sidebar .sidebar-note p,
+body:has(.reading-detail-page) .app-sidebar .sidebar-note p,
+body:has(.study-metrics-page) .app-sidebar .sidebar-note p {
+  color: var(--p6-text) !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button__text span,
+body:has(.workspace-page) .app-sidebar .assistant-button__text span,
+body:has(.reading-detail-page) .app-sidebar .assistant-button__text span,
+body:has(.study-metrics-page) .app-sidebar .assistant-button__text span {
+  color: var(--p6-text-secondary) !important;
+  opacity: 1 !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-nav__link,
+body:has(.workspace-page) .app-sidebar .sidebar-nav__link,
+body:has(.reading-detail-page) .app-sidebar .sidebar-nav__link,
+body:has(.study-metrics-page) .app-sidebar .sidebar-nav__link {
+  border: 1px solid transparent !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-nav__link:hover,
+body:has(.workspace-page) .app-sidebar .sidebar-nav__link:hover,
+body:has(.reading-detail-page) .app-sidebar .sidebar-nav__link:hover,
+body:has(.study-metrics-page) .app-sidebar .sidebar-nav__link:hover {
+  transform: none !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-nav__link--active,
+body:has(.workspace-page) .app-sidebar .sidebar-nav__link--active,
+body:has(.reading-detail-page) .app-sidebar .sidebar-nav__link--active,
+body:has(.study-metrics-page) .app-sidebar .sidebar-nav__link--active {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: inset 3px 0 0 var(--p6-primary) !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-note,
+body:has(.workspace-page) .app-sidebar .sidebar-note,
+body:has(.reading-detail-page) .app-sidebar .sidebar-note,
+body:has(.study-metrics-page) .app-sidebar .sidebar-note {
+  border-top: 1px solid var(--p6-border-decorative) !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-note__leaf,
+body:has(.workspace-page) .app-sidebar .sidebar-note__leaf,
+body:has(.reading-detail-page) .app-sidebar .sidebar-note__leaf,
+body:has(.study-metrics-page) .app-sidebar .sidebar-note__leaf {
+  color: var(--p6-primary) !important;
+}
+body:has(.study-page) .topbar,
+body:has(.workspace-page) .topbar,
+body:has(.reading-detail-page) .topbar,
+body:has(.study-metrics-page) .topbar {
+  background: rgba(237, 246, 249, 0.97) !important;
+  border-bottom: 1px solid var(--p6-border-decorative) !important;
+}
+body:has(.study-page) .topbar__brand,
+body:has(.workspace-page) .topbar__brand,
+body:has(.reading-detail-page) .topbar__brand,
+body:has(.study-metrics-page) .topbar__brand {
+  color: var(--p6-text) !important;
+}
+body:has(.study-page) .topbar__icon-button,
+body:has(.workspace-page) .topbar__icon-button,
+body:has(.reading-detail-page) .topbar__icon-button,
+body:has(.study-metrics-page) .topbar__icon-button {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .mobile-nav,
+body:has(.workspace-page) .mobile-nav,
+body:has(.reading-detail-page) .mobile-nav,
+body:has(.study-metrics-page) .mobile-nav {
+  border-top: 1px solid var(--p6-border-decorative) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 -3px 14px rgba(26, 43, 47, 0.05) !important;
+}
+body:has(.study-page) .mobile-nav__content--active,
+body:has(.workspace-page) .mobile-nav__content--active,
+body:has(.reading-detail-page) .mobile-nav__content--active,
+body:has(.study-metrics-page) .mobile-nav__content--active {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .app-utilities__trigger,
+body:has(.workspace-page) .app-utilities__trigger,
+body:has(.reading-detail-page) .app-utilities__trigger,
+body:has(.study-metrics-page) .app-utilities__trigger {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .app-utilities__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+.app-content .app-utilities__action {
+  color: var(--p6-text) !important;
+}
+.app-content .app-utilities__action:hover:not(:disabled) {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-primary) !important;
+}
+
+/* Align the content rails for Reading, Book/Essay detail, Study and Metrics. */
+.app-content .workspace-page__container,
+.app-content .reading-detail-page,
+.app-content .study-page,
+.app-content .study-metrics-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 72rem !important;
+  margin-inline: auto;
+  padding-inline: clamp(1.25rem, 1rem + 1.2vw, 2rem) !important;
+}
+.app-content .reading-detail-page__panel,
+.app-content .reading-detail-page__note {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .workspace-page .reading-numbered-shelf,
+.app-content .workspace-page article,
+.app-content .workspace-page [role="dialog"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+.app-content .workspace-page [class*="border-2"]:not(button):not(input):not(select):not(textarea) {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+
+/* ItemWorkTimer is a shared component. Keep the same two-row timer/stopwatch
+   controls and visual treatment on Study, Book and Essay detail pages. */
+.app-content .item-work-timer.item-work-timer--compact {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem !important;
+  border: 0 !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__mode-row {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+}
+.app-content .item-work-timer__mode-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: 999px;
+  background: var(--p6-surface);
+}
+.app-content .item-work-timer__mode {
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__mode--active {
+  border-color: transparent !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+.app-content .item-work-timer__clock {
+  min-height: 2.75rem;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__primary-action {
+  border: 1px solid var(--p6-primary) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__reset-action,
+.app-content .item-work-timer__inline-action--quiet {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+/* Compact Study heading: title, cloud status icon and Metrics link stay inline. */
+.app-content .study-page .study-page__header-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center !important;
+  gap: 0.4rem 0.55rem !important;
+}
+.app-content .study-page .study-page__header h1 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(1rem, 0.85rem + 1vw, 1.3rem) !important;
+  line-height: 1.15;
+}
+.app-content .study-page .study-page__header-actions {
+  display: flex !important;
+  width: auto !important;
+  min-width: 0;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  justify-content: flex-end !important;
+  gap: 0.35rem !important;
+}
+.app-content .study-page .study-page__header .study-sync-status {
+  display: inline-grid;
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  min-height: 2rem !important;
+  place-items: center;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  flex: 0 0 auto;
+}
+.app-content .study-page .study-page__header .study-sync-status[data-status="error"],
+.app-content .study-page .study-page__header .study-sync-status[data-status="conflict"] {
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+.app-content .study-page .study-page__metrics-link {
+  flex: 0 0 auto;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-primary) !important;
+  font-size: 0.74rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+@media (max-width: 360px) {
+  .app-content .study-page .study-page__header {
+    padding-inline: 0.55rem !important;
+  }
+  .app-content .study-page .study-page__header h1 {
+    font-size: 0.95rem !important;
+  }
+  .app-content .study-page .study-page__metrics-link {
+    padding-inline: 0.35rem;
+    font-size: 0.68rem;
+  }
+  .app-content .study-page .study-page__header .study-sync-status {
+    width: 1.8rem;
+    min-width: 1.8rem;
+    height: 1.8rem;
+    min-height: 1.8rem !important;
+  }
+}
+
+/* Metrics labels and panels use Palette 6 semantic neutrals. */
+.app-content .study-metrics-page [class*="text-stone-"] {
+  color: var(--p6-text-secondary) !important;
+}
+.app-content .study-metrics-page [class*="bg-stone-"] {
+  background: var(--p6-surface-subtle) !important;
+}
+.app-content .study-metrics-page [class*="border-stone-"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+.app-content .study-metrics-page [class*="bg-rose-"] {
+  background: var(--p6-error-bg) !important;
+}
+.app-content .study-metrics-page [class*="text-rose-"] {
+  color: var(--p6-error-text) !important;
+}
+.app-content .study-metrics-page [class*="border-rose-"] {
+  border-color: var(--p6-error-text) !important;
+}
+.app-content .study-metrics-page [class*="bg-amber-"] {
+  background: var(--p6-warning-bg) !important;
+}
+.app-content .study-metrics-page [class*="text-amber-"] {
+  color: var(--p6-warning-text) !important;
+}
+.app-content .study-metrics-page [class*="border-amber-"] {
+  border-color: var(--p6-warning-text) !important;
+}
+
+/* Study UI follow-up: compact navigation and week selector. */
+.app-content .study-metrics-page__back {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 2rem;
+  align-items: center;
+  padding: 0.2rem 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--p6-primary) !important;
+  font-size: var(--p6-font-supporting);
+  font-weight: var(--p6-weight-semibold);
+  line-height: 1.3;
+  box-shadow: none !important;
+  text-decoration: none;
+}
+
+.app-content .study-metrics-page__back:hover {
+  color: var(--p6-primary-hover) !important;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.app-content .study-metrics-page .study-metrics-week-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-label);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page .study-metrics-week-select {
+  width: auto;
+  min-width: 5.5rem;
+  min-height: 2.25rem !important;
+  height: 2.25rem;
+  padding: 0.3rem 0.65rem !important;
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  font-family: var(--font-body);
+  font-size: 0.82rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.2;
+  box-shadow: none !important;
+}
+
+@media (max-width: 420px) {
+  .app-content .study-metrics-page .study-metrics-week-picker {
+    gap: 0.4rem;
+  }
+
+  .app-content .study-metrics-page .study-metrics-week-select {
+    min-width: 4.9rem;
+    font-size: 0.78rem !important;
+  }
+}

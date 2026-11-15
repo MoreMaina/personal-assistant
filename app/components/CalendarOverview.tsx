@@ -198,7 +198,7 @@ export default function CalendarOverview({
   const [isMobile, setIsMobile] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isAgendaOpen, setIsAgendaOpen] = useState(false);
-  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(false);
+  const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(true);
   const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
   const [googleCalendarLoadState, setGoogleCalendarLoadState] = useState<
     "loading" | "connected" | "disconnected" | "error"

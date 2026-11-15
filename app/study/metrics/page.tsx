@@ -981,6 +981,9 @@ export default function StudyMetricsPage() {
 
   return (
     <main className="study-metrics-page mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-6 sm:py-6">
+      <Link href="/study" className="study-metrics-page__back">
+        ← Study workspace
+      </Link>
       <header className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-stone-950">Weekly metrics</h1>
@@ -997,14 +1000,8 @@ export default function StudyMetricsPage() {
         <p className="mt-1 text-xs leading-5 text-stone-500">
           Eight measures from immutable TaskEvent history. Saved snapshots preserve evaluation evidence.
         </p>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <Link
-            href="/study"
-            className="rounded-full bg-stone-100 px-3 py-2 text-xs font-bold text-stone-700 hover:bg-stone-200"
-          >
-            ← Study workspace
-          </Link>
-          <label className="flex items-center gap-2 text-xs font-semibold text-stone-600">
+        <div className="mt-3 flex justify-end">
+          <label className="study-metrics-week-picker">
             Reporting week
             <select
               value={weekNumber}
@@ -1012,7 +1009,7 @@ export default function StudyMetricsPage() {
                 setWeekNumber(Number(event.target.value));
                 setActionMessage("");
               }}
-              className="rounded-full border-0 bg-stone-100 px-3 py-2 text-sm font-bold text-stone-800 focus:ring-2 focus:ring-teal-600"
+              className="study-metrics-week-select"
             >
               {[1, 2, 3, 4].map((week) => (
                 <option key={week} value={week}>Week {week}</option>
