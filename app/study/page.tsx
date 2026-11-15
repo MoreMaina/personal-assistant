@@ -4536,34 +4536,26 @@ function movePlanningItemTo(
 
   return (
     <div className="study-page mx-auto max-w-6xl space-y-8 pb-12">
-      <header className="study-page__header overflow-hidden rounded-2xl border border-[#d5e1e4] bg-white px-3 py-3 sm:px-4 sm:py-3">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="study-page__eyebrow rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold">
-              Study system
-            </span>
-            <h1 className="text-xl font-semibold text-stone-900 sm:text-2xl">
-              Study workspace
-            </h1>
-          </div>
+      <header className="study-page__header overflow-hidden rounded-2xl border px-3 py-3 sm:px-4">
+        <div className="study-page__header-row">
+          <h1 className="text-xl font-semibold sm:text-2xl">
+            Study workspace
+          </h1>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="study-page__header-actions">
             <span className="study-sync-status rounded-full px-2.5 py-1 text-xs font-semibold" aria-live="polite">
               {cloudSyncStatus === "synced"
-                ? "Cloud-backed · synced"
+                ? "Synced"
                 : cloudSyncStatus === "syncing"
-                  ? "Cloud-backed · saving"
+                  ? "Saving"
                   : cloudSyncStatus === "ready"
-                    ? "Cloud-backed · ready"
+                    ? "Cloud ready"
                     : cloudSyncStatus === "loading"
-                      ? "Connecting to cloud"
-                      : "Cloud storage needs attention"}
+                      ? "Connecting"
+                      : "Sync issue"}
             </span>
-            <Link
-              href="/study/metrics"
-              className="inline-flex rounded-lg border border-[#b8c9c5] bg-[#f4f8f5] px-3 py-2 text-xs font-bold text-[#23412f] hover:bg-[#e9f1eb] sm:text-sm"
-            >
-              Weekly metrics &amp; trial evidence →
+            <Link href="/study/metrics" className="study-page__metrics-link">
+              Metrics &amp; evidence <span aria-hidden="true">→</span>
             </Link>
           </div>
         </div>
@@ -4746,7 +4738,7 @@ function movePlanningItemTo(
         </div>
 
                 {planningMode && (
-          <label className="mb-5 flex cursor-pointer items-start gap-3 rounded-xl border border-[#d8ccb8] bg-white p-4">
+          <label className="study-new-topic-toggle mb-5 flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
               checked={includeAdditionalInitialLearning}
@@ -4839,10 +4831,7 @@ function movePlanningItemTo(
             </div>
             )}
 
-                        <details
-              open={planningMode}
-              className="rounded-2xl"
-            >
+                        <details className="study-plan-details rounded-2xl">
               <summary className="cursor-pointer rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#23412f]">
                 {planningMode
                   ? "Review and order planned activities"
@@ -5127,16 +5116,16 @@ function movePlanningItemTo(
             </details>
 
             {plan.warnings.length > 0 && (
-              <div className="mt-5 rounded-2xl bg-[#efe4d1] p-4">
-                <h3 className="font-extrabold text-[#23412f]">
+              <aside className="study-planner-notes mt-5">
+                <h3 className="font-semibold">
                   Planner notes
                 </h3>
-                <ul className="mt-2 space-y-1 text-sm font-semibold text-stone-600">
+                <ul className="mt-2 space-y-1 text-sm">
                   {plan.warnings.map((warning, index) => (
                     <li key={`${index}-${warning}`}>{warning}</li>
                   ))}
                 </ul>
-              </div>
+              </aside>
             )}
 
             {planningMode ? (

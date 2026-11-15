@@ -269,6 +269,7 @@ function TrendSeries({
   format,
   fixedScale,
   target,
+  targetLabel,
 }: {
   title: string;
   points: MetricTrendPoint[];
@@ -276,57 +277,121 @@ function TrendSeries({
   format: (value: number) => string;
   fixedScale?: number;
   target?: number;
+  targetLabel?: string;
 }) {
-  const values = points
-    .map((point) => point.snapshot ? getValue(point.snapshot) : null)
-    .filter((value): value is number => value !== null);
+  const values = points.map((point) =>
+    point.snapshot ? getValue(point.snapshot) : null
+  );
+  const available = values.filter((value): value is number => value !== null);
+  const scale = fixedScale ?? Math.max(1, ...available) * 1.15;
+  const left = 22;
+  const right = 298;
+  const top = 10;
+  const bottom = 88;
+  const x = (index: number) =>
+    left + (index / Math.max(1, points.length - 1)) * (right - left);
+  const y = (value: number) =>
+    bottom - (Math.max(0, Math.min(scale, value)) / scale) * (bottom - top);
 
-  const scale = fixedScale ?? Math.max(1, ...values);
+  const segments: string[] = [];
+  let currentSegment: string[] = [];
+  values.forEach((value, index) => {
+    if (value === null) {
+      if (currentSegment.length > 0) {
+        segments.push(currentSegment.join(" "));
+        currentSegment = [];
+      }
+      return;
+    }
+    currentSegment.push(`${x(index)},${y(value)}`);
+  });
+  if (currentSegment.length > 0) segments.push(currentSegment.join(" "));
 
   return (
-    <section className="rounded-xl bg-stone-50 p-3 sm:p-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-stone-800">{title}</h3>
-        {target !== undefined && (
-          <span className="text-xs text-stone-500">Target: {target}</span>
-        )}
+    <section className="study-metric-chart">
+      <div className="study-metric-chart__heading">
+        <h3>{title}</h3>
+        <span>{targetLabel ?? "Four-week trend"}</span>
       </div>
-
-      <div className="mt-3 grid grid-cols-4 gap-3">
-        {points.map((point) => {
-          const value = point.snapshot ? getValue(point.snapshot) : null;
-          const height = value === null
-            ? 0
-            : Math.max(value === 0 ? 3 : 7, Math.min(100, (value / scale) * 100));
-
-          return (
-            <div
-              key={point.week_number}
-              className="flex min-w-0 flex-col items-center gap-1"
-            >
-              <span className="text-xs font-bold tabular-nums text-stone-800">
-                {value === null ? "—" : format(value)}
-              </span>
-              <div className="flex h-16 w-full items-end overflow-hidden rounded-md bg-white">
-                {value !== null && (
-                  <div
-                    className="w-full rounded-t bg-teal-600"
-                    style={{ height: `${height}%` }}
-                    role="img"
-                    aria-label={`Week ${point.week_number}: ${format(value)}`}
-                  />
-                )}
-              </div>
-              <span className="text-xs font-semibold text-stone-600">
-                W{point.week_number}
-              </span>
-              <span className="text-[10px] text-stone-400">
-                {point.saved ? "Saved" : point.closed ? "Calculated" : point.snapshot ? "Live" : "Upcoming"}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      {available.length === 0 ? (
+        <p className="study-metric-chart__empty">
+          No recorded values are available for these weeks yet.
+        </p>
+      ) : (
+        <>
+          <svg
+            className="study-metric-chart__svg"
+            viewBox="0 0 320 104"
+            role="img"
+            aria-label={`${title}, four-week trend`}
+          >
+            {[0, 0.5, 1].map((fraction) => {
+              const lineY = bottom - fraction * (bottom - top);
+              return (
+                <line
+                  key={fraction}
+                  x1={left}
+                  x2={right}
+                  y1={lineY}
+                  y2={lineY}
+                  className="study-metric-chart__gridline"
+                />
+              );
+            })}
+            {target !== undefined && target <= scale && (
+              <line
+                x1={left}
+                x2={right}
+                y1={y(target)}
+                y2={y(target)}
+                className="study-metric-chart__target"
+              />
+            )}
+            {segments.map((segment, index) => (
+              <polyline
+                key={index}
+                points={segment}
+                className="study-metric-chart__line"
+              />
+            ))}
+            {values.map((value, index) =>
+              value === null ? null : (
+                <circle
+                  key={points[index].week_number}
+                  cx={x(index)}
+                  cy={y(value)}
+                  r="4"
+                  className="study-metric-chart__point"
+                >
+                  <title>
+                    Week {points[index].week_number}: {format(value)}
+                  </title>
+                </circle>
+              )
+            )}
+          </svg>
+          <div className="study-metric-chart__labels">
+            {points.map((point, index) => {
+              const value = values[index];
+              return (
+                <div key={point.week_number}>
+                  <strong>{value === null ? "—" : format(value)}</strong>
+                  <span>W{point.week_number}</span>
+                  <small>
+                    {point.saved
+                      ? "Saved"
+                      : point.closed
+                        ? "Calculated"
+                        : point.snapshot
+                          ? "Live"
+                          : "Upcoming"}
+                  </small>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -335,45 +400,63 @@ function FourWeekTrend({ points }: { points: MetricTrendPoint[] }) {
   if (points.length === 0) return null;
 
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
-      <div>
-        <h2 className="font-bold text-stone-950">Four-week progress</h2>
-        <p className="mt-1 text-xs leading-5 text-stone-500">
-          Compare performance across the trial. Saved weekly snapshots remain
-          authoritative; unsaved weeks are reconstructed from immutable events.
+    <section className="study-metric-trends">
+      <div className="study-metric-section-heading">
+        <h2>Four-week progress</h2>
+        <p>
+          Follow the measures that matter most. Saved weekly snapshots remain
+          authoritative; other weeks are calculated from immutable events.
         </p>
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+      <div className="study-metric-chart-grid">
         <TrendSeries
-          title="On-time completion"
+          title="Reviews completed on time"
           points={points}
           getValue={(item) => item.overall_on_time_completion_pct}
           format={(value) => `${value.toFixed(0)}%`}
           fixedScale={100}
           target={80}
+          targetLabel="Target ≥80%"
         />
         <TrendSeries
-          title="Deferral rate"
+          title="Reviews deferred"
           points={points}
           getValue={(item) => item.deferral_rate_pct}
           format={(value) => `${value.toFixed(0)}%`}
           fixedScale={100}
           target={20}
-        />
-        <TrendSeries
-          title="Individual Defer decisions"
-          points={points}
-          getValue={(item) => item.total_deferral_decisions}
-          format={(value) => String(Math.round(value))}
+          targetLabel="Target ≤20%"
         />
         <TrendSeries
           title="Overdue important backlog"
           points={points}
           getValue={(item) => item.overdue_critical_backlog_min}
-          format={(value) => `${Math.round(value)}m`}
+          format={(value) => `${Math.round(value)} min`}
+          targetLabel="No increase for 2 weeks"
         />
       </div>
     </section>
+  );
+}
+
+function MetricSummaryCard({
+  label,
+  value,
+  target,
+  sample,
+}: {
+  label: string;
+  value: string;
+  target: string;
+  sample: string;
+}) {
+  return (
+    <article className="study-metric-summary-card">
+      <p>{label}</p>
+      <strong>{value}</strong>
+      <span>{target}</span>
+      <small>{sample}</small>
+    </article>
   );
 }
 
@@ -393,20 +476,43 @@ function MetricDashboard({
   }).length;
 
   return (
-    <div className="space-y-4">
-      <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
+    <div className="study-metric-dashboard space-y-5">
+      <section className="study-metric-summary-grid">
+        <MetricSummaryCard
+          label="On-time completion"
+          value={formatPercent(snapshot.overall_on_time_completion_pct)}
+          target="Target ≥80%"
+          sample={counts
+            ? `${counts.overall_on_time.completed}/${counts.overall_on_time.due} reviews`
+            : "Sample unavailable"}
+        />
+        <MetricSummaryCard
+          label="Deferral rate"
+          value={formatPercent(snapshot.deferral_rate_pct)}
+          target="Target ≤20%"
+          sample={counts
+            ? `${counts.deferral_rate.deferred_events}/${counts.deferral_rate.due_events} reviews deferred`
+            : "Sample unavailable"}
+        />
+        <MetricSummaryCard
+          label="Important overdue backlog"
+          value={`${snapshot.overdue_critical_backlog_min} min`}
+          target="No increase for 2 weeks"
+          sample={`${counts?.overdue_critical_backlog_events ?? "—"} unfinished reviews`}
+        />
+      </section>
+
+      <FourWeekTrend points={trend} />
+
+      <section className="study-metric-list">
+        <div className="study-metric-list__heading">
           <div>
-            <h2 className="font-bold text-stone-950">Eight trial measures</h2>
-            <p className="text-xs text-stone-500">
-              Tap a measure for its explanation and sample details.
-            </p>
+            <h2>Eight trial measures</h2>
+            <p>Expand a measure to see its definition, target and sample.</p>
           </div>
-          <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-semibold text-stone-600">
-            Week {snapshot.week_number}
-          </span>
+          <span>Week {snapshot.week_number}</span>
         </div>
-        <div className="divide-y divide-stone-100">
+        <div className="divide-y">
           <MetricRow
             number="1"
             label="Reviews finished on time"
@@ -494,8 +600,6 @@ function MetricDashboard({
           />
         </div>
       </section>
-
-      <FourWeekTrend points={trend} />
     </div>
   );
 }
@@ -876,7 +980,7 @@ export default function StudyMetricsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-6 sm:py-6">
+    <main className="study-metrics-page mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-6 sm:py-6">
       <header className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-stone-950">Weekly metrics</h1>
