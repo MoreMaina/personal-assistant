@@ -736,22 +736,54 @@ export default function GeneralSettingsPage() {
         </div>
       </form>
 
-      <section
-        aria-labelledby="study-engine-settings-heading"
-        className="space-y-5 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6"
-      >
-        <header className="space-y-1">
-          <h2
-            id="study-engine-settings-heading"
-            className="text-xl font-extrabold"
-          >
-            Study System settings
-          </h2>
-          <p className="text-sm leading-relaxed text-[var(--ink-soft)]">
-            Set the study time limits, review intervals and final exam cutoff
-            used by the MVP v1.2 study planner.
-          </p>
-        </header>
+      <details className="group rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0">
+            <span className="flex flex-wrap items-center gap-2">
+              <span className="font-extrabold text-[var(--ink)]">
+                Study System settings
+              </span>
+              {studyTrialActive ? (
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
+                  Trial active · locked
+                </span>
+              ) : (!studyState || studyLoadingError || studySyncConflict || studyProblem) ? (
+                <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">
+                  Study settings need attention
+                </span>
+              ) : studyState?.settings.trial_start_date &&
+                  studyState.settings.trial_end_date &&
+                  studySettingsToday < studyState.settings.trial_start_date ? (
+                <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-900">
+                  Trial scheduled
+                </span>
+              ) : studyState?.settings.trial_start_date &&
+                  studyState.settings.trial_end_date &&
+                  studySettingsToday > studyState.settings.trial_end_date ? (
+                <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">
+                  Trial complete · settings unlocked
+                </span>
+              ) : studyState?.settings.trial_start_date ? (
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
+                  Trial dates set
+                </span>
+              ) : (
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-900">
+                  Pre-trial setup
+                </span>
+              )}
+            </span>
+            <span className="mt-1 block text-sm leading-relaxed text-[var(--ink-soft)]">
+              Configure study limits, review intervals and the final-exam cutoff.
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full border border-[var(--border)] px-3 py-2 text-xs font-bold text-[var(--ink-soft)]">
+            <span className="group-open:hidden">Show settings</span>
+            <span className="hidden group-open:inline">Hide settings</span>
+          </span>
+        </summary>
+
+        <div className="mt-5 space-y-5 border-t border-[var(--border)] pt-5">
 
         {studyTrialActive && (
           <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
@@ -1037,7 +1069,8 @@ export default function GeneralSettingsPage() {
             </ol>
           )}
         </div>
-      </section>
+        </div>
+      </details>
 
       <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">

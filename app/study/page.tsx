@@ -4530,34 +4530,36 @@ function movePlanningItemTo(
 
   return (
     <div className="study-page mx-auto max-w-6xl space-y-8 pb-12">
-      <header className="study-page__header overflow-hidden rounded-2xl border border-[#d5e1e4] bg-white p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="study-page__eyebrow rounded-full border px-3 py-1 text-xs font-semibold">
-            Study system
-          </span>
-          <span className="study-sync-status rounded-full px-3 py-1 text-sm font-semibold" aria-live="polite">
-            {cloudSyncStatus === "synced"
-              ? "Cloud-backed · synced"
-              : cloudSyncStatus === "syncing"
-                ? "Cloud-backed · saving"
-                : cloudSyncStatus === "ready"
-                  ? "Cloud-backed · ready"
-                  : cloudSyncStatus === "loading"
-                    ? "Connecting to cloud"
-                    : "Cloud storage needs attention"}
-          </span>
-        </div>
+      <header className="study-page__header overflow-hidden rounded-2xl border border-[#d5e1e4] bg-white px-3 py-3 sm:px-4 sm:py-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="study-page__eyebrow rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold">
+              Study system
+            </span>
+            <h1 className="text-xl font-semibold text-stone-900 sm:text-2xl">
+              Study workspace
+            </h1>
+          </div>
 
-        <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">
-          Study workspace
-        </h1>
-        <div className="mt-4">
-          <Link
-            href="/study/metrics"
-            className="inline-flex rounded-xl border border-[#b8c9c5] bg-[#f4f8f5] px-4 py-2 text-sm font-bold text-[#23412f] hover:bg-[#e9f1eb]"
-          >
-            Weekly metrics &amp; trial evidence →
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="study-sync-status rounded-full px-2.5 py-1 text-xs font-semibold" aria-live="polite">
+              {cloudSyncStatus === "synced"
+                ? "Cloud-backed · synced"
+                : cloudSyncStatus === "syncing"
+                  ? "Cloud-backed · saving"
+                  : cloudSyncStatus === "ready"
+                    ? "Cloud-backed · ready"
+                    : cloudSyncStatus === "loading"
+                      ? "Connecting to cloud"
+                      : "Cloud storage needs attention"}
+            </span>
+            <Link
+              href="/study/metrics"
+              className="inline-flex rounded-lg border border-[#b8c9c5] bg-[#f4f8f5] px-3 py-2 text-xs font-bold text-[#23412f] hover:bg-[#e9f1eb] sm:text-sm"
+            >
+              Weekly metrics &amp; trial evidence →
+            </Link>
+          </div>
         </div>
       </header>
 

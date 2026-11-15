@@ -479,3 +479,63 @@ Date: 2026-11-14
 
 ### Next action
 Commit the reviewed Batch 1 changes on `study-mvp-v1-2-completion`, then push that feature branch to obtain a Vercel Preview. Record the resulting commit SHA and Preview URL/status in this handoff. Do not merge to `main` or deploy production. Batch 2 remains Preview validation and the pre-trial readiness checks; do not start the four-week trial until all blocking acceptance checks are complete.
+
+## Checkpoint: Batch 2 — compact Study UI refinements
+Date: 2026-11-15
+
+### Implementation
+- `app/settings/page.tsx`: Study System settings are now collapsed by default in a native disclosure panel. Trial/readiness status remains visible in the summary. Status distinguishes active, scheduled, completed, configured and pre-trial states, and unavailable Study data.
+- `app/study/page.tsx`: compact responsive header places the Study system label, workspace title, cloud-sync status and weekly metrics/evidence link in a smaller layout.
+- No study scheduling, event history, metrics calculation or persistence logic was changed.
+
+### Verification
+- `git diff --check`: passed.
+- `npx tsc --noEmit`: passed.
+- `npm test`: 47 files / 487 tests passed after the initial UI patch. The final trial-status label adjustment was subsequently checked with TypeScript and a successful production build.
+- `npm run build`: passed after the final status-label adjustment; routes include `/settings`, `/study` and `/study/metrics`.
+- Preview smoke check on the preceding deployment: `/study` and `/settings` loaded successfully.
+- Preview and Production use the same Supabase project. No database writes or trial actions were performed during these UI checks.
+- The two new UI changes have not yet been visually checked in a deployment containing this commit.
+
+### Current tracked changes
+- `app/settings/page.tsx` — collapsible settings panel and status labels.
+- `app/study/page.tsx` — compact workspace header.
+- This handoff — current Batch 2 progress and next actions.
+
+### Current untracked files — preserve
+- `__pycache__/`
+- `apply-consolidated-study-batches.py`
+- `apply-final-course-deletion-and-ui-polish.py`
+- `apply-next-ui-polish.py`
+- `apply-study-mobile-refinement.py`
+- `apply-today-calendar-palette6-batch.py`
+- `apply-today-palette6-pilot.py`
+- `apply-today-palette6-responsive-pilot.py`
+- `finalize_study_mvp_batch1_handoff.py`
+- `fix-consolidated-study-test-errors-v2.py`
+- `fix-jsx-apostrophe-lint.py`
+- `fix_study_mvp_batch1_review_findings.py`
+- `p6-backup-jsx-repair.py`
+- `p6-final-touch-targets-and-google-dot-v2.py`
+- `p6-global-consistency-batch-v3.py`
+- `p6-study-accessibility-refinement.py`
+- `p6-study-workflow-minimal-batch.py`
+- `rebased-study-ui-calendar-course-management.py`
+- `repair_study_mvp_batch1_handoff.py`
+- `study-mobile-mixed-course-menu-batch.py`
+- `study-mvp-batch1-review.patch`
+- `supabase/.gitignore`
+- `supabase/config.toml`
+
+### Remaining Batch 2 validation
+- Deploy these UI refinements to the feature-branch Preview and inspect both pages at desktop and phone widths.
+- Verify all eight metrics, week selection, flags, CSV and JSON exports.
+- Back up Study JSON before controlled write tests because Preview and Production share Supabase.
+- Complete acceptance trace H1–H5, I1–I5, J1–J4, K1–K3 and L1–L2.
+- Measure attempt and decision logging separately on a phone (each <=30 seconds).
+- Verify offline and slow-network persistence/retry behavior.
+- Benchmark CSV catalogue import and the 120-topic / 600-review-event workload.
+- Do not start the four-week trial until all blocking acceptance checks pass.
+
+### Immediate next action
+Review the staged three-file diff, commit and push the two UI refinements plus this handoff to `study-mvp-v1-2-completion`, then inspect the resulting Vercel Preview. Do not merge to `main`, deploy production, run migrations or change Supabase configuration.
