@@ -54,6 +54,7 @@ import {
 import {
   exportStudyMvpJSON,
   removeUnusedStarterScaffold,
+  startStudyTrial,
 } from "@/lib/studyMvp/storage";
 import { unlinkClassesFromStudyUnits } from "@/lib/classStorage";
 
@@ -3051,6 +3052,7 @@ export default function StudyMvpPage() {
   } = useCloudStudyState();
 
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const [trialStartDateSelection, setTrialStartDateSelection] = useState<string | null>(null);
   const starterScaffoldCleanupAttempted = useRef(false);
 
   useEffect(() => {
@@ -3166,6 +3168,38 @@ function openCatalogTools() {
         state.settings.timezone,
       )
     : "";
+
+  const chosenTrialStartDate = trialStartDateSelection ?? today;
+  const trialStart = state?.settings.trial_start_date ?? null;
+  const trialEnd = state?.settings.trial_end_date ?? null;
+
+  const isWithinTrial = (date: string) =>
+    Boolean(trialStart && trialEnd && date >= trialStart && date <= trialEnd);
+
+  const trialHasRecordedActivity = Boolean(
+    state && trialStart && trialEnd && (
+      state.task_events.some((event) =>
+        isWithinTrial(localDateOfTimestamp(event.logged_at, state.settings.timezone))
+      ) ||
+      state.work_sessions.some((session) =>
+        isWithinTrial(localDateOfTimestamp(session.logged_at, state.settings.timezone))
+      ) ||
+      (state.daily_plan_history ?? []).some((snapshot) =>
+        isWithinTrial(snapshot.date)
+      ) ||
+      (state.daily_plan_executions ?? []).some((execution) =>
+        isWithinTrial(execution.date)
+      ) ||
+      state.weekly_metrics.some((metric) =>
+        metric.week_start <= trialEnd && metric.week_end >= trialStart
+      )
+    )
+  );
+
+  const canResetTrialSetup = Boolean(
+    trialStart && trialEnd && !trialHasRecordedActivity &&
+    today && today <= trialEnd
+  );
 
   const todaysPlanSnapshots = state && today
     ? (state.daily_plan_history ?? [])
@@ -3726,22 +3760,88 @@ function movePlanningItemTo(
   }
 
   function startTrial() {
+    const startDate = chosenTrialStartDate;
+
     if (!state || state.settings.trial_start_date) return;
 
-    const currentDate = today;
-    persist(
-      {
-        ...state,
-        settings: {
-          ...state.settings,
-          trial_start_date: currentDate,
-          trial_end_date: addCalendarDays(currentDate, 27),
-          week4_evaluation_start: addCalendarDays(currentDate, 21),
-          week4_evaluation_end: addCalendarDays(currentDate, 27),
-        },
+    if (!startDate || !today || startDate > today) {
+      setProblem("Choose the day you actually begin using the Study plan. Future dates cannot start the trial yet.");
+      return;
+    }
+
+    try {
+      const nextState = startStudyTrial(
+        state,
+        startDate,
+        today,
+      );
+
+      persist(
+        nextState,
+        `The four-week trial has started from ${startDate}.`,
+      );
+    } catch (error) {
+      setProblem(
+        error instanceof Error
+          ? error.message
+          : "Could not start the four-week trial.",
+      );
+    }
+  }
+
+  function resetTrialSetup() {
+    if (!state || !canResetTrialSetup || !trialStart || !trialEnd) return;
+
+    if (!window.confirm(
+      `Reset the trial dates (${trialStart} to ${trialEnd})? No study activity or weekly evidence has been recorded in this period. You can then choose the correct first day.`
+    )) return;
+
+    const changedAt = new Date().toISOString();
+    const reason = "Reset accidentally configured trial dates before any trial activity or weekly evidence existed.";
+    const changedFields = [
+      "trial_start_date",
+      "trial_end_date",
+      "week4_evaluation_start",
+      "week4_evaluation_end",
+    ];
+
+    const changeRecord = {
+      id: newId("settings_change"),
+      changed_at: changedAt,
+      reason,
+      changed_fields: changedFields,
+      previous_values: {
+        trial_start_date: trialStart,
+        trial_end_date: trialEnd,
+        week4_evaluation_start: state.settings.week4_evaluation_start,
+        week4_evaluation_end: state.settings.week4_evaluation_end,
       },
-      "The four-week engine trial has started.",
-    );
+      new_values: {
+        trial_start_date: null,
+        trial_end_date: null,
+        week4_evaluation_start: null,
+        week4_evaluation_end: null,
+      },
+    };
+
+    const nextState = {
+      ...state,
+      settings: {
+        ...state.settings,
+        trial_start_date: null,
+        trial_end_date: null,
+        week4_evaluation_start: null,
+        week4_evaluation_end: null,
+      },
+      settings_change_history: [
+        ...state.settings_change_history,
+        changeRecord,
+      ],
+    };
+
+    if (persist(nextState, "Trial dates reset. Choose the actual first day when you are ready to begin.")) {
+      setTrialStartDateSelection(null);
+    }
   }
 
   function importCountLabels(
@@ -4430,33 +4530,58 @@ function movePlanningItemTo(
     );
   }
 
+  const cloudSyncLabel =
+    cloudSyncStatus === "synced"
+      ? "Synced"
+      : cloudSyncStatus === "syncing"
+        ? "Saving"
+        : cloudSyncStatus === "ready"
+          ? "Cloud ready"
+          : cloudSyncStatus === "loading"
+            ? "Connecting"
+            : "Sync issue";
+
   const importHasErrors = importDiagnostics.some(
     (diagnostic) => diagnostic.severity === "error",
   );
 
   return (
     <div className="study-page mx-auto max-w-6xl space-y-8 pb-12">
-      <header className="study-page__header overflow-hidden rounded-2xl border border-[#d5e1e4] bg-white p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="study-page__eyebrow rounded-full border px-3 py-1 text-xs font-semibold">
-            Study system
-          </span>
-          <span className="study-sync-status rounded-full px-3 py-1 text-sm font-semibold" aria-live="polite">
-            {cloudSyncStatus === "synced"
-              ? "Cloud-backed · synced"
-              : cloudSyncStatus === "syncing"
-                ? "Cloud-backed · saving"
-                : cloudSyncStatus === "ready"
-                  ? "Cloud-backed · ready"
-                  : cloudSyncStatus === "loading"
-                    ? "Connecting to cloud"
-                    : "Cloud storage needs attention"}
-          </span>
-        </div>
+      <header className="study-page__header overflow-hidden rounded-2xl border px-3 py-3 sm:px-4">
+        <div className="study-page__header-row">
+          <h1 className="text-xl font-semibold sm:text-2xl">
+            Study workspace
+          </h1>
 
-        <h1 className="mt-3 text-2xl font-semibold sm:text-3xl">
-          Study workspace
-        </h1>
+          <div className="study-page__header-actions">
+            <span
+              className="study-sync-status"
+              data-status={cloudSyncStatus}
+              role="status"
+              aria-live="polite"
+              aria-label={`Cloud sync: ${cloudSyncLabel}`}
+              title={cloudSyncLabel}
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                width="20"
+                height="20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M7.5 18a4.5 4.5 0 1 1 .88-8.91A6.5 6.5 0 0 1 21 12.5 4.5 4.5 0 0 1 17 18Z" />
+              </svg>
+              <span className="sr-only">{cloudSyncLabel}</span>
+            </span>
+            <Link href="/study/metrics" className="study-page__metrics-link">
+              Metrics &amp; evidence <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+        </div>
       </header>
 
       {notice && (
@@ -4495,21 +4620,83 @@ function movePlanningItemTo(
       )}
 
       {state.courses.length > 0 && !state.settings.trial_start_date && (
-        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <section className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <div>
             <h2 className="font-extrabold text-amber-950">
-              Engine trial has not started
+              Start your four-week study trial
             </h2>
-            <p className="mt-1 text-sm font-semibold text-amber-900">
-              Start the four-week evaluation period when you are ready.
+            <p className="mt-1 text-sm text-amber-900">
+              Choose the day you actually begin following this study plan.
+              Selecting a date does not start the trial; it starts only when you confirm below.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-[minmax(220px,300px)_1fr] sm:items-end">
+            <label className="block text-sm font-bold text-amber-950">
+              First day of your trial
+              <input
+                type="date"
+                value={chosenTrialStartDate}
+                max={today || undefined}
+                onChange={(event) => setTrialStartDateSelection(event.target.value)}
+                className="mt-2 block w-full rounded-xl border border-amber-300 bg-white px-3 py-3 text-base text-stone-900"
+              />
+            </label>
+
+            <div className="rounded-xl border border-amber-200 bg-white/80 p-3 text-sm text-stone-700">
+              {chosenTrialStartDate ? (
+                <>
+                  <p>
+                    <strong>Four-week period:</strong>{" "}
+                    {formatStudyDateLabel(chosenTrialStartDate)} –{" "}
+                    {formatStudyDateLabel(addCalendarDays(chosenTrialStartDate, 27))}
+                  </p>
+                  <p className="mt-1">
+                    <strong>Week 4 evaluation:</strong>{" "}
+                    {formatStudyDateLabel(addCalendarDays(chosenTrialStartDate, 21))} –{" "}
+                    {formatStudyDateLabel(addCalendarDays(chosenTrialStartDate, 27))}
+                  </p>
+                </>
+              ) : (
+                "Choose a start date to preview your four-week period."
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={startTrial}
+            disabled={!chosenTrialStartDate || !today || chosenTrialStartDate > today}
+            className="rounded-xl bg-amber-900 px-5 py-3 text-sm font-extrabold text-white hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Confirm start and begin four-week trial
+          </button>
+          <p className="text-xs text-amber-900">
+            Your chosen date becomes Day 0. The trial settings are then frozen,
+            except for documented blocking bug fixes.
+          </p>
+        </section>
+      )}
+
+      {state.courses.length > 0 && state.settings.trial_start_date && canResetTrialSetup && (
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50 p-5">
+          <div>
+            <h2 className="font-extrabold text-sky-950">
+              Trial dates are set, but no study activity is recorded yet
+            </h2>
+            <p className="mt-1 text-sm text-sky-900">
+              Currently set to {formatStudyDateLabel(trialStart!)} –{" "}
+              {formatStudyDateLabel(trialEnd!)}. If you set this by mistake,
+              reset the dates and choose the actual first day before you begin.
+              This option disappears once study activity or weekly evidence is recorded.
             </p>
           </div>
           <button
             type="button"
-            onClick={startTrial}
-            className="rounded-xl bg-amber-900 px-4 py-2.5 text-sm font-extrabold text-white hover:bg-amber-950"
+            onClick={resetTrialSetup}
+            className="rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-extrabold text-sky-950 hover:bg-sky-100"
           >
-            Start four-week trial
+            Reset trial dates
           </button>
         </section>
       )}
@@ -4574,7 +4761,7 @@ function movePlanningItemTo(
         </div>
 
                 {planningMode && (
-          <label className="mb-5 flex cursor-pointer items-start gap-3 rounded-xl border border-[#d8ccb8] bg-white p-4">
+          <label className="study-new-topic-toggle mb-5 flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
               checked={includeAdditionalInitialLearning}
@@ -4667,10 +4854,7 @@ function movePlanningItemTo(
             </div>
             )}
 
-                        <details
-              open={planningMode}
-              className="rounded-2xl"
-            >
+                        <details className="study-plan-details rounded-2xl">
               <summary className="cursor-pointer rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#23412f]">
                 {planningMode
                   ? "Review and order planned activities"
@@ -4955,16 +5139,16 @@ function movePlanningItemTo(
             </details>
 
             {plan.warnings.length > 0 && (
-              <div className="mt-5 rounded-2xl bg-[#efe4d1] p-4">
-                <h3 className="font-extrabold text-[#23412f]">
+              <aside className="study-planner-notes mt-5">
+                <h3 className="font-semibold">
                   Planner notes
                 </h3>
-                <ul className="mt-2 space-y-1 text-sm font-semibold text-stone-600">
+                <ul className="mt-2 space-y-1 text-sm">
                   {plan.warnings.map((warning, index) => (
                     <li key={`${index}-${warning}`}>{warning}</li>
                   ))}
                 </ul>
-              </div>
+              </aside>
             )}
 
             {planningMode ? (

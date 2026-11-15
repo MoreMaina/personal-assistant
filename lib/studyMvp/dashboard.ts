@@ -168,6 +168,7 @@ export function buildDailyPlannerTasks(
       id: `review:${review.id}`,
       subjectId: review.id,
       priority: review.current_priority,
+      priorityAtScheduling: review.priority_at_scheduling,
       importance: topic?.topic_importance,
       weaknessFlag: topic?.weakness_flag,
       considered: true,

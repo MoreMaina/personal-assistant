@@ -6301,3 +6301,1077 @@ body,
     outline-offset: 3px;
   }
 }
+
+
+/* Study MVP v1.2 — Palette 6 visual alignment */
+body:has(.study-page) .app-sidebar,
+body:has(.study-metrics-page) .app-sidebar {
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  border-right: 1px solid var(--p6-border-decorative);
+  box-shadow: 2px 0 12px rgba(26, 43, 47, 0.035);
+}
+
+body:has(.study-page) .app-sidebar .assistant-button,
+body:has(.study-metrics-page) .app-sidebar .assistant-button {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+
+body:has(.study-page) .app-sidebar .assistant-button__text strong,
+body:has(.study-metrics-page) .app-sidebar .assistant-button__text strong {
+  color: var(--p6-text) !important;
+}
+
+body:has(.study-page) .app-sidebar .assistant-button__text span,
+body:has(.study-metrics-page) .app-sidebar .assistant-button__text span {
+  color: var(--p6-text-secondary) !important;
+  opacity: 1;
+}
+
+body:has(.study-page) .sidebar-nav__link,
+body:has(.study-metrics-page) .sidebar-nav__link {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+  font-weight: var(--p6-weight-semibold);
+}
+
+body:has(.study-page) .sidebar-nav__link:hover,
+body:has(.study-metrics-page) .sidebar-nav__link:hover {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  transform: none !important;
+}
+
+body:has(.study-page) .sidebar-nav__link--active,
+body:has(.study-metrics-page) .sidebar-nav__link--active {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: inset 3px 0 0 var(--p6-primary) !important;
+}
+
+body:has(.study-page) .sidebar-note,
+body:has(.study-metrics-page) .sidebar-note {
+  border-top-color: var(--p6-border-decorative) !important;
+  color: var(--p6-text-secondary) !important;
+}
+
+body:has(.study-page) .sidebar-note__leaf,
+body:has(.study-metrics-page) .sidebar-note__leaf {
+  color: var(--p6-primary) !important;
+}
+
+body:has(.study-page) .app-utilities__trigger,
+body:has(.study-metrics-page) .app-utilities__trigger {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+body:has(.study-page) .app-utilities__panel,
+body:has(.study-metrics-page) .app-utilities__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+body:has(.study-page) .topbar,
+body:has(.study-metrics-page) .topbar {
+  background: rgba(237, 246, 249, 0.96);
+  border-bottom: 1px solid var(--p6-border-decorative);
+}
+
+body:has(.study-page) .mobile-nav,
+body:has(.study-metrics-page) .mobile-nav {
+  border-top: 1px solid var(--p6-border-decorative);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 -3px 14px rgba(26, 43, 47, 0.05);
+}
+
+body:has(.study-page) .mobile-nav__content--active,
+body:has(.study-metrics-page) .mobile-nav__content--active {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .study-page__header {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+.app-content .study-page .study-page__header-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.app-content .study-page .study-page__header h1 {
+  margin: 0;
+  color: var(--p6-text) !important;
+  font-size: clamp(1.2rem, 1rem + 0.8vw, 1.55rem);
+  font-weight: var(--p6-weight-semibold) !important;
+  white-space: nowrap;
+}
+
+.app-content .study-page .study-page__header-actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.app-content .study-page .study-page__header .study-sync-status {
+  min-height: 2rem;
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-text-secondary) !important;
+  font-size: var(--p6-font-metadata) !important;
+  white-space: nowrap;
+}
+
+.app-content .study-page .study-page__metrics-link {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-surface);
+  color: var(--p6-primary);
+  font-size: var(--p6-font-label);
+  font-weight: var(--p6-weight-semibold);
+  white-space: nowrap;
+}
+
+.app-content .study-page .study-page__metrics-link:hover {
+  background: var(--p6-surface-selected);
+}
+
+.app-content .study-page section.rounded-2xl,
+.app-content .study-page section.rounded-xl,
+.app-content .study-page section.rounded-3xl,
+.app-content .study-page article,
+.app-content .study-page .study-plan-item,
+.app-content .study-page .card {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page [class*="border-[#d8ccb8]"],
+.app-content .study-page [class*="border-[#e4dac9]"],
+.app-content .study-page [class*="border-stone-"],
+.app-content .study-page [class*="border-2"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+
+.app-content .study-page [class*="bg-[#fffaf1]"],
+.app-content .study-page [class*="bg-[#efe4d1]"],
+.app-content .study-page [class*="bg-[#e5dccb]"] {
+  background: var(--p6-surface-subtle) !important;
+}
+
+.app-content .study-page [class*="text-[#23412f]"],
+.app-content .study-page [class*="text-[#1a2e24]"] {
+  color: var(--p6-text) !important;
+}
+
+.app-content .study-page [class*="bg-[#23412f]"],
+.app-content .study-page [class*="bg-[#1a2e24]"],
+.app-content .study-page [class*="bg-[#183021]"],
+.app-content .study-page [class*="bg-[#557c61]"] {
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-content .study-page .study-plan-item--reorderable {
+  padding-right: 1rem !important;
+  padding-left: 4.75rem !important;
+}
+
+.app-content .study-page .study-plan-item__drag-handle {
+  right: auto !important;
+  left: 0.75rem !important;
+}
+
+.app-content .study-page .study-new-topic-toggle {
+  min-height: 0;
+  padding: 0.65rem 0.15rem;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .study-new-topic-toggle input[type="checkbox"] {
+  width: 1.125rem;
+  min-width: 1.125rem;
+  min-height: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--p6-primary);
+}
+
+.app-content .study-page .study-plan-details > summary {
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text);
+  font-weight: var(--p6-weight-semibold);
+  list-style: none;
+}
+
+.app-content .study-page .study-plan-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-content .study-page .study-planner-notes {
+  padding: 0.85rem 0 0.25rem;
+  border: 0 !important;
+  border-top: 1px solid var(--p6-border-decorative) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--p6-text-secondary);
+}
+
+.app-content .study-page .study-planner-notes h3 {
+  color: var(--p6-text) !important;
+  font-size: var(--p6-font-supporting);
+}
+
+.app-content .study-page .item-work-timer--compact {
+  border: 0 !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .item-work-timer__mode--active {
+  border-color: transparent !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .item-work-timer__clock {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .item-work-timer__primary-action {
+  border: 1px solid var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-page .item-work-timer__reset-action,
+.app-content .study-page .item-work-timer__inline-action {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 48rem) {
+  .app-content .study-page .study-page__header-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .app-content .study-page .study-page__header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable {
+    padding-right: 0.75rem !important;
+    padding-left: 4rem !important;
+  }
+
+  .app-content .study-page .study-plan-item__drag-handle {
+    left: 0.5rem !important;
+  }
+}
+
+/* Compact Metrics dashboard — three summary cards, three honest trend charts. */
+.app-content .study-metrics-page {
+  color: var(--p6-text);
+  font-family: var(--font-body);
+}
+
+.app-content .study-metrics-page h1,
+.app-content .study-metrics-page h2,
+.app-content .study-metrics-page h3 {
+  color: var(--p6-text) !important;
+  text-transform: none !important;
+}
+
+.app-content .study-metrics-page > header,
+.app-content .study-metrics-page > section,
+.app-content .study-metrics-page .study-metric-list,
+.app-content .study-metrics-page .study-metric-trends {
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-xl);
+  background: var(--p6-surface);
+  box-shadow: none;
+}
+
+.app-content .study-metrics-page > header {
+  border: 1px solid var(--p6-border-decorative) !important;
+  box-shadow: var(--p6-elevation-card);
+}
+
+.app-content .study-metrics-page .study-metric-dashboard {
+  min-width: 0;
+}
+
+.app-content .study-metrics-page .study-metric-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.app-content .study-metrics-page .study-metric-summary-card {
+  display: flex;
+  min-width: 0;
+  min-height: 8.25rem;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.9rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface-subtle);
+}
+
+.app-content .study-metrics-page .study-metric-summary-card p {
+  margin: 0;
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-label);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page .study-metric-summary-card strong {
+  color: var(--p6-text);
+  font-size: clamp(1.25rem, 1rem + 0.8vw, 1.75rem);
+  font-weight: var(--p6-weight-bold);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-content .study-metrics-page .study-metric-summary-card span {
+  color: var(--p6-primary);
+  font-size: var(--p6-font-metadata);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page .study-metric-summary-card small {
+  color: var(--p6-text-secondary);
+  font-size: 0.6875rem;
+  line-height: 1.35;
+}
+
+.app-content .study-metrics-page .study-metric-section-heading {
+  margin-bottom: 0.8rem;
+}
+
+.app-content .study-metrics-page .study-metric-section-heading h2 {
+  margin: 0;
+  font-size: var(--p6-font-card-title);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page .study-metric-section-heading p {
+  margin: 0.25rem 0 0;
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-metadata);
+  line-height: 1.45;
+}
+
+.app-content .study-metrics-page .study-metric-trends {
+  padding: 1rem;
+}
+
+.app-content .study-metrics-page .study-metric-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.app-content .study-metrics-page .study-metric-chart {
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface-subtle);
+}
+
+.app-content .study-metrics-page .study-metric-chart__heading {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.app-content .study-metrics-page .study-metric-chart__heading h3 {
+  margin: 0;
+  font-size: var(--p6-font-supporting);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page .study-metric-chart__heading span {
+  flex-shrink: 0;
+  color: var(--p6-text-secondary);
+  font-size: 0.65rem;
+  text-align: right;
+}
+
+.app-content .study-metrics-page .study-metric-chart__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  margin-top: 0.4rem;
+}
+
+.app-content .study-metrics-page .study-metric-chart__gridline {
+  stroke: var(--p6-border-decorative);
+  stroke-width: 1;
+}
+
+.app-content .study-metrics-page .study-metric-chart__target {
+  stroke: var(--p6-accent-coral);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.app-content .study-metrics-page .study-metric-chart__line {
+  fill: none;
+  stroke: var(--p6-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-content .study-metrics-page .study-metric-chart__point {
+  fill: var(--p6-surface);
+  stroke: var(--p6-primary);
+  stroke-width: 2.5;
+}
+
+.app-content .study-metrics-page .study-metric-chart__labels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.25rem;
+  margin-top: 0.1rem;
+  text-align: center;
+}
+
+.app-content .study-metrics-page .study-metric-chart__labels > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.app-content .study-metrics-page .study-metric-chart__labels strong {
+  color: var(--p6-text);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-content .study-metrics-page .study-metric-chart__labels span {
+  color: var(--p6-text-secondary);
+  font-size: 0.65rem;
+}
+
+.app-content .study-metrics-page .study-metric-chart__labels small,
+.app-content .study-metrics-page .study-metric-chart__empty {
+  color: var(--p6-text-muted);
+  font-size: 0.6rem;
+  line-height: 1.3;
+}
+
+.app-content .study-metrics-page .study-metric-chart__empty {
+  min-height: 5rem;
+  display: flex;
+  align-items: center;
+}
+
+.app-content .study-metrics-page .study-metric-list {
+  overflow: hidden;
+}
+
+.app-content .study-metrics-page .study-metric-list__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--p6-border-decorative);
+}
+
+.app-content .study-metrics-page .study-metric-list__heading h2 {
+  margin: 0;
+  font-size: var(--p6-font-card-title);
+}
+
+.app-content .study-metrics-page .study-metric-list__heading p {
+  margin: 0.2rem 0 0;
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-metadata);
+}
+
+.app-content .study-metrics-page .study-metric-list__heading > span {
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-label);
+  white-space: nowrap;
+}
+
+.app-content .study-metrics-page .study-metric-list details {
+  border-bottom: 1px solid var(--p6-border-decorative);
+}
+
+.app-content .study-metrics-page .study-metric-list details:last-child {
+  border-bottom: 0;
+}
+
+.app-content .study-metrics-page .study-metric-list summary {
+  min-height: 3.5rem;
+  align-items: center;
+}
+
+.app-content .study-metrics-page .study-metric-list summary > span:first-child {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+}
+
+.app-content .study-metrics-page .study-metric-list summary > span:nth-child(2) > span:first-child {
+  color: var(--p6-text) !important;
+}
+
+.app-content .study-metrics-page .study-metric-list summary > span:nth-child(2) > span:nth-child(2) {
+  color: var(--p6-text-secondary) !important;
+}
+
+.app-content .study-metrics-page .study-metric-list summary > span:nth-child(3) {
+  color: var(--p6-text) !important;
+}
+
+.app-content .study-metrics-page button:not(:disabled) {
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: none;
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page button[class*="bg-[#23412f]"] {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.app-content .study-metrics-page select {
+  border: 1px solid var(--p6-border-control);
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text);
+}
+
+.app-content .study-metrics-page [class*="border-stone-"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+
+@media (max-width: 760px) {
+  .app-content .study-metrics-page .study-metric-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-content .study-metrics-page .study-metric-summary-card {
+    min-height: 0;
+  }
+
+  .app-content .study-metrics-page .study-metric-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-content .study-metrics-page > header {
+    padding: 1rem;
+  }
+}
+
+/* APP-WIDE PALETTE 6 SHARED CONSISTENCY FIX — 2026-11-15 */
+
+/* Remove the old thick dark outline from rounded cards and sections. */
+.app-content .card,
+.app-content section.rounded-2xl:not([role="alert"]):not([role="status"]),
+.app-content section.rounded-xl:not([role="alert"]):not([role="status"]) {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+
+/* One neutral Palette 6 shell across Reading, Study and all other routes.
+   The body:has selectors intentionally outrank the earlier route-specific
+   green-shell rules. */
+body:has(.study-page) .app-sidebar,
+body:has(.workspace-page) .app-sidebar,
+body:has(.reading-detail-page) .app-sidebar,
+body:has(.study-metrics-page) .app-sidebar {
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  border-right: 1px solid var(--p6-border-decorative) !important;
+  box-shadow: 2px 0 12px rgba(26, 43, 47, 0.035) !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button,
+body:has(.workspace-page) .app-sidebar .assistant-button,
+body:has(.reading-detail-page) .app-sidebar .assistant-button,
+body:has(.study-metrics-page) .app-sidebar .assistant-button {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button:hover,
+body:has(.workspace-page) .app-sidebar .assistant-button:hover,
+body:has(.reading-detail-page) .app-sidebar .assistant-button:hover,
+body:has(.study-metrics-page) .app-sidebar .assistant-button:hover {
+  transform: none !important;
+  background: var(--p6-surface-selected) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button__mark,
+body:has(.workspace-page) .app-sidebar .assistant-button__mark,
+body:has(.reading-detail-page) .app-sidebar .assistant-button__mark,
+body:has(.study-metrics-page) .app-sidebar .assistant-button__mark,
+body:has(.study-page) .topbar__brand-mark,
+body:has(.workspace-page) .topbar__brand-mark,
+body:has(.reading-detail-page) .topbar__brand-mark,
+body:has(.study-metrics-page) .topbar__brand-mark {
+  border: 0 !important;
+  border-radius: 13px !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button__text strong,
+body:has(.workspace-page) .app-sidebar .assistant-button__text strong,
+body:has(.reading-detail-page) .app-sidebar .assistant-button__text strong,
+body:has(.study-metrics-page) .app-sidebar .assistant-button__text strong,
+body:has(.study-page) .app-sidebar .sidebar-note,
+body:has(.workspace-page) .app-sidebar .sidebar-note,
+body:has(.reading-detail-page) .app-sidebar .sidebar-note,
+body:has(.study-metrics-page) .app-sidebar .sidebar-note,
+body:has(.study-page) .app-sidebar .sidebar-note p,
+body:has(.workspace-page) .app-sidebar .sidebar-note p,
+body:has(.reading-detail-page) .app-sidebar .sidebar-note p,
+body:has(.study-metrics-page) .app-sidebar .sidebar-note p {
+  color: var(--p6-text) !important;
+}
+body:has(.study-page) .app-sidebar .assistant-button__text span,
+body:has(.workspace-page) .app-sidebar .assistant-button__text span,
+body:has(.reading-detail-page) .app-sidebar .assistant-button__text span,
+body:has(.study-metrics-page) .app-sidebar .assistant-button__text span {
+  color: var(--p6-text-secondary) !important;
+  opacity: 1 !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-nav__link,
+body:has(.workspace-page) .app-sidebar .sidebar-nav__link,
+body:has(.reading-detail-page) .app-sidebar .sidebar-nav__link,
+body:has(.study-metrics-page) .app-sidebar .sidebar-nav__link {
+  border: 1px solid transparent !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-nav__link:hover,
+body:has(.workspace-page) .app-sidebar .sidebar-nav__link:hover,
+body:has(.reading-detail-page) .app-sidebar .sidebar-nav__link:hover,
+body:has(.study-metrics-page) .app-sidebar .sidebar-nav__link:hover {
+  transform: none !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-nav__link--active,
+body:has(.workspace-page) .app-sidebar .sidebar-nav__link--active,
+body:has(.reading-detail-page) .app-sidebar .sidebar-nav__link--active,
+body:has(.study-metrics-page) .app-sidebar .sidebar-nav__link--active {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: inset 3px 0 0 var(--p6-primary) !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-note,
+body:has(.workspace-page) .app-sidebar .sidebar-note,
+body:has(.reading-detail-page) .app-sidebar .sidebar-note,
+body:has(.study-metrics-page) .app-sidebar .sidebar-note {
+  border-top: 1px solid var(--p6-border-decorative) !important;
+}
+body:has(.study-page) .app-sidebar .sidebar-note__leaf,
+body:has(.workspace-page) .app-sidebar .sidebar-note__leaf,
+body:has(.reading-detail-page) .app-sidebar .sidebar-note__leaf,
+body:has(.study-metrics-page) .app-sidebar .sidebar-note__leaf {
+  color: var(--p6-primary) !important;
+}
+body:has(.study-page) .topbar,
+body:has(.workspace-page) .topbar,
+body:has(.reading-detail-page) .topbar,
+body:has(.study-metrics-page) .topbar {
+  background: rgba(237, 246, 249, 0.97) !important;
+  border-bottom: 1px solid var(--p6-border-decorative) !important;
+}
+body:has(.study-page) .topbar__brand,
+body:has(.workspace-page) .topbar__brand,
+body:has(.reading-detail-page) .topbar__brand,
+body:has(.study-metrics-page) .topbar__brand {
+  color: var(--p6-text) !important;
+}
+body:has(.study-page) .topbar__icon-button,
+body:has(.workspace-page) .topbar__icon-button,
+body:has(.reading-detail-page) .topbar__icon-button,
+body:has(.study-metrics-page) .topbar__icon-button {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .mobile-nav,
+body:has(.workspace-page) .mobile-nav,
+body:has(.reading-detail-page) .mobile-nav,
+body:has(.study-metrics-page) .mobile-nav {
+  border-top: 1px solid var(--p6-border-decorative) !important;
+  background: rgba(255, 255, 255, 0.98) !important;
+  box-shadow: 0 -3px 14px rgba(26, 43, 47, 0.05) !important;
+}
+body:has(.study-page) .mobile-nav__content--active,
+body:has(.workspace-page) .mobile-nav__content--active,
+body:has(.reading-detail-page) .mobile-nav__content--active,
+body:has(.study-metrics-page) .mobile-nav__content--active {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+body:has(.study-page) .app-utilities__trigger,
+body:has(.workspace-page) .app-utilities__trigger,
+body:has(.reading-detail-page) .app-utilities__trigger,
+body:has(.study-metrics-page) .app-utilities__trigger {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .app-utilities__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+.app-content .app-utilities__action {
+  color: var(--p6-text) !important;
+}
+.app-content .app-utilities__action:hover:not(:disabled) {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-primary) !important;
+}
+
+/* These route roots fill the single shared .page-shell content rail.
+   Do not add a second horizontal gutter inside the shared app container. */
+.app-content .workspace-page__container,
+.app-content .reading-detail-page,
+.app-content .study-page,
+.app-content .study-metrics-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none !important;
+  margin-inline: 0;
+  padding-inline: 0 !important;
+}
+.app-content .reading-detail-page__panel,
+.app-content .reading-detail-page__note {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card) !important;
+}
+.app-content .workspace-page .reading-numbered-shelf,
+.app-content .workspace-page article,
+.app-content .workspace-page [role="dialog"] {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+.app-content .workspace-page [class*="border-2"]:not(button):not(input):not(select):not(textarea) {
+  border-color: var(--p6-border-decorative) !important;
+  border-width: 1px !important;
+}
+
+/* ItemWorkTimer is a shared component. Keep the same two-row timer/stopwatch
+   controls and visual treatment on Study, Book and Essay detail pages. */
+.app-content .item-work-timer.item-work-timer--compact {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.5rem !important;
+  border: 0 !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__mode-row {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+}
+.app-content .item-work-timer__mode-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: 999px;
+  background: var(--p6-surface);
+}
+.app-content .item-work-timer__mode {
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__mode--active {
+  border-color: transparent !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+.app-content .item-work-timer__clock {
+  min-height: 2.75rem;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__primary-action {
+  border: 1px solid var(--p6-primary) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-primary) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-timer__reset-action,
+.app-content .item-work-timer__inline-action--quiet {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+}
+
+/* Compact Study heading: title, cloud status icon and Metrics link stay inline. */
+.app-content .study-page .study-page__header-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center !important;
+  gap: 0.4rem 0.55rem !important;
+}
+.app-content .study-page .study-page__header h1 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(1rem, 0.85rem + 1vw, 1.3rem) !important;
+  line-height: 1.15;
+}
+.app-content .study-page .study-page__header-actions {
+  display: flex !important;
+  width: auto !important;
+  min-width: 0;
+  flex-wrap: nowrap !important;
+  align-items: center;
+  justify-content: flex-end !important;
+  gap: 0.35rem !important;
+}
+.app-content .study-page .study-page__header .study-sync-status {
+  display: inline-grid;
+  width: 2rem;
+  min-width: 2rem;
+  height: 2rem;
+  min-height: 2rem !important;
+  place-items: center;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  flex: 0 0 auto;
+}
+.app-content .study-page .study-page__header .study-sync-status[data-status="error"],
+.app-content .study-page .study-page__header .study-sync-status[data-status="conflict"] {
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+.app-content .study-page .study-page__metrics-link {
+  flex: 0 0 auto;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-primary) !important;
+  font-size: 0.74rem;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+@media (max-width: 360px) {
+  .app-content .study-page .study-page__header {
+    padding-inline: 0.55rem !important;
+  }
+  .app-content .study-page .study-page__header h1 {
+    font-size: 0.95rem !important;
+  }
+  .app-content .study-page .study-page__metrics-link {
+    padding-inline: 0.35rem;
+    font-size: 0.68rem;
+  }
+  .app-content .study-page .study-page__header .study-sync-status {
+    width: 1.8rem;
+    min-width: 1.8rem;
+    height: 1.8rem;
+    min-height: 1.8rem !important;
+  }
+}
+
+/* Metrics labels and panels use Palette 6 semantic neutrals. */
+.app-content .study-metrics-page [class*="text-stone-"] {
+  color: var(--p6-text-secondary) !important;
+}
+.app-content .study-metrics-page [class*="bg-stone-"] {
+  background: var(--p6-surface-subtle) !important;
+}
+.app-content .study-metrics-page [class*="border-stone-"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+.app-content .study-metrics-page [class*="bg-rose-"] {
+  background: var(--p6-error-bg) !important;
+}
+.app-content .study-metrics-page [class*="text-rose-"] {
+  color: var(--p6-error-text) !important;
+}
+.app-content .study-metrics-page [class*="border-rose-"] {
+  border-color: var(--p6-error-text) !important;
+}
+.app-content .study-metrics-page [class*="bg-amber-"] {
+  background: var(--p6-warning-bg) !important;
+}
+.app-content .study-metrics-page [class*="text-amber-"] {
+  color: var(--p6-warning-text) !important;
+}
+.app-content .study-metrics-page [class*="border-amber-"] {
+  border-color: var(--p6-warning-text) !important;
+}
+
+/* Study UI follow-up: compact navigation and week selector. */
+.app-content .study-metrics-page__back {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 2rem;
+  align-items: center;
+  padding: 0.2rem 0;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--p6-primary) !important;
+  font-size: var(--p6-font-supporting);
+  font-weight: var(--p6-weight-semibold);
+  line-height: 1.3;
+  box-shadow: none !important;
+  text-decoration: none;
+}
+
+.app-content .study-metrics-page__back:hover {
+  color: var(--p6-primary-hover) !important;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.app-content .study-metrics-page .study-metrics-week-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-label);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page .study-metrics-week-select {
+  width: auto;
+  min-width: 5.5rem;
+  min-height: 2.25rem !important;
+  height: 2.25rem;
+  padding: 0.3rem 0.65rem !important;
+  border: 1px solid var(--p6-border-control) !important;
+  border-radius: var(--p6-radius-md) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  font-family: var(--font-body);
+  font-size: 0.82rem !important;
+  font-weight: var(--p6-weight-semibold) !important;
+  line-height: 1.2;
+  box-shadow: none !important;
+}
+
+@media (max-width: 420px) {
+  .app-content .study-metrics-page .study-metrics-week-picker {
+    gap: 0.4rem;
+  }
+
+  .app-content .study-metrics-page .study-metrics-week-select {
+    min-width: 4.9rem;
+    font-size: 0.78rem !important;
+  }
+}
+
+/* One shared app content rail for every route.
+   Use the same 65rem maximum width and responsive side gutters throughout
+   the app, matching the established Today and Calendar content rail. */
+.app-content > .page-shell {
+  box-sizing: border-box;
+  width: min(
+    calc(100% - var(--p6-space-gutter) - var(--p6-space-gutter)),
+    65rem
+  ) !important;
+  max-width: 65rem !important;
+  margin-inline: auto;
+  padding-inline: 0 !important;
+}

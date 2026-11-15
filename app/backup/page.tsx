@@ -909,7 +909,7 @@ export default function BackupRecoveryPage() {
         </div>
       </details>
 
-      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" open>
+      <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
           <span>
             <span className="block font-extrabold text-[var(--ink)]">Download or restore app data</span>
