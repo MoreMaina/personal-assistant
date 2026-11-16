@@ -457,29 +457,21 @@ function InitialLearningSection({
         </p>
       ) : (
         <>
-          <div className="rounded-2xl border border-[#e4dac9] bg-white p-4">
+          <div className="study-activity-topic-card rounded-2xl border border-[#e4dac9] bg-white p-4">
             <h3 className="font-extrabold text-[#23412f]">
               {topic.title}
             </h3>
             <p className="mt-2 text-sm font-semibold text-stone-600">
               {topic.learning_objective}
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-[#efe4d1] p-3">
-                <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
-                  Planned allocation
-                </p>
-                <p className="mt-1 text-xl font-extrabold text-[#23412f]">
-                  {item.allocated_minutes} min
-                </p>
+            <div className="study-activity-summary">
+              <div className="study-activity-summary__item">
+                <p className="study-activity-summary__label">Planned</p>
+                <p className="study-activity-summary__value">{item.allocated_minutes} min</p>
               </div>
-              <div className="rounded-xl bg-[#efe4d1] p-3">
-                <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
-                  Actual time recorded today
-                </p>
-                <p className="mt-1 text-xl font-extrabold text-[#23412f]">
-                  {loggedMinutes} min
-                </p>
+              <div className="study-activity-summary__item">
+                <p className="study-activity-summary__label">Actual today</p>
+                <p className="study-activity-summary__value">{loggedMinutes} min</p>
               </div>
             </div>
           </div>
@@ -4880,7 +4872,7 @@ function movePlanningItemTo(
                       key={item.id}
                       data-details-expanded={expandedPlanningItems[item.id] ? "true" : "false"}
                       data-study-plan-item-id={String(item.id)}
-                      className={`study-plan-item rounded-2xl border border-[#e4dac9] bg-white p-4 ${
+                      className={`study-plan-item study-plan-item--mobile-compact rounded-2xl border border-[#e4dac9] bg-white p-4 ${
                         planningMode ? "study-plan-item--reorderable" : ""
                       } ${
                         draggedPlanningItemId === item.id
@@ -5078,6 +5070,9 @@ function movePlanningItemTo(
                         <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-extrabold text-stone-700">
                           Priority {item.priority}
                         </span>
+                        <span className="study-plan-item__allocation">
+                          {item.allocated_minutes} min
+                        </span>
                         <button
                           type="button"
                           className="study-plan-item__expand-toggle"
@@ -5095,9 +5090,7 @@ function movePlanningItemTo(
                         </button>
                       </div>
                     </div>
-                    <div className="mt-2 text-xs font-bold text-stone-600">
-                      {item.allocated_minutes} min allocated
-                    </div>
+
 
 
                     <div
