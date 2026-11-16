@@ -8310,3 +8310,51 @@ body:has(.study-metrics-page) .app-utilities__trigger {
     padding: 0.3rem 0.45rem;
   }
 }
+
+/* Android Chrome edge-to-edge: keep mobile navigation stable
+   as browser controls and the bottom safe area change. */
+@media (max-width: 720px) {
+  .mobile-nav {
+    --mobile-nav-safe-area-max: env(safe-area-max-inset-bottom, 36px);
+    box-sizing: border-box;
+    height: calc(50px + var(--mobile-nav-safe-area-max));
+    padding-bottom: var(--mobile-nav-safe-area-max);
+    bottom: calc(
+      env(safe-area-inset-bottom, 0px) - var(--mobile-nav-safe-area-max)
+    );
+  }
+}
+
+/* Palette 6: consistent Utilities button and menu on every route. */
+.app-utilities__trigger {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: 13px !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text-secondary) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.app-utilities__trigger:hover,
+.app-utilities__trigger:focus-visible {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  transform: none !important;
+}
+
+.app-utilities__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: 16px !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+.app-utilities__action {
+  color: var(--p6-text) !important;
+}
+
+.app-utilities__action:hover:not(:disabled) {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-primary) !important;
+}
