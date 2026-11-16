@@ -7375,3 +7375,139 @@ body:has(.study-metrics-page) .app-utilities__trigger {
   margin-inline: auto;
   padding-inline: 0 !important;
 }
+
+/* Mobile Study planner: readable card headers and working touch reordering. */
+@media (max-width: 48rem) {
+  .app-content .study-page .study-plan-item--reorderable
+    > .flex.flex-wrap.items-start.justify-between.gap-3 {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.65rem !important;
+    align-items: start;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable
+    > .flex.flex-wrap.items-start.justify-between.gap-3
+    > .min-w-0.flex-1 {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable
+    > .flex.flex-wrap.items-start.justify-between.gap-3
+    > .flex.flex-wrap.gap-2 {
+    width: 100%;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding-right: 2.5rem !important;
+    font-size: 0.95rem !important;
+  }
+}
+
+/* Native HTML drag remains available for mouse; touch uses captured pointers. */
+.app-content .study-page .study-plan-item__drag-handle {
+  touch-action: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: grab;
+}
+
+.app-content .study-page .study-plan-item__drag-handle:active {
+  cursor: grabbing;
+}
+
+.app-content .study-page .study-plan-item--dragging {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-surface-selected) !important;
+  outline: 2px solid rgba(0, 109, 119, 0.22);
+  outline-offset: 2px;
+}
+
+.app-content .study-page .study-plan-item--drop-target {
+  border-color: var(--p6-primary) !important;
+  outline: 2px dashed var(--p6-primary);
+  outline-offset: 3px;
+}
+
+/* Compact Study planner cards on mobile */
+@media (max-width: 48rem) {
+  .app-content .study-page .study-plan-item--reorderable {
+    padding: 0.6rem 0.65rem 0.6rem 3.4rem !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable
+    > .flex.flex-wrap.items-start.justify-between.gap-3 {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0.3rem !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable
+    > .flex.flex-wrap.items-start.justify-between.gap-3
+    > .min-w-0.flex-1 {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable h3 {
+    margin: 0;
+    font-size: 1.05rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable
+    > .flex.flex-wrap.items-start.justify-between.gap-3
+    > .flex.flex-wrap.gap-2 {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.35rem !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable
+    > .flex.flex-wrap.items-start.justify-between.gap-3
+    > .flex.flex-wrap.gap-2 > span {
+    padding: 0.2rem 0.5rem !important;
+    font-size: 0.68rem !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable
+    > .mt-2.text-xs.font-bold.text-stone-600 {
+    margin-top: 0.3rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable > .mt-4.grid {
+    margin-top: 0.55rem !important;
+    gap: 0.4rem !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable label > span {
+    margin-bottom: 0.15rem !important;
+    font-size: 0.66rem !important;
+  }
+
+  .app-content .study-page .study-plan-item--reorderable select,
+  .app-content .study-page .study-plan-item--reorderable input {
+    min-height: 2.4rem !important;
+    padding: 0.35rem 0.65rem !important;
+    font-size: 0.88rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .app-content .study-page .study-plan-item__drag-handle {
+    top: 0.55rem !important;
+    left: 0.4rem !important;
+    width: 2.5rem !important;
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+    height: 2.5rem !important;
+  }
+}

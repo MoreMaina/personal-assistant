@@ -4877,7 +4877,19 @@ function movePlanningItemTo(
                   return (
                     <div
                       key={item.id}
-                      className={`study-plan-item rounded-2xl border border-[#e4dac9] bg-white p-4 ${planningMode ? "study-plan-item--reorderable" : ""}`}
+                      data-study-plan-item-id={String(item.id)}
+                      className={`study-plan-item rounded-2xl border border-[#e4dac9] bg-white p-4 ${
+                        planningMode ? "study-plan-item--reorderable" : ""
+                      } ${
+                        draggedPlanningItemId === item.id
+                          ? "study-plan-item--dragging"
+                          : ""
+                      } ${
+                        dragOverPlanningItemId === item.id &&
+                        draggedPlanningItemId !== item.id
+                          ? "study-plan-item--drop-target"
+                          : ""
+                      }`}
                       onDragOver={(event) => {
                         if (
                           !planningMode ||
@@ -4939,6 +4951,75 @@ function movePlanningItemTo(
                               setDraggedPlanningItemId(null);
                               setDragOverPlanningItemId(null);
                             }}
+                            onPointerDown={(event) => {
+                              // Keep mouse users on the native HTML drag path.
+                              // Touch and pen use pointer capture so Android does
+                              // not interpret the gesture as page scrolling.
+                              if (
+                                event.pointerType === "mouse" ||
+                                !event.isPrimary
+                              ) {
+                                return;
+                              }
+
+                              event.preventDefault();
+                              event.currentTarget.setPointerCapture(event.pointerId);
+                              setDraggedPlanningItemId(item.id);
+                              setDragOverPlanningItemId(item.id);
+                            }}
+                            onPointerMove={(event) => {
+                              if (
+                                event.pointerType === "mouse" ||
+                                draggedPlanningItemId !== item.id
+                              ) {
+                                return;
+                              }
+
+                              const targetCard = document
+                                .elementFromPoint(event.clientX, event.clientY)
+                                ?.closest("[data-study-plan-item-id]") as HTMLElement | null;
+                              const targetId = targetCard?.dataset
+                                .studyPlanItemId as EntityId | undefined;
+
+                              if (targetId && targetId !== item.id) {
+                                setDragOverPlanningItemId(targetId);
+                              }
+                            }}
+                            onPointerUp={(event) => {
+                              if (
+                                event.pointerType === "mouse" ||
+                                draggedPlanningItemId !== item.id
+                              ) {
+                                return;
+                              }
+
+                              const targetCard = document
+                                .elementFromPoint(event.clientX, event.clientY)
+                                ?.closest("[data-study-plan-item-id]") as HTMLElement | null;
+                              const targetId = targetCard?.dataset
+                                .studyPlanItemId as EntityId | undefined;
+
+                              if (targetId) {
+                                movePlanningItemTo(item.id, targetId);
+                              }
+
+                              setDraggedPlanningItemId(null);
+                              setDragOverPlanningItemId(null);
+
+                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                              }
+                            }}
+                            onPointerCancel={(event) => {
+                              if (event.pointerType === "mouse") return;
+
+                              setDraggedPlanningItemId(null);
+                              setDragOverPlanningItemId(null);
+
+                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                              }
+                            }}
                             onKeyDown={(event) => {
                               if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
                                 return;
@@ -4959,7 +5040,7 @@ function movePlanningItemTo(
                             className="study-plan-item__drag-handle"
                             aria-label={`Reorder ${presentation.title}; use the Up and Down arrow keys to move`}
                             aria-keyshortcuts="ArrowUp ArrowDown"
-                            title="Drag to reorder, or use the Up and Down arrow keys"
+                            title="Touch and drag to reorder, or use the Up and Down arrow keys"
                           >
                             <span aria-hidden="true" className="text-2xl leading-none">⠿</span>
                           </button>
