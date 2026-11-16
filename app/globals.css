@@ -7885,3 +7885,347 @@ body:has(.study-metrics-page) .app-utilities__trigger {
     color: var(--p6-text-secondary) !important;
   }
 }
+
+/* Weekly Metrics: compact four-week comparison scorecard. */
+.app-content .study-metrics-page .study-metric-scorecard {
+  min-width: 0;
+  padding: 1rem;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__grid {
+  overflow: hidden;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface);
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__header,
+.app-content .study-metrics-page .study-metric-scorecard__row {
+  display: grid;
+  grid-template-columns: minmax(6.2rem, 1.35fr) repeat(4, minmax(0, 1fr));
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__header {
+  background: var(--p6-surface-subtle);
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__measure-heading,
+.app-content .study-metrics-page .study-metric-scorecard__week {
+  display: flex;
+  min-width: 0;
+  min-height: 3.1rem;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.4rem 0.25rem;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__measure-heading {
+  padding-left: 0.6rem;
+  color: var(--p6-text-secondary);
+  font-size: 0.68rem;
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__week {
+  align-items: center;
+  border-left: 1px solid var(--p6-border-decorative);
+  text-align: center;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__week strong {
+  color: var(--p6-text);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__week small {
+  color: var(--p6-text-secondary);
+  font-size: 0.58rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__row {
+  min-height: 3.6rem;
+  border-top: 1px solid var(--p6-border-decorative);
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__measure {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.18rem;
+  padding: 0.5rem 0.55rem;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__measure strong {
+  color: var(--p6-text);
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__measure small {
+  color: var(--p6-text-secondary);
+  font-size: 0.58rem;
+  line-height: 1.2;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__value {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--p6-border-decorative);
+  color: var(--p6-text);
+  font-size: 0.9rem;
+  font-weight: var(--p6-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__backlog {
+  grid-column: 2 / -1;
+  min-width: 0;
+  padding: 0.35rem 0.3rem 0.45rem;
+  border-left: 1px solid var(--p6-border-decorative);
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__backlog svg {
+  display: block;
+  width: 100%;
+  height: 2.25rem;
+  overflow: visible;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__line {
+  fill: none;
+  stroke: var(--p6-primary);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__point {
+  fill: var(--p6-surface);
+  stroke: var(--p6-primary);
+  stroke-width: 2.5;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__backlog-values {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.1rem;
+  text-align: center;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__backlog-values strong {
+  color: var(--p6-text);
+  font-size: 0.67rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.app-content .study-metrics-page .study-metric-scorecard__note {
+  margin: 0.5rem 0 0;
+  color: var(--p6-text-muted);
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+/* Put the evidence controls between the scorecard and the eight measures. */
+.app-content .study-metrics-page .study-metric-evidence-panel {
+  margin: 0 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface-subtle);
+}
+
+.app-content .study-metrics-page .study-metric-evidence-panel__heading h2 {
+  margin: 0;
+  color: var(--p6-text);
+  font-size: var(--p6-font-card-title);
+  font-weight: var(--p6-weight-semibold);
+}
+
+.app-content .study-metrics-page .study-metric-evidence-panel__heading p {
+  margin: 0.2rem 0 0;
+  color: var(--p6-text-secondary);
+  font-size: var(--p6-font-metadata);
+}
+
+.app-content .study-metrics-page .study-metric-evidence-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.app-content .study-metrics-page .study-metric-evidence-actions button {
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.55rem;
+  font-size: 0.78rem;
+}
+
+.app-content .study-metrics-page .study-metric-evidence-actions .study-metric-evidence-save {
+  grid-column: 1 / -1;
+}
+
+.app-content .study-metrics-page .study-metric-evidence-panel__note {
+  margin: 0.6rem 0 0;
+  color: var(--p6-text-secondary);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+/* Denser mobile summary cards and expandable measure rows. */
+@media (max-width: 760px) {
+  .app-content .study-metrics-page .study-metric-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    padding: 0.75rem 0.75rem 0;
+  }
+
+  .app-content .study-metrics-page .study-metric-summary-card {
+    min-height: 6.1rem;
+    justify-content: center;
+    gap: 0.28rem;
+    padding: 0.7rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-summary-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .app-content .study-metrics-page .study-metric-summary-card p {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .app-content .study-metrics-page .study-metric-summary-card strong {
+    font-size: 1.35rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-summary-card span,
+  .app-content .study-metrics-page .study-metric-summary-card small {
+    font-size: 0.66rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-scorecard {
+    padding: 0.8rem 0.7rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-scorecard__measure-heading {
+    font-size: 0.62rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-scorecard__measure {
+    padding-right: 0.35rem;
+    padding-left: 0.4rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-scorecard__measure strong {
+    font-size: 0.63rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-scorecard__measure small,
+  .app-content .study-metrics-page .study-metric-scorecard__week small {
+    font-size: 0.55rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-scorecard__backlog-values strong {
+    font-size: 0.6rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-list details summary {
+    min-height: 2.9rem;
+    gap: 0.5rem;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+  }
+
+  .app-content .study-metrics-page .study-metric-evidence-panel {
+    margin-right: 0.75rem;
+    margin-left: 0.75rem;
+    padding: 0.75rem;
+  }
+}
+
+/* Study daily plan disclosure: open while planning, compact when executing. */
+.app-content .study-page .study-daily-plan-disclosure {
+  margin-top: 0.25rem;
+}
+
+.app-content .study-page .study-daily-plan-disclosure__summary {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text);
+  cursor: pointer;
+  list-style: none;
+}
+
+.app-content .study-page .study-daily-plan-disclosure__summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-content .study-page .study-daily-plan-disclosure__summary > span:first-child {
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: var(--p6-weight-semibold);
+  line-height: 1.3;
+}
+
+.app-content .study-page .study-daily-plan-disclosure__summary strong {
+  flex-shrink: 0;
+  color: var(--p6-primary);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-content .study-page .study-daily-plan-disclosure__chevron {
+  flex-shrink: 0;
+  color: var(--p6-primary);
+  font-size: 1rem;
+  transition: transform 150ms ease;
+}
+
+.app-content .study-page .study-daily-plan-disclosure[open] .study-daily-plan-disclosure__chevron {
+  transform: rotate(180deg);
+}
+
+.app-content .study-page .study-daily-plan-disclosure__content {
+  padding-top: 0.75rem;
+}
+
+.app-content .study-page .study-plan-item[role="group"][tabindex="0"]:focus-visible {
+  outline: 2px solid var(--p6-primary);
+  outline-offset: 2px;
+}
+
+.app-content .study-page .study-plan-item__expand-indicator {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: 999px;
+  background: var(--p6-surface-subtle);
+  color: var(--p6-primary);
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 150ms ease;
+}
+
+.app-content .study-page .study-plan-item[data-details-expanded="true"] .study-plan-item__expand-indicator {
+  transform: rotate(180deg);
+}

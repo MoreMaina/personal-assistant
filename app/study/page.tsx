@@ -3113,6 +3113,7 @@ function openCatalogTools() {
   >({});
   const [planningOrder, setPlanningOrder] = useState<EntityId[]>([]);
   const [expandedPlanningItems, setExpandedPlanningItems] = useState<Record<string, boolean>>({});
+  const [dailyPlanExpanded, setDailyPlanExpanded] = useState(false);
   const [draggedPlanningItemId, setDraggedPlanningItemId] =
   useState<EntityId | null>(null);
 
@@ -3278,6 +3279,10 @@ const loggedTodayMinutes = (state?.work_sessions ?? [])
   );
 
   const planningMode = !latestTodaysPlan || isReplanning;
+
+  useEffect(() => {
+    setDailyPlanExpanded(planningMode);
+  }, [planningMode]);
 
   const planResult = useMemo(() => {
     if (
@@ -4708,6 +4713,27 @@ function movePlanningItemTo(
           }
         />
 
+        <details
+          className="study-daily-plan-disclosure"
+          open={dailyPlanExpanded}
+          onToggle={(event) => setDailyPlanExpanded(event.currentTarget.open)}
+        >
+          <summary className="study-daily-plan-disclosure__summary">
+            <span>
+              {planningMode
+                ? "Review planning controls and activities"
+                : "Review today's budget and saved worklist"}
+            </span>
+            <strong>
+              {plan
+                ? `${plan.allocated_minutes} / ${plan.budget_minutes} min planned`
+                : `${state.settings.daily_budget_min} min daily budget`}
+            </strong>
+            <span className="study-daily-plan-disclosure__chevron" aria-hidden="true">
+              ⌄
+            </span>
+          </summary>
+          <div className="study-daily-plan-disclosure__content">
         <div className="study-page__summary-banner mb-5">
           <div className="study-page__summary-item">
             <p className="study-page__summary-label">Study day</p>
@@ -4872,6 +4898,38 @@ function movePlanningItemTo(
                       key={item.id}
                       data-details-expanded={expandedPlanningItems[item.id] ? "true" : "false"}
                       data-study-plan-item-id={String(item.id)}
+                      role="group"
+                      tabIndex={0}
+                      aria-expanded={Boolean(expandedPlanningItems[item.id])}
+                      aria-label={`${presentation.title}. Press Enter or Space to ${expandedPlanningItems[item.id] ? "collapse" : "expand"} details.`}
+                      onClick={(event) => {
+                        const target = event.target as HTMLElement;
+                        if (
+                          target.closest(
+                            "button, a, input, select, textarea, label, summary, [role='button']",
+                          ) ||
+                          target.closest(".study-plan-item__details")
+                        ) {
+                          return;
+                        }
+                        setExpandedPlanningItems((current) => ({
+                          ...current,
+                          [item.id]: !current[item.id],
+                        }));
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          event.target !== event.currentTarget ||
+                          (event.key !== "Enter" && event.key !== " ")
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        setExpandedPlanningItems((current) => ({
+                          ...current,
+                          [item.id]: !current[item.id],
+                        }));
+                      }}
                       className={`study-plan-item study-plan-item--mobile-compact rounded-2xl border border-[#e4dac9] bg-white p-4 ${
                         planningMode ? "study-plan-item--reorderable" : ""
                       } ${
@@ -5073,21 +5131,12 @@ function movePlanningItemTo(
                         <span className="study-plan-item__allocation">
                           {item.allocated_minutes} min
                         </span>
-                        <button
-                          type="button"
-                          className="study-plan-item__expand-toggle"
-                          aria-expanded={Boolean(expandedPlanningItems[item.id])}
-                          aria-controls={`study-plan-details-${String(item.id)}`}
-                          onClick={() =>
-                            setExpandedPlanningItems((current) => ({
-                              ...current,
-                              [item.id]: !current[item.id],
-                            }))
-                          }
+                        <span
+                          className="study-plan-item__expand-indicator"
+                          aria-hidden="true"
                         >
-                          <span>{expandedPlanningItems[item.id] ? "Hide" : "Details"}</span>
-                          <span className="study-plan-item__expand-chevron" aria-hidden="true">⌄</span>
-                        </button>
+                          ⌄
+                        </span>
                       </div>
                     </div>
 
@@ -5319,6 +5368,8 @@ function movePlanningItemTo(
             )}
           </>
                 )}
+          </div>
+        </details>
       </section>
 
       {state && todayPlanComplete && !planningMode && (
