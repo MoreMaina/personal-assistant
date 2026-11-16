@@ -7511,3 +7511,65 @@ body:has(.study-metrics-page) .app-utilities__trigger {
     height: 2.5rem !important;
   }
 }
+
+/* Study planner cards: independent mobile disclosure panels. */
+.app-content .study-page .study-plan-item__expand-toggle {
+  display: none !important;
+}
+
+.app-content .study-page .study-plan-item__details {
+  display: block;
+}
+
+@media (max-width: 48rem) {
+  .app-content .study-page .study-plan-item__expand-toggle {
+    display: inline-flex !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 1.8rem !important;
+    height: 1.8rem !important;
+    align-items: center;
+    justify-content: center;
+    gap: 0.22rem;
+    padding: 0.15rem 0.48rem !important;
+    border: 1px solid var(--p6-border-decorative) !important;
+    border-radius: 999px !important;
+    background: var(--p6-surface-subtle) !important;
+    color: var(--p6-primary) !important;
+    font-size: 0.68rem !important;
+    font-weight: var(--p6-weight-semibold) !important;
+    line-height: 1 !important;
+    box-shadow: none !important;
+    white-space: nowrap;
+  }
+
+  .app-content .study-page .study-plan-item__expand-toggle[aria-expanded="true"] {
+    background: var(--p6-surface-selected) !important;
+    border-color: var(--p6-border-strong) !important;
+  }
+
+  .app-content .study-page .study-plan-item__expand-chevron {
+    display: inline-block;
+    font-size: 0.95rem;
+    line-height: 0.8;
+    transition: transform 150ms ease;
+  }
+
+  .app-content .study-page .study-plan-item__expand-toggle[aria-expanded="true"]
+    .study-plan-item__expand-chevron {
+    transform: rotate(180deg);
+  }
+
+  .app-content .study-page .study-plan-item[data-details-expanded="false"]
+    .study-plan-item__details {
+    display: none !important;
+  }
+
+  .app-content .study-page .study-plan-item[data-details-expanded="true"]
+    .study-plan-item__details {
+    display: block !important;
+    margin-top: 0.5rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--p6-border-decorative);
+  }
+}

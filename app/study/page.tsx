@@ -3120,6 +3120,7 @@ function openCatalogTools() {
     Record<string, SkipReentryCondition | "">
   >({});
   const [planningOrder, setPlanningOrder] = useState<EntityId[]>([]);
+  const [expandedPlanningItems, setExpandedPlanningItems] = useState<Record<string, boolean>>({});
   const [draggedPlanningItemId, setDraggedPlanningItemId] =
   useState<EntityId | null>(null);
 
@@ -4877,6 +4878,7 @@ function movePlanningItemTo(
                   return (
                     <div
                       key={item.id}
+                      data-details-expanded={expandedPlanningItems[item.id] ? "true" : "false"}
                       data-study-plan-item-id={String(item.id)}
                       className={`study-plan-item rounded-2xl border border-[#e4dac9] bg-white p-4 ${
                         planningMode ? "study-plan-item--reorderable" : ""
@@ -5076,6 +5078,21 @@ function movePlanningItemTo(
                         <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-extrabold text-stone-700">
                           Priority {item.priority}
                         </span>
+                        <button
+                          type="button"
+                          className="study-plan-item__expand-toggle"
+                          aria-expanded={Boolean(expandedPlanningItems[item.id])}
+                          aria-controls={`study-plan-details-${String(item.id)}`}
+                          onClick={() =>
+                            setExpandedPlanningItems((current) => ({
+                              ...current,
+                              [item.id]: !current[item.id],
+                            }))
+                          }
+                        >
+                          <span>{expandedPlanningItems[item.id] ? "Hide" : "Details"}</span>
+                          <span className="study-plan-item__expand-chevron" aria-hidden="true">⌄</span>
+                        </button>
                       </div>
                     </div>
                     <div className="mt-2 text-xs font-bold text-stone-600">
@@ -5083,6 +5100,10 @@ function movePlanningItemTo(
                     </div>
 
 
+                    <div
+                      id={`study-plan-details-${String(item.id)}`}
+                      className="study-plan-item__details"
+                    >
                     {planningMode && (
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       <label className="block">
@@ -5211,6 +5232,7 @@ function movePlanningItemTo(
                         {item.reason}
                       </p>
                     )}
+                    </div>
                   </div>
                   );
                 })}
