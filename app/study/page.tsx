@@ -3112,7 +3112,6 @@ function openCatalogTools() {
     Record<string, SkipReentryCondition | "">
   >({});
   const [planningOrder, setPlanningOrder] = useState<EntityId[]>([]);
-  const [expandedPlanningItems, setExpandedPlanningItems] = useState<Record<string, boolean>>({});
   const [dailyPlanExpanded, setDailyPlanExpanded] = useState(false);
   const [draggedPlanningItemId, setDraggedPlanningItemId] =
   useState<EntityId | null>(null);
@@ -4873,13 +4872,7 @@ function movePlanningItemTo(
             </div>
             )}
 
-                        <details className="study-plan-details rounded-2xl">
-              <summary className="cursor-pointer rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#23412f]">
-                {planningMode
-                  ? "Review and order planned activities"
-                  : `View saved plan details and timers (${plan.items.length} activities)`}
-              </summary>
-              <div className="mt-3">
+                        <div className="study-plan-details-content mt-3">
             {plan.items.length === 0 ? (
               <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
                 No study tasks are scheduled for this date.
@@ -4896,40 +4889,7 @@ function movePlanningItemTo(
                   return (
                     <div
                       key={item.id}
-                      data-details-expanded={expandedPlanningItems[item.id] ? "true" : "false"}
                       data-study-plan-item-id={String(item.id)}
-                      role="group"
-                      tabIndex={0}
-                      aria-expanded={Boolean(expandedPlanningItems[item.id])}
-                      aria-label={`${presentation.title}. Press Enter or Space to ${expandedPlanningItems[item.id] ? "collapse" : "expand"} details.`}
-                      onClick={(event) => {
-                        const target = event.target as HTMLElement;
-                        if (
-                          target.closest(
-                            "button, a, input, select, textarea, label, summary, [role='button']",
-                          ) ||
-                          target.closest(".study-plan-item__details")
-                        ) {
-                          return;
-                        }
-                        setExpandedPlanningItems((current) => ({
-                          ...current,
-                          [item.id]: !current[item.id],
-                        }));
-                      }}
-                      onKeyDown={(event) => {
-                        if (
-                          event.target !== event.currentTarget ||
-                          (event.key !== "Enter" && event.key !== " ")
-                        ) {
-                          return;
-                        }
-                        event.preventDefault();
-                        setExpandedPlanningItems((current) => ({
-                          ...current,
-                          [item.id]: !current[item.id],
-                        }));
-                      }}
                       className={`study-plan-item study-plan-item--mobile-compact rounded-2xl border border-[#e4dac9] bg-white p-4 ${
                         planningMode ? "study-plan-item--reorderable" : ""
                       } ${
@@ -5131,17 +5091,12 @@ function movePlanningItemTo(
                         <span className="study-plan-item__allocation">
                           {item.allocated_minutes} min
                         </span>
-                        <span
-                          className="study-plan-item__expand-indicator"
-                          aria-hidden="true"
-                        >
-                          ⌄
-                        </span>
                       </div>
                     </div>
 
 
 
+                    {planningMode && (
                     <div
                       id={`study-plan-details-${String(item.id)}`}
                       className="study-plan-item__details"
@@ -5275,13 +5230,13 @@ function movePlanningItemTo(
                       </p>
                     )}
                     </div>
+                    )}
                   </div>
                   );
                 })}
               </div>
                         )}
               </div>
-            </details>
 
             {plan.warnings.length > 0 && (
               <aside className="study-planner-notes mt-5">

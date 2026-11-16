@@ -7512,66 +7512,13 @@ body:has(.study-metrics-page) .app-utilities__trigger {
   }
 }
 
-/* Study planner cards: independent mobile disclosure panels. */
-.app-content .study-page .study-plan-item__expand-toggle {
-  display: none !important;
-}
-
+/* Planner decision controls are visible while planning. Saved cards
+   do not contain an empty details area or redundant expand control. */
 .app-content .study-page .study-plan-item__details {
   display: block;
-}
-
-@media (max-width: 48rem) {
-  .app-content .study-page .study-plan-item__expand-toggle {
-    display: inline-flex !important;
-    width: auto !important;
-    min-width: 0 !important;
-    min-height: 1.8rem !important;
-    height: 1.8rem !important;
-    align-items: center;
-    justify-content: center;
-    gap: 0.22rem;
-    padding: 0.15rem 0.48rem !important;
-    border: 1px solid var(--p6-border-decorative) !important;
-    border-radius: 999px !important;
-    background: var(--p6-surface-subtle) !important;
-    color: var(--p6-primary) !important;
-    font-size: 0.68rem !important;
-    font-weight: var(--p6-weight-semibold) !important;
-    line-height: 1 !important;
-    box-shadow: none !important;
-    white-space: nowrap;
-  }
-
-  .app-content .study-page .study-plan-item__expand-toggle[aria-expanded="true"] {
-    background: var(--p6-surface-selected) !important;
-    border-color: var(--p6-border-strong) !important;
-  }
-
-  .app-content .study-page .study-plan-item__expand-chevron {
-    display: inline-block;
-    font-size: 0.95rem;
-    line-height: 0.8;
-    transition: transform 150ms ease;
-  }
-
-  .app-content .study-page .study-plan-item__expand-toggle[aria-expanded="true"]
-    .study-plan-item__expand-chevron {
-    transform: rotate(180deg);
-  }
-
-  .app-content .study-page .study-plan-item[data-details-expanded="false"]
-    .study-plan-item__details {
-    display: none !important;
-  }
-
-  .app-content .study-page .study-plan-item[data-details-expanded="true"]
-    .study-plan-item__details {
-    display: block !important;
-    margin-top: 0.5rem;
-    padding-top: 0.55rem;
-    border-top: 1px solid var(--p6-border-decorative);
-  }
+  margin-top: 0.5rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--p6-border-decorative);
 }
 
 /* Shared mobile density standard: Study, Books and Essays. */
@@ -8228,4 +8175,110 @@ body:has(.study-metrics-page) .app-utilities__trigger {
 
 .app-content .study-page .study-plan-item[data-details-expanded="true"] .study-plan-item__expand-indicator {
   transform: rotate(180deg);
+}
+
+/* One shared sticky tracker, visible only while a timer/stopwatch is
+   running and its inline tracker has scrolled above the viewport. */
+.active-work-tracker-bar {
+  position: fixed;
+  z-index: 110;
+  top: calc(68px + 0.5rem);
+  left: 50%;
+  display: flex;
+  width: min(42rem, calc(100% - 1rem));
+  min-height: 3.35rem;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.6rem 0.5rem 0.75rem;
+  transform: translateX(-50%);
+  border: 1px solid var(--p6-border-strong);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface);
+  box-shadow: var(--p6-elevation-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.active-work-tracker-bar__identity {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.active-work-tracker-bar__kind {
+  flex-shrink: 0;
+  padding: 0.22rem 0.45rem;
+  border-radius: 999px;
+  background: var(--p6-surface-selected);
+  color: var(--p6-primary);
+  font-size: 0.63rem;
+  font-weight: var(--p6-weight-bold);
+}
+
+.active-work-tracker-bar__identity strong {
+  overflow: hidden;
+  color: var(--p6-text);
+  font-size: 0.78rem;
+  font-weight: var(--p6-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.active-work-tracker-bar__time {
+  flex-shrink: 0;
+  color: var(--p6-primary);
+  font-size: 1.05rem;
+  font-weight: var(--p6-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.active-work-tracker-bar__pause {
+  display: inline-flex;
+  min-width: 2.7rem;
+  min-height: 2.35rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--p6-primary);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-primary);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: var(--p6-weight-bold);
+}
+
+.active-work-tracker-bar__pause svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+@media (max-width: 720px) {
+  .active-work-tracker-bar {
+    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+    width: calc(100% - 1rem);
+    min-height: 3.1rem;
+    gap: 0.4rem;
+    padding: 0.4rem 0.45rem 0.4rem 0.55rem;
+  }
+
+  .active-work-tracker-bar__identity {
+    gap: 0.35rem;
+  }
+
+  .active-work-tracker-bar__identity strong {
+    font-size: 0.72rem;
+  }
+
+  .active-work-tracker-bar__time {
+    font-size: 0.95rem;
+  }
+
+  .active-work-tracker-bar__pause {
+    min-height: 2.25rem;
+    padding: 0.3rem 0.45rem;
+  }
 }

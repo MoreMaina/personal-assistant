@@ -145,6 +145,16 @@ export default function AppUtilitiesMenu() {
           </button>
 
           <Link
+            href="/study/metrics"
+            role="menuitem"
+            className="app-utilities__action"
+            onClick={() => setOpen(false)}
+          >
+            <AppIcon name="metrics" size={18} />
+            <span>Study metrics</span>
+          </Link>
+
+          <Link
             href="/settings"
             role="menuitem"
             className="app-utilities__action"

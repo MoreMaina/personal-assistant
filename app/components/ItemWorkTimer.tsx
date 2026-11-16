@@ -35,6 +35,8 @@ type StopwatchStore = {
 type ItemTimerContextValue = {
   store: TimerStore;
   stopwatchStore: StopwatchStore;
+  itemNames: Record<string, string>;
+  registerItem: (itemId: string, itemName: string) => void;
   now: number;
   hydrated: boolean;
   start: (itemId: string, defaultMinutes: number) => void;
@@ -324,6 +326,14 @@ export function ItemWorkTimerProvider({
   const [stopwatchStore, setStopwatchStore] = useState<StopwatchStore>(EMPTY_STOPWATCH_STORE);
   const [now, setNow] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const [itemNames, setItemNames] = useState<Record<string, string>>({});
+
+  const registerItem = useCallback((itemId: string, itemName: string) => {
+    setItemNames((current) => {
+      if (current[itemId] === itemName) return current;
+      return { ...current, [itemId]: itemName };
+    });
+  }, []);
 
   useEffect(() => {
     try {
@@ -628,6 +638,8 @@ export function ItemWorkTimerProvider({
     () => ({
       store,
       stopwatchStore,
+      itemNames,
+      registerItem,
       now,
       hydrated,
       start,
@@ -641,6 +653,8 @@ export function ItemWorkTimerProvider({
     [
       store,
       stopwatchStore,
+      itemNames,
+      registerItem,
       now,
       hydrated,
       start,
@@ -656,6 +670,7 @@ export function ItemWorkTimerProvider({
   return (
     <ItemTimerContext.Provider value={value}>
       {children}
+      <ActiveWorkTrackerBar />
     </ItemTimerContext.Provider>
   );
 }
@@ -733,6 +748,130 @@ function WorkTrackerIcon({ name }: { name: WorkTrackerIconName }) {
   );
 }
 
+
+function ActiveWorkTrackerBar() {
+  const context = useContext(ItemTimerContext);
+  const [pastInlineTracker, setPastInlineTracker] = useState(false);
+
+  const timerId = context?.store.activeItemId ?? null;
+  const timerEntry = timerId ? context?.store.entries[timerId] : undefined;
+  const timerIsRunning = Boolean(
+    timerId && timerEntry && timerEntry.endsAtMs !== null
+  );
+
+  const stopwatchId = context?.stopwatchStore.activeItemId ?? null;
+  const stopwatchEntry = stopwatchId
+    ? context?.stopwatchStore.entries[stopwatchId]
+    : undefined;
+  const stopwatchIsRunning = Boolean(
+    stopwatchId &&
+    stopwatchEntry &&
+    stopwatchEntry.startedAtMs !== null
+  );
+
+  const activeItemId = context?.hydrated
+    ? timerIsRunning
+      ? timerId
+      : stopwatchIsRunning
+        ? stopwatchId
+        : null
+    : null;
+
+  const isTimer = timerIsRunning;
+
+  useEffect(() => {
+    if (!activeItemId) {
+      setPastInlineTracker(false);
+      return;
+    }
+
+    function updateVisibility() {
+      const trackers = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          "[data-work-tracker-item-id]"
+        )
+      );
+
+      const inlineTracker = trackers.find(
+        (element) =>
+          element.dataset.workTrackerItemId === activeItemId
+      );
+
+      if (inlineTracker) {
+        setPastInlineTracker(
+          inlineTracker.getBoundingClientRect().bottom <= 0
+        );
+      } else {
+        setPastInlineTracker(window.scrollY > 120);
+      }
+    }
+
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    window.addEventListener("resize", updateVisibility);
+
+    return () => {
+      window.removeEventListener("scroll", updateVisibility);
+      window.removeEventListener("resize", updateVisibility);
+    };
+  }, [activeItemId]);
+
+  const activeContext = context;
+
+  if (!activeContext || !activeItemId || !pastInlineTracker) {
+    return null;
+  }
+
+  const itemName =
+    activeContext.itemNames[activeItemId] ?? "Active work";
+
+  const timeLabel =
+    isTimer && timerEntry && timerEntry.endsAtMs !== null
+      ? formatTime(
+          Math.max(0, timerEntry.endsAtMs - activeContext.now)
+        )
+      : stopwatchEntry
+        ? formatStopwatchTime(
+            stopwatchEntry.elapsedMs +
+            Math.max(
+              0,
+              activeContext.now - stopwatchEntry.startedAtMs!
+            )
+          )
+        : "--:--";
+
+  return (
+    <div className="active-work-tracker-bar">
+      <div className="active-work-tracker-bar__identity">
+        <span className="active-work-tracker-bar__kind">
+          {isTimer ? "Timer" : "Stopwatch"}
+        </span>
+        <strong title={itemName}>{itemName}</strong>
+      </div>
+
+      <strong className="active-work-tracker-bar__time">
+        {timeLabel}
+      </strong>
+
+      <button
+        type="button"
+        className="active-work-tracker-bar__pause"
+        onClick={() => {
+          if (isTimer) {
+            activeContext.pause(activeItemId);
+          } else {
+            activeContext.pauseStopwatch(activeItemId);
+          }
+        }}
+        aria-label={`Pause ${isTimer ? "timer" : "stopwatch"} for ${itemName}`}
+      >
+        <WorkTrackerIcon name="pause" />
+        <span>Pause</span>
+      </button>
+    </div>
+  );
+}
+
 export function ItemWorkTimer({
   itemId,
   itemName,
@@ -762,6 +901,7 @@ export function ItemWorkTimer({
     startStopwatch,
     pauseStopwatch,
     resetStopwatch,
+    registerItem,
   } = context;
 
   const safeDefault = validDuration(defaultMinutes)
@@ -806,6 +946,10 @@ export function ItemWorkTimer({
   const [durationError, setDurationError] = useState("");
 
   useEffect(() => {
+    registerItem(itemId, itemName);
+  }, [registerItem, itemId, itemName]);
+
+  useEffect(() => {
     if (!editingDuration) {
       setDurationDraft(String(entry.durationMinutes));
       setDurationError("");
@@ -844,6 +988,7 @@ export function ItemWorkTimer({
   return (
     <div
       className="item-work-timer item-work-timer--compact mt-3"
+      data-work-tracker-item-id={itemId}
       aria-label={`Work tracker for ${itemName}`}
     >
       <div className="item-work-timer__mode-row">
