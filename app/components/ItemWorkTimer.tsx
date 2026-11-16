@@ -35,6 +35,8 @@ type StopwatchStore = {
 type ItemTimerContextValue = {
   store: TimerStore;
   stopwatchStore: StopwatchStore;
+  itemNames: Record<string, string>;
+  registerItem: (itemId: string, itemName: string) => void;
   now: number;
   hydrated: boolean;
   start: (itemId: string, defaultMinutes: number) => void;
@@ -324,6 +326,14 @@ export function ItemWorkTimerProvider({
   const [stopwatchStore, setStopwatchStore] = useState<StopwatchStore>(EMPTY_STOPWATCH_STORE);
   const [now, setNow] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const [itemNames, setItemNames] = useState<Record<string, string>>({});
+
+  const registerItem = useCallback((itemId: string, itemName: string) => {
+    setItemNames((current) => {
+      if (current[itemId] === itemName) return current;
+      return { ...current, [itemId]: itemName };
+    });
+  }, []);
 
   useEffect(() => {
     try {
@@ -628,6 +638,8 @@ export function ItemWorkTimerProvider({
     () => ({
       store,
       stopwatchStore,
+      itemNames,
+      registerItem,
       now,
       hydrated,
       start,
@@ -641,6 +653,8 @@ export function ItemWorkTimerProvider({
     [
       store,
       stopwatchStore,
+      itemNames,
+      registerItem,
       now,
       hydrated,
       start,
@@ -656,7 +670,205 @@ export function ItemWorkTimerProvider({
   return (
     <ItemTimerContext.Provider value={value}>
       {children}
+      <ActiveWorkTrackerBar />
     </ItemTimerContext.Provider>
+  );
+}
+
+
+type WorkTrackerIconName =
+  | "timer"
+  | "stopwatch"
+  | "play"
+  | "pause"
+  | "reset"
+  | "edit";
+
+function WorkTrackerIcon({ name }: { name: WorkTrackerIconName }) {
+  const common = {
+    width: 18,
+    height: 18,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+    focusable: false as const,
+  };
+
+  if (name === "timer") {
+    return (
+      <svg {...common}>
+        <path d="M7 2h10M7 22h10M8 2c0 4 1.5 6 4 8 2.5-2 4-4 4-8M8 22c0-4 1.5-6 4-8 2.5 2 4 4 4 8" />
+      </svg>
+    );
+  }
+
+  if (name === "stopwatch") {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="14" r="7.5" />
+        <path d="M12 10v4l2.5 1.5M9.5 2h5M12 2v4M18.5 7.5 20 6" />
+      </svg>
+    );
+  }
+
+  if (name === "play") {
+    return (
+      <svg {...common} fill="currentColor" stroke="none">
+        <path d="M7 4.8a1 1 0 0 1 1.5-.86l10.2 7.1a1.15 1.15 0 0 1 0 1.92l-10.2 7.1A1 1 0 0 1 7 19.2z" />
+      </svg>
+    );
+  }
+
+  if (name === "pause") {
+    return (
+      <svg {...common} fill="currentColor" stroke="none">
+        <rect x="6" y="4" width="4.5" height="16" rx="1" />
+        <rect x="13.5" y="4" width="4.5" height="16" rx="1" />
+      </svg>
+    );
+  }
+
+  if (name === "edit") {
+    return (
+      <svg {...common}>
+        <path d="m14 6 4 4M4 20l4.2-.9L19 8.3a2.1 2.1 0 0 0-3-3L5.2 16.1 4 20z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg {...common}>
+      <path d="M3 12a9 9 0 1 0 2.7-6.4L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
+
+function ActiveWorkTrackerBar() {
+  const context = useContext(ItemTimerContext);
+  const [pastInlineTracker, setPastInlineTracker] = useState(false);
+
+  const timerId = context?.store.activeItemId ?? null;
+  const timerEntry = timerId ? context?.store.entries[timerId] : undefined;
+  const timerIsRunning = Boolean(
+    timerId && timerEntry && timerEntry.endsAtMs !== null
+  );
+
+  const stopwatchId = context?.stopwatchStore.activeItemId ?? null;
+  const stopwatchEntry = stopwatchId
+    ? context?.stopwatchStore.entries[stopwatchId]
+    : undefined;
+  const stopwatchIsRunning = Boolean(
+    stopwatchId &&
+    stopwatchEntry &&
+    stopwatchEntry.startedAtMs !== null
+  );
+
+  const activeItemId = context?.hydrated
+    ? timerIsRunning
+      ? timerId
+      : stopwatchIsRunning
+        ? stopwatchId
+        : null
+    : null;
+
+  const isTimer = timerIsRunning;
+
+  useEffect(() => {
+    if (!activeItemId) {
+      setPastInlineTracker(false);
+      return;
+    }
+
+    function updateVisibility() {
+      const trackers = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          "[data-work-tracker-item-id]"
+        )
+      );
+
+      const inlineTracker = trackers.find(
+        (element) =>
+          element.dataset.workTrackerItemId === activeItemId
+      );
+
+      if (inlineTracker) {
+        setPastInlineTracker(
+          inlineTracker.getBoundingClientRect().bottom <= 0
+        );
+      } else {
+        setPastInlineTracker(window.scrollY > 120);
+      }
+    }
+
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    window.addEventListener("resize", updateVisibility);
+
+    return () => {
+      window.removeEventListener("scroll", updateVisibility);
+      window.removeEventListener("resize", updateVisibility);
+    };
+  }, [activeItemId]);
+
+  const activeContext = context;
+
+  if (!activeContext || !activeItemId || !pastInlineTracker) {
+    return null;
+  }
+
+  const itemName =
+    activeContext.itemNames[activeItemId] ?? "Active work";
+
+  const timeLabel =
+    isTimer && timerEntry && timerEntry.endsAtMs !== null
+      ? formatTime(
+          Math.max(0, timerEntry.endsAtMs - activeContext.now)
+        )
+      : stopwatchEntry
+        ? formatStopwatchTime(
+            stopwatchEntry.elapsedMs +
+            Math.max(
+              0,
+              activeContext.now - stopwatchEntry.startedAtMs!
+            )
+          )
+        : "--:--";
+
+  return (
+    <div className="active-work-tracker-bar">
+      <div className="active-work-tracker-bar__identity">
+        <span className="active-work-tracker-bar__kind">
+          {isTimer ? "Timer" : "Stopwatch"}
+        </span>
+        <strong title={itemName}>{itemName}</strong>
+      </div>
+
+      <strong className="active-work-tracker-bar__time">
+        {timeLabel}
+      </strong>
+
+      <button
+        type="button"
+        className="active-work-tracker-bar__pause"
+        onClick={() => {
+          if (isTimer) {
+            activeContext.pause(activeItemId);
+          } else {
+            activeContext.pauseStopwatch(activeItemId);
+          }
+        }}
+        aria-label={`Pause ${isTimer ? "timer" : "stopwatch"} for ${itemName}`}
+      >
+        <WorkTrackerIcon name="pause" />
+        <span>Pause</span>
+      </button>
+    </div>
   );
 }
 
@@ -689,6 +901,7 @@ export function ItemWorkTimer({
     startStopwatch,
     pauseStopwatch,
     resetStopwatch,
+    registerItem,
   } = context;
 
   const safeDefault = validDuration(defaultMinutes)
@@ -733,6 +946,10 @@ export function ItemWorkTimer({
   const [durationError, setDurationError] = useState("");
 
   useEffect(() => {
+    registerItem(itemId, itemName);
+  }, [registerItem, itemId, itemName]);
+
+  useEffect(() => {
     if (!editingDuration) {
       setDurationDraft(String(entry.durationMinutes));
       setDurationError("");
@@ -771,6 +988,7 @@ export function ItemWorkTimer({
   return (
     <div
       className="item-work-timer item-work-timer--compact mt-3"
+      data-work-tracker-item-id={itemId}
       aria-label={`Work tracker for ${itemName}`}
     >
       <div className="item-work-timer__mode-row">
@@ -784,16 +1002,22 @@ export function ItemWorkTimer({
             aria-pressed={mode === "timer"}
             onClick={() => setMode("timer")}
             className={`item-work-timer__mode ${mode === "timer" ? "item-work-timer__mode--active" : ""}`}
+            aria-label="Timer mode"
+            title="Timer"
           >
-            Timer
+            <WorkTrackerIcon name="timer" />
+            <span className="item-work-timer__mode-label">Timer</span>
           </button>
           <button
             type="button"
             aria-pressed={mode === "stopwatch"}
             onClick={() => setMode("stopwatch")}
             className={`item-work-timer__mode ${mode === "stopwatch" ? "item-work-timer__mode--active" : ""}`}
+            aria-label="Stopwatch mode"
+            title="Stopwatch"
           >
-            Stopwatch
+            <WorkTrackerIcon name="stopwatch" />
+            <span className="item-work-timer__mode-label">Stopwatch</span>
           </button>
         </div>
       </div>
@@ -877,7 +1101,7 @@ export function ItemWorkTimer({
               >
                 {hydrated ? timeLabel : "--:--"}
                 <span className="item-work-timer__edit-mark" aria-hidden="true">
-                  ✎
+                  <WorkTrackerIcon name="edit" />
                 </span>
               </button>
             )
@@ -905,6 +1129,11 @@ export function ItemWorkTimer({
               }
             }}
             className="item-work-timer__primary-action"
+            aria-label={
+              mode === "timer"
+                ? isRunning ? "Pause timer" : "Start timer"
+                : stopwatchIsRunning ? "Pause stopwatch" : "Start stopwatch"
+            }
             title={
               mode === "timer"
                 ? anotherTimerRunning
@@ -915,9 +1144,18 @@ export function ItemWorkTimer({
                   : stopwatchIsRunning ? "Pause stopwatch" : "Start stopwatch"
             }
           >
-            {mode === "timer"
-              ? isRunning ? "Pause" : "Start"
-              : stopwatchIsRunning ? "Pause" : "Start"}
+            <WorkTrackerIcon
+              name={
+                mode === "timer"
+                  ? isRunning ? "pause" : "play"
+                  : stopwatchIsRunning ? "pause" : "play"
+              }
+            />
+            <span className="item-work-timer__action-label">
+              {mode === "timer"
+                ? isRunning ? "Pause" : "Start"
+                : stopwatchIsRunning ? "Pause" : "Start"}
+            </span>
           </button>
 
           <button
@@ -934,7 +1172,7 @@ export function ItemWorkTimer({
             aria-label={`Reset ${itemName} ${mode}`}
             title="Reset"
           >
-            <span aria-hidden="true">↺</span>
+            <WorkTrackerIcon name="reset" />
           </button>
         </div>
       </div>

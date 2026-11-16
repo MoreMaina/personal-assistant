@@ -262,40 +262,41 @@ function DurationErrorBreakdown({ snapshot }: { snapshot: WeekMetrics }) {
   );
 }
 
-function TrendSeries({
-  title,
-  points,
-  getValue,
-  format,
-  fixedScale,
-  target,
-  targetLabel,
-}: {
-  title: string;
-  points: MetricTrendPoint[];
-  getValue: (snapshot: WeekMetrics) => number | null;
-  format: (value: number) => string;
-  fixedScale?: number;
-  target?: number;
-  targetLabel?: string;
-}) {
-  const values = points.map((point) =>
-    point.snapshot ? getValue(point.snapshot) : null
+function FourWeekScorecard({ points }: { points: MetricTrendPoint[] }) {
+  if (points.length === 0) return null;
+
+  const rateRows = [
+    {
+      label: "On-time completion",
+      target: "Target ≥80%",
+      values: points.map((point) =>
+        point.snapshot ? point.snapshot.overall_on_time_completion_pct : null
+      ),
+    },
+    {
+      label: "Reviews deferred",
+      target: "Target ≤20%",
+      values: points.map((point) =>
+        point.snapshot ? point.snapshot.deferral_rate_pct : null
+      ),
+    },
+  ];
+
+  const backlogValues = points.map((point) =>
+    point.snapshot ? point.snapshot.overdue_critical_backlog_min : null
   );
-  const available = values.filter((value): value is number => value !== null);
-  const scale = fixedScale ?? Math.max(1, ...available) * 1.15;
-  const left = 22;
-  const right = 298;
-  const top = 10;
-  const bottom = 88;
+  const availableBacklog = backlogValues.filter(
+    (value): value is number => value !== null
+  );
+  const backlogScale = Math.max(1, ...availableBacklog) * 1.15;
   const x = (index: number) =>
-    left + (index / Math.max(1, points.length - 1)) * (right - left);
+    10 + (index / Math.max(1, points.length - 1)) * 300;
   const y = (value: number) =>
-    bottom - (Math.max(0, Math.min(scale, value)) / scale) * (bottom - top);
+    30 - (Math.max(0, Math.min(backlogScale, value)) / backlogScale) * 18;
 
   const segments: string[] = [];
   let currentSegment: string[] = [];
-  values.forEach((value, index) => {
+  backlogValues.forEach((value, index) => {
     if (value === null) {
       if (currentSegment.length > 0) {
         segments.push(currentSegment.join(" "));
@@ -308,133 +309,106 @@ function TrendSeries({
   if (currentSegment.length > 0) segments.push(currentSegment.join(" "));
 
   return (
-    <section className="study-metric-chart">
-      <div className="study-metric-chart__heading">
-        <h3>{title}</h3>
-        <span>{targetLabel ?? "Four-week trend"}</span>
-      </div>
-      {available.length === 0 ? (
-        <p className="study-metric-chart__empty">
-          No recorded values are available for these weeks yet.
-        </p>
-      ) : (
-        <>
-          <svg
-            className="study-metric-chart__svg"
-            viewBox="0 0 320 104"
-            role="img"
-            aria-label={`${title}, four-week trend`}
-          >
-            {[0, 0.5, 1].map((fraction) => {
-              const lineY = bottom - fraction * (bottom - top);
-              return (
-                <line
-                  key={fraction}
-                  x1={left}
-                  x2={right}
-                  y1={lineY}
-                  y2={lineY}
-                  className="study-metric-chart__gridline"
-                />
-              );
-            })}
-            {target !== undefined && target <= scale && (
-              <line
-                x1={left}
-                x2={right}
-                y1={y(target)}
-                y2={y(target)}
-                className="study-metric-chart__target"
-              />
-            )}
-            {segments.map((segment, index) => (
-              <polyline
-                key={index}
-                points={segment}
-                className="study-metric-chart__line"
-              />
-            ))}
-            {values.map((value, index) =>
-              value === null ? null : (
-                <circle
-                  key={points[index].week_number}
-                  cx={x(index)}
-                  cy={y(value)}
-                  r="4"
-                  className="study-metric-chart__point"
-                >
-                  <title>
-                    Week {points[index].week_number}: {format(value)}
-                  </title>
-                </circle>
-              )
-            )}
-          </svg>
-          <div className="study-metric-chart__labels">
-            {points.map((point, index) => {
-              const value = values[index];
-              return (
-                <div key={point.week_number}>
-                  <strong>{value === null ? "—" : format(value)}</strong>
-                  <span>W{point.week_number}</span>
-                  <small>
-                    {point.saved
-                      ? "Saved"
-                      : point.closed
-                        ? "Calculated"
-                        : point.snapshot
-                          ? "Live"
-                          : "Upcoming"}
-                  </small>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </section>
-  );
-}
-
-function FourWeekTrend({ points }: { points: MetricTrendPoint[] }) {
-  if (points.length === 0) return null;
-
-  return (
-    <section className="study-metric-trends">
+    <section className="study-metric-scorecard">
       <div className="study-metric-section-heading">
         <h2>Four-week progress</h2>
         <p>
-          Follow the measures that matter most. Saved weekly snapshots remain
+          Compare the same measures across the trial. Saved snapshots remain
           authoritative; other weeks are calculated from immutable events.
         </p>
       </div>
-      <div className="study-metric-chart-grid">
-        <TrendSeries
-          title="Reviews completed on time"
-          points={points}
-          getValue={(item) => item.overall_on_time_completion_pct}
-          format={(value) => `${value.toFixed(0)}%`}
-          fixedScale={100}
-          target={80}
-          targetLabel="Target ≥80%"
-        />
-        <TrendSeries
-          title="Reviews deferred"
-          points={points}
-          getValue={(item) => item.deferral_rate_pct}
-          format={(value) => `${value.toFixed(0)}%`}
-          fixedScale={100}
-          target={20}
-          targetLabel="Target ≤20%"
-        />
-        <TrendSeries
-          title="Overdue important backlog"
-          points={points}
-          getValue={(item) => item.overdue_critical_backlog_min}
-          format={(value) => `${Math.round(value)} min`}
-          targetLabel="No increase for 2 weeks"
-        />
+
+      <div
+        className="study-metric-scorecard__grid"
+        role="table"
+        aria-label="Four-week progress scorecard"
+      >
+        <div className="study-metric-scorecard__header" role="row">
+          <div className="study-metric-scorecard__measure-heading" role="columnheader">
+            Measure
+          </div>
+          {points.map((point) => (
+            <div className="study-metric-scorecard__week" role="columnheader" key={point.week_number}>
+              <strong>W{point.week_number}</strong>
+              <small>
+                {point.saved
+                  ? "Saved"
+                  : point.closed
+                    ? "Calculated"
+                    : point.snapshot
+                      ? "Live"
+                      : "Upcoming"}
+              </small>
+            </div>
+          ))}
+        </div>
+
+        {rateRows.map((row) => (
+          <div className="study-metric-scorecard__row" role="row" key={row.label}>
+            <div className="study-metric-scorecard__measure" role="rowheader">
+              <strong>{row.label}</strong>
+              <small>{row.target}</small>
+            </div>
+            {row.values.map((value, index) => (
+              <div
+                className="study-metric-scorecard__value"
+                role="cell"
+                key={`${row.label}-${points[index].week_number}`}
+              >
+                {value === null ? "—" : `${value.toFixed(1)}%`}
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <div className="study-metric-scorecard__row" role="row">
+          <div className="study-metric-scorecard__measure" role="rowheader">
+            <strong>Important overdue backlog</strong>
+            <small>No increase for 2 weeks</small>
+          </div>
+          <div className="study-metric-scorecard__backlog" role="cell">
+            <svg
+              viewBox="0 0 320 42"
+              role="img"
+              aria-label={`Important overdue backlog: ${backlogValues.map((value) => value === null ? "no value" : `${Math.round(value)} minutes`).join(", ")}`}
+            >
+              {segments.map((segment, index) => (
+                <polyline
+                  key={index}
+                  points={segment}
+                  className="study-metric-scorecard__line"
+                />
+              ))}
+              {backlogValues.map((value, index) =>
+                value === null ? null : (
+                  <circle
+                    key={points[index].week_number}
+                    cx={x(index)}
+                    cy={y(value)}
+                    r="5"
+                    className="study-metric-scorecard__point"
+                  >
+                    <title>
+                      Week {points[index].week_number}: {Math.round(value)} min
+                    </title>
+                  </circle>
+                )
+              )}
+            </svg>
+            <div className="study-metric-scorecard__backlog-values">
+              {backlogValues.map((value, index) => (
+                <strong key={points[index].week_number}>
+                  {value === null ? "—" : `${Math.round(value)} min`}
+                </strong>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
+
+      <p className="study-metric-scorecard__note">
+        A dash means no recorded value is available; it does not mean zero.
+      </p>
     </section>
   );
 }
@@ -463,9 +437,11 @@ function MetricSummaryCard({
 function MetricDashboard({
   snapshot,
   trend,
+  children,
 }: {
   snapshot: WeekMetrics;
   trend: MetricTrendPoint[];
+  children?: ReactNode;
 }) {
   const counts = snapshot.sample_counts;
 
@@ -502,7 +478,9 @@ function MetricDashboard({
         />
       </section>
 
-      <FourWeekTrend points={trend} />
+      <FourWeekScorecard points={trend} />
+
+      {children}
 
       <section className="study-metric-list">
         <div className="study-metric-list__heading">
@@ -1055,62 +1033,61 @@ export default function StudyMetricsPage() {
         </section>
       ) : (
         <>
-          <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-stone-950">
-                  Week {weekNumber} results
-                </h2>
-                <p className="mt-1 text-sm text-stone-600">
-                  {savedSnapshot
-                    ? "Immutable saved evidence"
-                    : weekClosed
-                      ? "Calculated from current event history; not yet saved"
-                      : "Live calculation; this week has not closed"}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={exportCsv}
-                  className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold hover:bg-stone-50"
-                >
-                  Export CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={exportJson}
-                  className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold hover:bg-stone-50"
-                >
-                  Export JSON
-                </button>
-                <button
-                  type="button"
-                  onClick={saveEvidence}
-                  disabled={!canSave}
-                  className="rounded-xl bg-[#23412f] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1a2e24] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {savedSnapshot ? "Evidence saved" : "Save weekly evidence"}
-                </button>
-              </div>
-            </div>
-
-            {!savedSnapshot && !weekClosed && (
-              <p className="mt-3 text-xs text-stone-500">
-                The snapshot becomes available after {period?.end}. You can still
-                inspect and export the live calculation.
-              </p>
-            )}
-            {savedSnapshot && (
-              <p className="mt-3 text-xs text-stone-500">
-                This saved snapshot cannot be replaced. Its source event history
-                is included in both exports.
-              </p>
-            )}
-          </section>
-
           <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
-            <MetricDashboard snapshot={snapshot} trend={weeklyTrend} />
+            <MetricDashboard snapshot={snapshot} trend={weeklyTrend}>
+              <section className="study-metric-evidence-panel">
+                <div className="study-metric-evidence-panel__heading">
+                  <div>
+                    <h2>Weekly evidence</h2>
+                    <p>
+                      Week {weekNumber} · {savedSnapshot
+                        ? "Immutable saved evidence"
+                        : weekClosed
+                          ? "Calculated; not yet saved"
+                          : "Live calculation"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="study-metric-evidence-actions">
+                  <button
+                    type="button"
+                    onClick={exportCsv}
+                    className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold hover:bg-stone-50"
+                  >
+                    Export CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={exportJson}
+                    className="rounded-xl border border-stone-300 px-4 py-2.5 text-sm font-bold hover:bg-stone-50"
+                  >
+                    Export JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveEvidence}
+                    disabled={!canSave}
+                    className="study-metric-evidence-save rounded-xl bg-[#23412f] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1a2e24] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {savedSnapshot ? "Evidence saved" : "Save weekly evidence"}
+                  </button>
+                </div>
+
+                {!savedSnapshot && !weekClosed && (
+                  <p className="study-metric-evidence-panel__note">
+                    The snapshot becomes available after {period?.end}. You can
+                    still inspect and export the live calculation.
+                  </p>
+                )}
+                {savedSnapshot && (
+                  <p className="study-metric-evidence-panel__note">
+                    This saved snapshot cannot be replaced. Its source event
+                    history is included in both exports.
+                  </p>
+                )}
+              </section>
+            </MetricDashboard>
           </section>
 
           <section className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">

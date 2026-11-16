@@ -11,7 +11,8 @@ export type AppIconName =
   | "backup"
   | "settings"
   | "sign-out"
-  | "cloud";
+  | "cloud"
+  | "metrics";
 
 type AppIconProps = {
   name: AppIconName;
@@ -120,6 +121,14 @@ export default function AppIcon({
         <>
           <path d="M7 18.5h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 9.5a4.5 4.5 0 0 0 1 9Z" />
           <path d="m9.5 14 2 2 4-4" />
+        </>
+      );
+      break;
+    case "metrics":
+      glyph = (
+        <>
+          <path d="M4 20V11M10 20V5M16 20V9M22 20V3" />
+          <path d="M2 20h21" />
         </>
       );
       break;

@@ -457,29 +457,21 @@ function InitialLearningSection({
         </p>
       ) : (
         <>
-          <div className="rounded-2xl border border-[#e4dac9] bg-white p-4">
+          <div className="study-activity-topic-card rounded-2xl border border-[#e4dac9] bg-white p-4">
             <h3 className="font-extrabold text-[#23412f]">
               {topic.title}
             </h3>
             <p className="mt-2 text-sm font-semibold text-stone-600">
               {topic.learning_objective}
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-[#efe4d1] p-3">
-                <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
-                  Planned allocation
-                </p>
-                <p className="mt-1 text-xl font-extrabold text-[#23412f]">
-                  {item.allocated_minutes} min
-                </p>
+            <div className="study-activity-summary">
+              <div className="study-activity-summary__item">
+                <p className="study-activity-summary__label">Planned</p>
+                <p className="study-activity-summary__value">{item.allocated_minutes} min</p>
               </div>
-              <div className="rounded-xl bg-[#efe4d1] p-3">
-                <p className="text-xs font-extrabold uppercase tracking-wide text-stone-500">
-                  Actual time recorded today
-                </p>
-                <p className="mt-1 text-xl font-extrabold text-[#23412f]">
-                  {loggedMinutes} min
-                </p>
+              <div className="study-activity-summary__item">
+                <p className="study-activity-summary__label">Actual today</p>
+                <p className="study-activity-summary__value">{loggedMinutes} min</p>
               </div>
             </div>
           </div>
@@ -3120,6 +3112,8 @@ function openCatalogTools() {
     Record<string, SkipReentryCondition | "">
   >({});
   const [planningOrder, setPlanningOrder] = useState<EntityId[]>([]);
+  const [dailyPlanExpanded, setDailyPlanExpanded] = useState(false);
+  const [expandedPlanningItems, setExpandedPlanningItems] = useState<Record<string, boolean>>({});
   const [draggedPlanningItemId, setDraggedPlanningItemId] =
   useState<EntityId | null>(null);
 
@@ -3285,6 +3279,10 @@ const loggedTodayMinutes = (state?.work_sessions ?? [])
   );
 
   const planningMode = !latestTodaysPlan || isReplanning;
+
+  useEffect(() => {
+    setDailyPlanExpanded(planningMode);
+  }, [planningMode]);
 
   const planResult = useMemo(() => {
     if (
@@ -4547,42 +4545,6 @@ function movePlanningItemTo(
 
   return (
     <div className="study-page mx-auto max-w-6xl space-y-8 pb-12">
-      <header className="study-page__header overflow-hidden rounded-2xl border px-3 py-3 sm:px-4">
-        <div className="study-page__header-row">
-          <h1 className="text-xl font-semibold sm:text-2xl">
-            Study workspace
-          </h1>
-
-          <div className="study-page__header-actions">
-            <span
-              className="study-sync-status"
-              data-status={cloudSyncStatus}
-              role="status"
-              aria-live="polite"
-              aria-label={`Cloud sync: ${cloudSyncLabel}`}
-              title={cloudSyncLabel}
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M7.5 18a4.5 4.5 0 1 1 .88-8.91A6.5 6.5 0 0 1 21 12.5 4.5 4.5 0 0 1 17 18Z" />
-              </svg>
-              <span className="sr-only">{cloudSyncLabel}</span>
-            </span>
-            <Link href="/study/metrics" className="study-page__metrics-link">
-              Metrics &amp; evidence <span aria-hidden="true">→</span>
-            </Link>
-          </div>
-        </div>
-      </header>
 
       {notice && (
         <div
@@ -4705,16 +4667,72 @@ function movePlanningItemTo(
         id="daily-plan"
         className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
       >
-        <SectionHeading
-          eyebrow="01 · Plan"
-          title={planningMode ? "Daily time budget" : "Today's saved worklist"}
-          detail={
-            planningMode
-              ? "Plan due reviews and unfinished work."
-              : ""
-          }
-        />
+        <div className="study-page__daily-plan-heading">
+          <div className="study-page__daily-plan-heading-top">
+            <p className="study-page__daily-plan-eyebrow">
+              01 · Plan
+            </p>
+            <div className="study-page__daily-plan-actions">
+              <span
+                className="study-sync-status"
+                data-status={cloudSyncStatus}
+                role="status"
+                aria-live="polite"
+                aria-label={`Cloud sync: ${cloudSyncLabel}`}
+                title={cloudSyncLabel}
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M7.5 18a4.5 4.5 0 1 1 .88-8.91A6.5 6.5 0 0 1 21 12.5 4.5 4.5 0 0 1 17 18Z" />
+                </svg>
+                <span className="sr-only">{cloudSyncLabel}</span>
+              </span>
+              <Link href="/study/metrics" className="study-page__metrics-link">
+                Metrics &amp; evidence <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          </div>
 
+          <h2 className="study-page__daily-plan-title">
+            {planningMode ? "Daily time budget" : "Today's saved worklist"}
+          </h2>
+
+          {planningMode && (
+            <p className="study-page__daily-plan-detail">
+              Plan due reviews and unfinished work.
+            </p>
+          )}
+        </div>
+        <details
+          className="study-daily-plan-disclosure"
+          open={dailyPlanExpanded}
+          onToggle={(event) => setDailyPlanExpanded(event.currentTarget.open)}
+        >
+          <summary className="study-daily-plan-disclosure__summary">
+            <span>
+              {planningMode
+                ? "Review planning controls and activities"
+                : "Review today's budget and saved worklist"}
+            </span>
+            <strong>
+              {plan
+                ? `${plan.allocated_minutes} / ${plan.budget_minutes} min planned`
+                : `${state.settings.daily_budget_min} min daily budget`}
+            </strong>
+            <span className="study-daily-plan-disclosure__chevron" aria-hidden="true">
+              ⌄
+            </span>
+          </summary>
+          <div className="study-daily-plan-disclosure__content">
         <div className="study-page__summary-banner mb-5">
           <div className="study-page__summary-item">
             <p className="study-page__summary-label">Study day</p>
@@ -4854,13 +4872,7 @@ function movePlanningItemTo(
             </div>
             )}
 
-                        <details className="study-plan-details rounded-2xl">
-              <summary className="cursor-pointer rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-[#23412f]">
-                {planningMode
-                  ? "Review and order planned activities"
-                  : `View saved plan details and timers (${plan.items.length} activities)`}
-              </summary>
-              <div className="mt-3">
+                        <div className="study-plan-details-content mt-3">
             {plan.items.length === 0 ? (
               <p className="rounded-xl bg-white p-4 text-sm font-semibold text-stone-600">
                 No study tasks are scheduled for this date.
@@ -4877,7 +4889,66 @@ function movePlanningItemTo(
                   return (
                     <div
                       key={item.id}
-                      className={`study-plan-item rounded-2xl border border-[#e4dac9] bg-white p-4 ${planningMode ? "study-plan-item--reorderable" : ""}`}
+                      data-study-plan-item-id={String(item.id)}
+                      data-planning-expanded={
+                        planningMode
+                          ? expandedPlanningItems[item.id] ? "true" : "false"
+                          : undefined
+                      }
+                      role={planningMode ? "group" : undefined}
+                      tabIndex={planningMode ? 0 : undefined}
+                      aria-expanded={
+                        planningMode
+                          ? Boolean(expandedPlanningItems[item.id])
+                          : undefined
+                      }
+                      aria-label={
+                        planningMode
+                          ? `${presentation.title}. Tap to show or hide planning decisions.`
+                          : undefined
+                      }
+                      className={`study-plan-item study-plan-item--mobile-compact rounded-2xl border border-[#e4dac9] bg-white p-4 ${
+                        planningMode ? "study-plan-item--reorderable" : ""
+                      } ${
+                        draggedPlanningItemId === item.id
+                          ? "study-plan-item--dragging"
+                          : ""
+                      } ${
+                        dragOverPlanningItemId === item.id &&
+                        draggedPlanningItemId !== item.id
+                          ? "study-plan-item--drop-target"
+                          : ""
+                      }`}
+                      onClick={planningMode ? (event) => {
+                        const target = event.target as HTMLElement;
+                        if (
+                          target.closest(
+                            "button, a, input, select, textarea, label, summary, [role='button']",
+                          ) ||
+                          target.closest(".study-plan-item__details")
+                        ) {
+                          return;
+                        }
+
+                        setExpandedPlanningItems((current) => ({
+                          ...current,
+                          [item.id]: !current[item.id],
+                        }));
+                      } : undefined}
+                      onKeyDown={planningMode ? (event) => {
+                        if (
+                          event.target !== event.currentTarget ||
+                          (event.key !== "Enter" && event.key !== " ")
+                        ) {
+                          return;
+                        }
+
+                        event.preventDefault();
+                        setExpandedPlanningItems((current) => ({
+                          ...current,
+                          [item.id]: !current[item.id],
+                        }));
+                      } : undefined}
                       onDragOver={(event) => {
                         if (
                           !planningMode ||
@@ -4939,6 +5010,75 @@ function movePlanningItemTo(
                               setDraggedPlanningItemId(null);
                               setDragOverPlanningItemId(null);
                             }}
+                            onPointerDown={(event) => {
+                              // Keep mouse users on the native HTML drag path.
+                              // Touch and pen use pointer capture so Android does
+                              // not interpret the gesture as page scrolling.
+                              if (
+                                event.pointerType === "mouse" ||
+                                !event.isPrimary
+                              ) {
+                                return;
+                              }
+
+                              event.preventDefault();
+                              event.currentTarget.setPointerCapture(event.pointerId);
+                              setDraggedPlanningItemId(item.id);
+                              setDragOverPlanningItemId(item.id);
+                            }}
+                            onPointerMove={(event) => {
+                              if (
+                                event.pointerType === "mouse" ||
+                                draggedPlanningItemId !== item.id
+                              ) {
+                                return;
+                              }
+
+                              const targetCard = document
+                                .elementFromPoint(event.clientX, event.clientY)
+                                ?.closest("[data-study-plan-item-id]") as HTMLElement | null;
+                              const targetId = targetCard?.dataset
+                                .studyPlanItemId as EntityId | undefined;
+
+                              if (targetId && targetId !== item.id) {
+                                setDragOverPlanningItemId(targetId);
+                              }
+                            }}
+                            onPointerUp={(event) => {
+                              if (
+                                event.pointerType === "mouse" ||
+                                draggedPlanningItemId !== item.id
+                              ) {
+                                return;
+                              }
+
+                              const targetCard = document
+                                .elementFromPoint(event.clientX, event.clientY)
+                                ?.closest("[data-study-plan-item-id]") as HTMLElement | null;
+                              const targetId = targetCard?.dataset
+                                .studyPlanItemId as EntityId | undefined;
+
+                              if (targetId) {
+                                movePlanningItemTo(item.id, targetId);
+                              }
+
+                              setDraggedPlanningItemId(null);
+                              setDragOverPlanningItemId(null);
+
+                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                              }
+                            }}
+                            onPointerCancel={(event) => {
+                              if (event.pointerType === "mouse") return;
+
+                              setDraggedPlanningItemId(null);
+                              setDragOverPlanningItemId(null);
+
+                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                                event.currentTarget.releasePointerCapture(event.pointerId);
+                              }
+                            }}
                             onKeyDown={(event) => {
                               if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
                                 return;
@@ -4959,7 +5099,7 @@ function movePlanningItemTo(
                             className="study-plan-item__drag-handle"
                             aria-label={`Reorder ${presentation.title}; use the Up and Down arrow keys to move`}
                             aria-keyshortcuts="ArrowUp ArrowDown"
-                            title="Drag to reorder, or use the Up and Down arrow keys"
+                            title="Touch and drag to reorder, or use the Up and Down arrow keys"
                           >
                             <span aria-hidden="true" className="text-2xl leading-none">⠿</span>
                           </button>
@@ -4995,13 +5135,19 @@ function movePlanningItemTo(
                         <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-extrabold text-stone-700">
                           Priority {item.priority}
                         </span>
+                        <span className="study-plan-item__allocation">
+                          {item.allocated_minutes} min
+                        </span>
                       </div>
                     </div>
-                    <div className="mt-2 text-xs font-bold text-stone-600">
-                      {item.allocated_minutes} min allocated
-                    </div>
 
 
+
+                    {planningMode && (
+                    <div
+                      id={`study-plan-details-${String(item.id)}`}
+                      className="study-plan-item__details"
+                    >
                     {planningMode && (
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                       <label className="block">
@@ -5130,13 +5276,14 @@ function movePlanningItemTo(
                         {item.reason}
                       </p>
                     )}
+                    </div>
+                    )}
                   </div>
                   );
                 })}
               </div>
                         )}
               </div>
-            </details>
 
             {plan.warnings.length > 0 && (
               <aside className="study-planner-notes mt-5">
@@ -5223,6 +5370,8 @@ function movePlanningItemTo(
             )}
           </>
                 )}
+          </div>
+        </details>
       </section>
 
       {state && todayPlanComplete && !planningMode && (
