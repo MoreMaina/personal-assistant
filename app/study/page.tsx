@@ -4545,11 +4545,8 @@ function movePlanningItemTo(
 
   return (
     <div className="study-page mx-auto max-w-6xl space-y-8 pb-12">
-      <header className="study-page__header overflow-hidden rounded-2xl border px-3 py-3 sm:px-4">
+      <header className="study-page__utility-row">
         <div className="study-page__header-row">
-          <h1 className="text-xl font-semibold sm:text-2xl">
-            Study workspace
-          </h1>
 
           <div className="study-page__header-actions">
             <span

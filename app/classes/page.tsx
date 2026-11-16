@@ -1017,9 +1017,6 @@ export default function ClassesPage() {
 
   return (
     <main className="calendar-page">
-      <header className="mb-5">
-        <h1 className="text-3xl sm:text-4xl">Calendar</h1>
-      </header>
 
       {notice && (
         <div
@@ -1449,7 +1446,7 @@ export default function ClassesPage() {
               Appointments, exams, meetings and other things you need to show up for.
             </p>
           </div>
-          <Button variant="primary" onClick={() => openPlannerForm("event")} className="action-primary--forest">
+          <Button variant="primary" onClick={() => openPlannerForm("event")} className="action-primary--forest ml-auto shrink-0">
             + Add event
           </Button>
         </div>

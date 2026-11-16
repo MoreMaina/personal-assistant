@@ -1338,11 +1338,6 @@ export default function ReadingPage() {
   return (
     <main className="workspace-page min-h-full text-[var(--ink)]">
       <div className="workspace-page__container mx-auto max-w-5xl px-5 py-8 sm:px-8">
-        <header className="mb-5">
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            Workspace
-          </h1>
-        </header>
 
         <div
           role="group"
