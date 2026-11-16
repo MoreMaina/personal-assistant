@@ -1438,18 +1438,18 @@ export default function ClassesPage() {
           >
 {/* Events and commitments */}
       <section className="mt-3">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="mb-3">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-extrabold uppercase tracking-[0.05em] text-[var(--primary-dark)]">
               Events
             </h2>
-            <p className="mt-1 text-sm text-[var(--ink-soft)]">
-              Fixed dates for appointments, exams and meetings.
-            </p>
+            <Button variant="primary" onClick={() => openPlannerForm("event")} className="action-primary--forest shrink-0">
+              Add event
+            </Button>
           </div>
-          <Button variant="primary" onClick={() => openPlannerForm("event")} className="action-primary--forest">
-            Add event
-          </Button>
+          <p className="mt-1 text-sm text-[var(--ink-soft)]">
+            Fixed dates for appointments, exams and meetings.
+          </p>
         </div>
 
         {showPlannerForm && plannerType === "event" && (
