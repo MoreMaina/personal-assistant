@@ -7521,6 +7521,34 @@ body:has(.study-metrics-page) .app-utilities__trigger {
   border-top: 1px solid var(--p6-border-decorative);
 }
 
+.app-content .study-page
+.study-plan-item[data-planning-expanded="false"]
+.study-plan-item__details {
+  display: none !important;
+}
+
+.app-content .study-page
+.study-plan-item[data-planning-expanded="true"]
+.study-plan-item__details {
+  display: block !important;
+}
+
+.app-content .study-page
+.study-plan-item--planning-disclosure {
+  cursor: pointer;
+}
+
+.app-content .study-page
+.study-plan-item[data-planning-expanded="true"] {
+  border-color: var(--p6-border-strong) !important;
+}
+
+.app-content .study-page
+.study-plan-item[role="group"]:focus-visible {
+  outline: 2px solid var(--p6-primary);
+  outline-offset: 2px;
+}
+
 /* Shared mobile density standard: Study, Books and Essays. */
 
 @media (max-width: 48rem) {

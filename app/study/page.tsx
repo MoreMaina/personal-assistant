@@ -3113,6 +3113,7 @@ function openCatalogTools() {
   >({});
   const [planningOrder, setPlanningOrder] = useState<EntityId[]>([]);
   const [dailyPlanExpanded, setDailyPlanExpanded] = useState(false);
+  const [expandedPlanningItems, setExpandedPlanningItems] = useState<Record<string, boolean>>({});
   const [draggedPlanningItemId, setDraggedPlanningItemId] =
   useState<EntityId | null>(null);
 
@@ -4890,6 +4891,23 @@ function movePlanningItemTo(
                     <div
                       key={item.id}
                       data-study-plan-item-id={String(item.id)}
+                      data-planning-expanded={
+                        planningMode
+                          ? expandedPlanningItems[item.id] ? "true" : "false"
+                          : undefined
+                      }
+                      role={planningMode ? "group" : undefined}
+                      tabIndex={planningMode ? 0 : undefined}
+                      aria-expanded={
+                        planningMode
+                          ? Boolean(expandedPlanningItems[item.id])
+                          : undefined
+                      }
+                      aria-label={
+                        planningMode
+                          ? `${presentation.title}. Tap to show or hide planning decisions.`
+                          : undefined
+                      }
                       className={`study-plan-item study-plan-item--mobile-compact rounded-2xl border border-[#e4dac9] bg-white p-4 ${
                         planningMode ? "study-plan-item--reorderable" : ""
                       } ${
@@ -4902,6 +4920,36 @@ function movePlanningItemTo(
                           ? "study-plan-item--drop-target"
                           : ""
                       }`}
+                      onClick={planningMode ? (event) => {
+                        const target = event.target as HTMLElement;
+                        if (
+                          target.closest(
+                            "button, a, input, select, textarea, label, summary, [role='button']",
+                          ) ||
+                          target.closest(".study-plan-item__details")
+                        ) {
+                          return;
+                        }
+
+                        setExpandedPlanningItems((current) => ({
+                          ...current,
+                          [item.id]: !current[item.id],
+                        }));
+                      } : undefined}
+                      onKeyDown={planningMode ? (event) => {
+                        if (
+                          event.target !== event.currentTarget ||
+                          (event.key !== "Enter" && event.key !== " ")
+                        ) {
+                          return;
+                        }
+
+                        event.preventDefault();
+                        setExpandedPlanningItems((current) => ({
+                          ...current,
+                          [item.id]: !current[item.id],
+                        }));
+                      } : undefined}
                       onDragOver={(event) => {
                         if (
                           !planningMode ||
