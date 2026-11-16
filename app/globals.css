@@ -8358,3 +8358,20 @@ body:has(.study-metrics-page) .app-utilities__trigger {
   background: var(--p6-surface-subtle) !important;
   color: var(--p6-primary) !important;
 }
+
+/* Utilities trigger: one consistent 48px touch target on every route. */
+.app-utilities__trigger {
+  display: inline-flex !important;
+  box-sizing: border-box !important;
+  width: var(--p6-control-md) !important;
+  min-width: var(--p6-control-md) !important;
+  max-width: var(--p6-control-md) !important;
+  height: var(--p6-control-md) !important;
+  min-height: var(--p6-control-md) !important;
+  max-height: var(--p6-control-md) !important;
+  padding: 0 !important;
+  flex: 0 0 var(--p6-control-md) !important;
+  aspect-ratio: 1 / 1;
+  align-items: center !important;
+  justify-content: center !important;
+}
