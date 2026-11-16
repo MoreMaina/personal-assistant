@@ -8401,29 +8401,65 @@ body:has(.study-page) .page-shell {
 }
 
 
-/* Study worklist heading actions: keep controls clear of the heading. */
+
+
+/* Study worklist: actions share the eyebrow row, never the title row. */
 .app-content .study-page .study-page__daily-plan-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   min-width: 0;
   margin-bottom: 1rem;
 }
 
-.app-content .study-page .study-page__daily-plan-heading > div:first-child {
+.app-content .study-page .study-page__daily-plan-heading-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
   min-width: 0;
-  margin-bottom: 0 !important;
+}
+
+.app-content .study-page .study-page__daily-plan-eyebrow {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  color: var(--p6-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
 .app-content .study-page .study-page__daily-plan-actions {
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 0.5rem;
   min-width: 0;
   margin-left: auto;
+}
+
+.app-content .study-page .study-page__daily-plan-title {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 !important;
+  color: var(--p6-text) !important;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.app-content .study-page .study-page__daily-plan-detail {
+  margin: 0.15rem 0 0;
+  color: var(--p6-text-secondary);
+  font-size: 0.9rem;
 }
 
 .app-content .study-page .study-page__daily-plan-actions .study-sync-status {
@@ -8440,15 +8476,4 @@ body:has(.study-page) .page-shell {
   border-radius: var(--p6-radius-md);
   background: var(--p6-surface-selected) !important;
   color: var(--p6-text-secondary) !important;
-}
-
-@media (max-width: 40rem) {
-  .app-content .study-page .study-page__daily-plan-heading {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .app-content .study-page .study-page__daily-plan-actions {
-    width: 100%;
-    justify-self: end;
-  }
 }

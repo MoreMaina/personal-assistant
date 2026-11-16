@@ -4668,45 +4668,50 @@ function movePlanningItemTo(
         className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
       >
         <div className="study-page__daily-plan-heading">
-        <SectionHeading
-          eyebrow="01 · Plan"
-          title={planningMode ? "Daily time budget" : "Today's saved worklist"}
-          detail={
-            planningMode
-              ? "Plan due reviews and unfinished work."
-              : ""
-          }
-        />
-          <div className="study-page__daily-plan-actions">
-            <span
-              className="study-sync-status"
-              data-status={cloudSyncStatus}
-              role="status"
-              aria-live="polite"
-              aria-label={`Cloud sync: ${cloudSyncLabel}`}
-              title={cloudSyncLabel}
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+          <div className="study-page__daily-plan-heading-top">
+            <p className="study-page__daily-plan-eyebrow">
+              01 · Plan
+            </p>
+            <div className="study-page__daily-plan-actions">
+              <span
+                className="study-sync-status"
+                data-status={cloudSyncStatus}
+                role="status"
+                aria-live="polite"
+                aria-label={`Cloud sync: ${cloudSyncLabel}`}
+                title={cloudSyncLabel}
               >
-                <path d="M7.5 18a4.5 4.5 0 1 1 .88-8.91A6.5 6.5 0 0 1 21 12.5 4.5 4.5 0 0 1 17 18Z" />
-              </svg>
-              <span className="sr-only">{cloudSyncLabel}</span>
-            </span>
-            <Link href="/study/metrics" className="study-page__metrics-link">
-              Metrics &amp; evidence <span aria-hidden="true">→</span>
-            </Link>
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M7.5 18a4.5 4.5 0 1 1 .88-8.91A6.5 6.5 0 0 1 21 12.5 4.5 4.5 0 0 1 17 18Z" />
+                </svg>
+                <span className="sr-only">{cloudSyncLabel}</span>
+              </span>
+              <Link href="/study/metrics" className="study-page__metrics-link">
+                Metrics &amp; evidence <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           </div>
-        </div>
 
+          <h2 className="study-page__daily-plan-title">
+            {planningMode ? "Daily time budget" : "Today's saved worklist"}
+          </h2>
+
+          {planningMode && (
+            <p className="study-page__daily-plan-detail">
+              Plan due reviews and unfinished work.
+            </p>
+          )}
+        </div>
         <details
           className="study-daily-plan-disclosure"
           open={dailyPlanExpanded}
