@@ -777,8 +777,23 @@ export default function CalendarOverview({
       className={
         isMobile && isExpanded && !isCalendarCollapsed
           ? "calendar-overview calendar-overview--expanded fixed inset-0 z-[70] m-0 flex h-[100dvh] min-h-0 flex-col overflow-hidden rounded-none border-0 bg-[var(--surface)] p-2"
-          : "calendar-overview card mb-8 bg-[var(--surface)] p-3 sm:p-4"
+          : `calendar-overview card mb-8 bg-[var(--surface)] p-3 sm:p-4 ${
+              isCalendarCollapsed ? "cursor-pointer" : ""
+            }`
       }
+      onClick={(event) => {
+        if (!isCalendarCollapsed) return;
+
+        const target = event.target;
+        if (
+          target instanceof Element &&
+          target.closest("button, a, input, select, textarea, label")
+        ) {
+          return;
+        }
+
+        setIsCalendarCollapsed(false);
+      }}
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-[var(--ink)]">Calendar</h2>
