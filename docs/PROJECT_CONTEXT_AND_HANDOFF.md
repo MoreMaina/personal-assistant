@@ -29,7 +29,7 @@ At the beginning of every new conversation:
 - Push branch is one commit ahead of main.
 - Current working branch: `docs/project-continuity-handoff`
 - Documentation branch was created from `origin/main`.
-- Documentation checkpoint committed and pushed: `1ea71b1a15c3eebf60dce44cc76fc868fa649d76`.
+- Documentation checkpoint committed and pushed: `85aca87`.
 
 Untracked helper scripts, Python cache, Supabase temporary files and
 the migration backup exist in the Codespace. Preserve all of them.
