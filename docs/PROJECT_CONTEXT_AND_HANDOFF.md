@@ -29,11 +29,13 @@ At the beginning of every new conversation:
 - Push branch is one commit ahead of main.
 - Current working branch: `docs/project-continuity-handoff`
 - Documentation branch was created from `origin/main`.
-- Documentation checkpoint committed and pushed: `85aca87`.
+- Documentation PR: #10, head `93989be528a0250d5b2a78f4bb556b4bb590f3ca`.
 
 Untracked helper scripts, Python cache, Supabase temporary files and
 the migration backup exist in the Codespace. Preserve all of them.
 Never use blanket staging, `git clean`, `git reset` or `git stash`.
+
+- PR #10 is OPEN and MERGEABLE; Vercel and Vercel Preview Comments checks passed on 21 November 2026.
 
 ## 3. Workstream status
 
@@ -195,9 +197,9 @@ Do not start the new trial until:
 
 ## 7. Current next action
 
-Create a documentation PR from
-`docs/project-continuity-handoff` to `main`. Review and merge it after
-confirming the six documentation changes. Then continue the prioritised workstreams,
-updating this handoff at every meaningful checkpoint.
+Merge documentation PR #10 after the final review. Then fetch
+`origin/main` and verify that the master handoff and decision log
+are available there. Continue the prioritised implementation
+workstreams, updating the handoff at every meaningful checkpoint.
 
 Every new conversation must begin by reading this document.
