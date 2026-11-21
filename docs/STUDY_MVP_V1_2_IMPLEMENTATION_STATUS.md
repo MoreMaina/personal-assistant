@@ -1,3 +1,16 @@
+<!-- SUPERSEDED-CHECKPOINT-NOTICE-2026-11-21 -->
+> **Current-status notice — 21 November 2026**
+>
+> This document retains detailed historical Study MVP implementation notes.
+> Its 15 November 2026 branch, working-tree and next-action checkpoint is
+> stale and must not be followed as current.
+>
+> Read `PROJECT_CONTEXT_AND_HANDOFF.md` for current project state,
+> priorities and resumption instructions. Read
+> `STUDY_SYSTEM_MVP_V1_2_FINAL.md` for locked Study requirements.
+> This historical log is retained; its earlier checkpoints must not be
+> deleted or mistaken for the latest repository state.
+
 Study MVP v1.2 — Implementation Status & Conversation Handoff
 Last updated: 15 November 2026 (Africa/Nairobi)
 Repository: MoreMaina/personal-assistant
