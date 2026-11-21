@@ -29,7 +29,7 @@ At the beginning of every new conversation:
 - Push branch is one commit ahead of main.
 - Current working branch: `docs/project-continuity-handoff`
 - Documentation branch was created from `origin/main`.
-- Documentation changes have not yet been committed or pushed.
+- Documentation checkpoint committed and pushed: `1ea71b1a15c3eebf60dce44cc76fc868fa649d76`.
 
 Untracked helper scripts, Python cache, Supabase temporary files and
 the migration backup exist in the Codespace. Preserve all of them.
@@ -195,9 +195,9 @@ Do not start the new trial until:
 
 ## 7. Current next action
 
-Finish and review the project continuity documentation on
-`docs/project-continuity-handoff`. Commit and push only the named
-documentation files. Then continue the prioritised workstreams,
+Create a documentation PR from
+`docs/project-continuity-handoff` to `main`. Review and merge it after
+confirming the six documentation changes. Then continue the prioritised workstreams,
 updating this handoff at every meaningful checkpoint.
 
 Every new conversation must begin by reading this document.
