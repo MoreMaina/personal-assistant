@@ -10,6 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import GoogleCalendarSettings from "@/app/components/GoogleCalendarSettings";
+import PushNotificationSettings from "@/app/components/PushNotificationSettings";
 import CourseManagementPanel from "@/app/components/CourseManagementPanel";
 
 import {
@@ -1102,6 +1103,24 @@ export default function GeneralSettingsPage() {
           <GoogleCalendarSettings />
         </div>
       </details>
+      <details className="group rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" aria-label="Push notifications">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden [&::-webkit-details-marker]:hidden">
+          <span>
+            <span className="block font-extrabold text-[var(--ink)]">Push notifications</span>
+            <span className="mt-1 block text-sm font-medium text-[var(--muted)]">
+              Manage external reminders sent to this device.
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full border border-[var(--border)] px-3 py-2 text-xs font-bold text-[var(--ink-soft)]">
+            <span className="group-open:hidden">Show settings</span>
+            <span className="hidden group-open:inline">Hide settings</span>
+          </span>
+        </summary>
+        <div className="mt-4">
+          <PushNotificationSettings />
+        </div>
+      </details>
+
       <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" aria-label="Study catalog import and export">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
           <span>
