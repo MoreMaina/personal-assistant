@@ -1,6 +1,6 @@
 # Personal Assistant — Project Context and Handoff
 
-Last verified: 21 November 2026 (Africa/Nairobi)
+Last verified: 22 November 2026 (Africa/Nairobi)
 Repository: MoreMaina/personal-assistant
 Production app: Vercel project `personal-assistant`
 Supabase project: `fkjrhbkvwcdxmvsrwjuj`
@@ -16,38 +16,50 @@ At the beginning of every new conversation:
 1. Read this file and `PROJECT_DECISIONS_LOG.md`.
 2. Read the relevant locked specification and implementation status.
 3. Inspect `git status --short`, current branch and HEAD.
-4. Fetch remote references and verify `origin/main`.
+4. Fetch remote references and verify the current `origin/main`.
 5. Verify deployment and database state when relevant.
 6. Continue from the latest recorded next action.
 7. Never repeat an audit whose evidence is still current.
 
-## 2. Current verified Git checkpoint
+## 2. Current verified Git and deployment checkpoint
 
-- `main`: `fc08cd9676f1b0d2e924544d51cf2b1f1a0cc2cc`
-- Push feature: `feature/android-push-notifications`
-- Push commit: `30837330403cbe8dde53398aeaf45ce2d124bdf5`
-- Push branch is one commit ahead of main.
-- Current working branch: `docs/project-continuity-handoff`
-- Documentation branch was created from `origin/main`.
-- Documentation PR: #10, head `93989be528a0250d5b2a78f4bb556b4bb590f3ca`.
+### GitHub state
 
-Untracked helper scripts, Python cache, Supabase temporary files and
-the migration backup exist in the Codespace. Preserve all of them.
-Never use blanket staging, `git clean`, `git reset` or `git stash`.
+- Repository default branch: `main`.
+- Latest verified GitHub `main` commit: `bbb34cf4bac0bdd3e4bbdbf139146b7e5a729638` (`Fix/push dispatch auth exemption (#12)`).
+- PR #10, `docs: establish project continuity and handoff`, is merged. Merge commit: `563f4c5c4a4bf6daf1003b258c7e67ed69a9e39f`.
+- PR #11, `feat: add Android external push notifications`, is merged. Merge commit: `a819b3407061080de7f840e50a66b7accfeb0e14`.
+- PR #12, `Fix/push dispatch auth exemption`, is merged. Squash commit: `bbb34cf4bac0bdd3e4bbdbf139146b7e5a729638`.
+- PR #12 changed `lib/supabase/proxy.ts` and `.github/workflows/study-preview-ci.yml`.
+- GitHub Actions run #157 for the push to `main` completed successfully: https://github.com/MoreMaina/personal-assistant/actions/runs/44986952605.
 
-- PR #10 is OPEN and MERGEABLE; Vercel and Vercel Preview Comments checks passed on 21 November 2026.
+### Local workspace state — not verified
+
+The local Codespace branch, local HEAD, `git status --short`, and whether earlier untracked helper files are still present were **not inspected** in this checkpoint. Do not assume the local working tree is clean or aligned with GitHub `main`.
+
+The user previously reported that 90% of Codespaces hours had been used. Prefer GitHub's web editor for documentation-only changes and avoid opening a Codespace unless a task genuinely requires a local terminal. If a local workspace is used later, inspect its status first and preserve unrelated untracked files.
+
+Earlier handoff notes mentioned untracked helper scripts, Python cache, Supabase temporary files and a migration backup in a Codespace. Their current existence was not rechecked; preserve them if they are still present.
+
+### Production deployment
+
+- Latest verified Production deployment: `dpl_9aF88gNyGnKCPZKzjio971wiotNR`.
+- State: `READY`, target `production`.
+- Deployment commit: `bbb34cf4bac0bdd3e4bbdbf139146b7e5a729638` on `main`.
+- Deployment URL: `https://personal-assistant-28ifi6dbc-simon-0e59.vercel.app`.
+- Stable alias observed: `https://personal-assistant-simon-0e59.vercel.app`.
 
 ## 3. Workstream status
 
 | Priority | Workstream | Verified state |
 |---|---|---|
-| 0 | Project continuity documents | Being established |
-| 1 | Android external push | Implemented on feature branch; Preview READY; not live |
-| 2 | Question-bank management and planner readiness | Not implemented |
-| 3 | Restart four-week Study trial | Required; current model supports one trial only |
-| 4 | Academic Details settings redesign | Not implemented |
-| 5 | Complete Palette 6 migration | Incomplete; legacy colours remain |
-| 6 | Study trial readiness verification | Must pass before new trial starts |
+| 0 | Project continuity documents | Established through merged PR #10; this checkpoint corrects stale push-release status. |
+| 1 | Android external push | Merged and deployed to Production. Automated dispatch is active. One real Android task notification was delivered and visibly confirmed by the user. Tap navigation and remaining category acceptance tests are pending. See `PUSH_NOTIFICATIONS_IMPLEMENTATION_STATUS.md`. |
+| 2 | Question-bank management and planner readiness | Not implemented. |
+| 3 | Restart four-week Study trial | Required; current model supports one trial only. |
+| 4 | Academic Details settings redesign | Not implemented. |
+| 5 | Complete Palette 6 migration | Incomplete; legacy colours remain. |
+| 6 | Study trial readiness verification | Must pass before a new trial starts. |
 
 ### Study MVP v1.2
 
@@ -125,36 +137,30 @@ completion after changing only global CSS.
 
 ### Android external push notifications
 
-Branch: `feature/android-push-notifications`
-Commit: `30837330403cbe8dde53398aeaf45ce2d124bdf5`
-Preview deployment: `dpl_7pRmqF1fcNpy3ToEciHQTckG3Xu1` (READY)
-Preview URL: `https://personal-assistant-ghrcm0i5n-simon-0e59.vercel.app`
+Locked specification: `PUSH_NOTIFICATIONS_SPEC.md`.
+Implementation checkpoint: `PUSH_NOTIFICATIONS_IMPLEMENTATION_STATUS.md`.
 
-Reported checks: TypeScript, targeted ESLint, 511 tests in 52
-files, local production build and npm audit passed.
+The feature was merged in PR #11 (`a819b3407061080de7f840e50a66b7accfeb0e14`). PR #12 then fixed the dispatcher authentication path and enabled the CI workflow to run on `main`; its squash merge is the current `main` commit `bbb34cf4bac0bdd3e4bbdbf139146b7e5a729638`.
 
-Production Supabase foundation and Production environment variables
-were configured. Secret values must never be printed or documented.
-Production cron was empty at the last check. Push is not activated
-in Production.
+Production deployment is READY for that exact commit. Production Supabase contains migrations `20261121135043` and `20261121135053`. The `push-notification-dispatch` cron job is active on `* * * * *`; the five latest inspected runs (05:09–05:13 UTC on 22 November) all succeeded.
 
-Class reminders are a separate category and OFF by default.
-Google Calendar is read-only. No in-app inbox, unread badges or
-reminder pop-ups.
+The `/api/push/dispatch` route has its own bearer-secret guard. Production returned HTTP 401 to a request without the bearer credential and HTTP 200 to an authenticated server-to-server request. Secret values must never be printed or placed in documentation.
 
-Remaining: review notification tap destinations, verify Vercel
-protection/bypass, activate and verify Supabase scheduling, merge
-and deploy, then test on Android. Preview READY is not Production
-release or live-device activation.
+A real task digest `task-digest:2026-11-22` was recorded as sent once at 05:03:03 UTC (08:03:03 Africa/Nairobi), with no recorded delivery error. The user confirmed that the Android notification appeared. The user cleared the notification shade before tapping it, so the notification-click destination has not yet been device-tested.
+
+The current device row last inspected on 22 November has timezone `Africa/Nairobi`, device enabled, app calendar / Google Calendar / tasks / Study categories enabled, and class reminders enabled. Its saved event reminder leads are 30 and 10 minutes, class leads are 30 and 10 minutes, all-day time is 08:04, task digest time is 08:06, and Study digest time is 08:02. Class reminders being enabled on this existing device is a saved preference; it does not change the locked OFF-by-default requirement for a new subscription. Do not silently reset the user's existing choice.
+
+The task digest is deduplicated once per subscription and date. Moving its time from 08:03 to 08:06 after the 22 November digest had already been sent did not create a second alert; that is expected. The next task digest is expected Monday 23 November at 08:06 Nairobi time only if qualifying unfinished due/overdue tasks remain and the settings stay enabled.
+
+Remaining Android checks: notification tap navigation; timed app-calendar event reminders at 30 and 10 minutes; all-day event reminder; class category behavior; Google Calendar category; Study Plan digest; overlapping-dispatch/dedup concurrency; permission-denial, expired-endpoint and failure handling; and broader timezone/daylight-saving coverage. The user plans to run a temporary calendar-event test on 23 November. Do not create or alter test data in Production without the user's action/approval.
 
 ## 4. Working agreement
 
-- Use GitHub Codespaces terminal as the primary environment.
-- Give exact commands; user returns terminal output.
-- Save time: use this handoff and verified evidence instead of
-  repeatedly reconstructing the project.
+- Prefer GitHub web editor for documentation-only work while Codespaces usage is constrained. If terminal access is needed, explain why and inspect status first.
+- Give exact commands when a local terminal is needed; user returns terminal output.
+- Save time: use this handoff and verified evidence instead of repeatedly reconstructing the project.
 - Preserve all unrelated untracked files.
-- Inspect Git status before every work batch.
+- Inspect Git status before every local work batch.
 - Never run `git add .`, `git add -A`, `git clean`, `git reset`
   or `git stash`.
 - Stage only individually reviewed, named files.
@@ -197,9 +203,13 @@ Do not start the new trial until:
 
 ## 7. Current next action
 
-Merge documentation PR #10 after the final review. Then fetch
-`origin/main` and verify that the master handoff and decision log
-are available there. Continue the prioritised implementation
-workstreams, updating the handoff at every meaningful checkpoint.
+For Android push, the next action is the user's planned live-device test on Monday, 23 November 2026:
 
-Every new conversation must begin by reading this document.
+1. Allow the next genuine task digest at the saved 08:06 Nairobi time to arrive, if there are still qualifying tasks; tap it and verify `/calendar`.
+2. Create a temporary app-calendar event with enough lead time to observe the 30-minute and 10-minute reminders. Tap a reminder and verify `/calendar`.
+3. Delete the temporary event after the test.
+4. Record actual outcomes in `PUSH_NOTIFICATIONS_IMPLEMENTATION_STATUS.md`, then update this handoff and the decision log.
+
+Do not re-trigger the 22 November task digest by deleting delivery claims or altering existing data. Do not change the active scheduler or saved device preferences merely to repeat a test.
+
+For every new conversation, begin by reading this document.

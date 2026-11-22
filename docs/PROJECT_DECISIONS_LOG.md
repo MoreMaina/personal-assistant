@@ -2,6 +2,14 @@
 
 Add new decisions at the top. Preserve older entries.
 
+## 22 November 2026 — Android push Production release and verification
+
+- The Android external push implementation was merged through PR #11. PR #12 is also merged and exempts only `/api/push/dispatch` from browser-session middleware; the route remains protected by its own bearer-secret check.
+- The `push-notification-dispatch` Supabase cron job runs every minute. Server-to-server calls include the Vercel protection bypass and dispatcher authentication; secret values must remain in Vault/environment storage and must never be exposed in source control, logs copied into documentation, or chat.
+- The dispatcher delivery claim is the duplicate-prevention authority. Daily task and Study digests are date-keyed; changing a digest time after that day's digest was sent must not create a second same-day alert.
+- Production release, scheduler success and real Android delivery are separate from full acceptance. A real task digest appeared on the Android device on 22 November, but the user cleared it before tapping. Tap navigation and remaining category tests are still pending.
+- Preserve the existing device's saved preferences. Class reminders being enabled on this existing device does not alter the locked requirement that class reminders default OFF for new subscriptions.
+
 ## 21 November 2026 — Project continuity
 
 - The repository is the durable source of truth, not chat history.
