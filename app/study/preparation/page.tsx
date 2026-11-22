@@ -303,7 +303,7 @@ const previousQuestions = useMemo(
         <div className="study-preparation-toolbar__top">
           <div className="min-w-0">
             <Link href="/study" className="text-sm font-bold text-[var(--p6-primary)] hover:underline">← Study workspace</Link>
-            <h1 className="mt-1 text-xl font-extrabold text-[var(--p6-text)]">Topic preparation</h1>
+            <h1 className="mt-1 text-xl font-extrabold text-[var(--p6-text)]">Study Preparation</h1>
           </div>
           <span
             className="study-sync-status"
