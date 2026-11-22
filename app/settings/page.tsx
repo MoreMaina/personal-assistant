@@ -12,6 +12,7 @@ import Link from "next/link";
 import GoogleCalendarSettings from "@/app/components/GoogleCalendarSettings";
 import PushNotificationSettings from "@/app/components/PushNotificationSettings";
 import CourseManagementPanel from "@/app/components/CourseManagementPanel";
+import { ThemePreferenceControl } from "@/app/components/Navigation";
 
 import {
   ensureFixedSemesters,
@@ -636,7 +637,7 @@ export default function GeneralSettingsPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-6 px-1 pb-10">
+    <main className="general-settings-page mx-auto w-full max-w-3xl space-y-6 px-1 pb-10">
       <header className="space-y-2">
         <p className="stat-label">Personal Assistant</p>
         <h1 className="text-3xl font-extrabold">General Settings</h1>
@@ -645,13 +646,17 @@ export default function GeneralSettingsPage() {
         </p>
       </header>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
-          <div className="text-xl font-bold">
-            <h2>Academic details</h2>
-          </div>
+      <section className="settings-appearance-section rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <ThemePreferenceControl />
+      </section>
 
-          <div className="mt-4 space-y-5">
+      <details className="settings-section group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" open>
+        <summary className="settings-section__summary">
+          <span className="settings-section-title">Academic details</span>
+          <span className="settings-section__chevron" aria-hidden="true">⌄</span>
+        </summary>
+        <form onSubmit={handleSave} className="mt-4 space-y-6">
+          <div className="space-y-5">
             <section className="space-y-4">
               <div className="space-y-1">
                 <h3 className="font-bold">Program and current study year</h3>
@@ -743,7 +748,6 @@ export default function GeneralSettingsPage() {
 
 
           </div>
-        </section>
 
         {error && (
           <p role="alert" className="rounded-xl bg-[var(--accent-soft)] p-3 font-bold text-[var(--accent-dark)]">
@@ -767,42 +771,43 @@ export default function GeneralSettingsPage() {
             </p>
           )}
         </div>
-      </form>
+        </form>
+      </details>
 
       <details className="group rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
-            <span className="flex flex-nowrap items-center gap-2">
-              <span className="whitespace-nowrap text-sm font-extrabold text-[var(--ink)]">
+            <span className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="settings-section-title text-[var(--ink)]">
                 Study System settings
               </span>
               {studyTrialActive ? (
-                <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
-                  Trial active · locked
+                <span className="max-w-full rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold leading-tight text-amber-900">
+                  Active · locked
                 </span>
               ) : (!studyState || studyLoadingError || studySyncConflict || studyProblem) ? (
-                <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">
-                  Study settings need attention
+                <span className="max-w-full rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold leading-tight text-stone-700">
+                  Needs attention
                 </span>
               ) : studyState?.settings.trial_start_date &&
                   studyState.settings.trial_end_date &&
                   studySettingsToday < studyState.settings.trial_start_date ? (
-                <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-900">
-                  Trial scheduled
+                <span className="max-w-full rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold leading-tight text-sky-900">
+                  Scheduled
                 </span>
               ) : studyState?.settings.trial_start_date &&
                   studyState.settings.trial_end_date &&
                   studySettingsToday > studyState.settings.trial_end_date ? (
-                <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">
-                  Trial complete · settings unlocked
+                <span className="max-w-full rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold leading-tight text-stone-700">
+                  Complete
                 </span>
               ) : studyState?.settings.trial_start_date ? (
-                <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
-                  Trial dates set
+                <span className="max-w-full rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold leading-tight text-amber-900">
+                  Dates set
                 </span>
               ) : (
-                <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-900">
-                  Pre-trial setup
+                <span className="max-w-full rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold leading-tight text-emerald-900">
+                  Setup
                 </span>
               )}
             </span>
@@ -1104,7 +1109,7 @@ export default function GeneralSettingsPage() {
       <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
           <span>
-            <span className="block font-extrabold text-[var(--ink)]">Manage courses</span>
+            <span className="settings-section-title block text-[var(--ink)]">Manage courses</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Add, edit and organise courses by academic period</span>
           </span>
         </summary>
@@ -1123,7 +1128,7 @@ export default function GeneralSettingsPage() {
       <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
           <span>
-            <span className="block font-extrabold text-[var(--ink)]">Calendar connection</span>
+            <span className="settings-section-title block text-[var(--ink)]">Calendar connection</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Connect or manage read-only Google Calendar access</span>
           </span>
         </summary>
@@ -1134,7 +1139,7 @@ export default function GeneralSettingsPage() {
       <details className="group rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" aria-label="Push notifications">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden [&::-webkit-details-marker]:hidden">
           <span>
-            <span className="block font-extrabold text-[var(--ink)]">Push notifications</span>
+            <span className="settings-section-title block text-[var(--ink)]">Push notifications</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">
               Manage external reminders sent to this device.
             </span>
@@ -1148,7 +1153,7 @@ export default function GeneralSettingsPage() {
       <details className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" aria-label="Study catalog import and export">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden">
           <span>
-            <span className="block font-extrabold text-[var(--ink)]">Study catalog</span>
+            <span className="settings-section-title block text-[var(--ink)]">Study catalog</span>
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">Import or export courses, units, topics and retrieval tasks</span>
           </span>
         </summary>

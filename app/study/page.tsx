@@ -4613,24 +4613,6 @@ function movePlanningItemTo(
         </section>
       )}
 
-      {trialHistoryNeedsReview || legacyTrialDatesNeedReview ? (
-        <section role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-950">
-          <h2 className="font-extrabold">Trial history needs review</h2>
-          <p className="mt-1">Existing trial dates could not be safely matched to one immutable trial record. No reset or new trial is offered. Review a JSON backup and reconcile the history before proceeding.</p>
-        </section>
-      ) : currentTrialPeriod ? (
-        <section className="rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--p6-primary)]">Current study trial</p>
-              <p className="mt-1 font-extrabold text-[var(--p6-text)]">{formatStudyDateLabel(currentTrialPeriod.start_date)} – {formatStudyDateLabel(currentTrialPeriod.end_date)}</p>
-              <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">{today <= currentTrialPeriod.end_date ? "In progress or awaiting its actual first-use date." : "Completed. Its dates and evidence remain in trial history."}</p>
-            </div>
-            <Link href="/study/metrics" className="rounded-xl border border-[var(--p6-border-strong)] px-4 py-2.5 text-sm font-bold text-[var(--p6-text)] hover:bg-[var(--p6-surface-subtle)]">Review trial evidence</Link>
-          </div>
-        </section>
-      ) : null}
-
       <section
         id="daily-plan"
         className="scroll-mt-6 rounded-3xl border border-[#d8ccb8] bg-[#fffaf1] p-5 sm:p-8"
@@ -4665,10 +4647,10 @@ function movePlanningItemTo(
                 <span className="sr-only">{cloudSyncLabel}</span>
               </span>
               <Link href="/study/preparation" className="study-page__metrics-link">
-                Prepare topics <span aria-hidden="true">→</span>
+                Topic <span aria-hidden="true">→</span>
               </Link>
               <Link href="/study/metrics" className="study-page__metrics-link">
-                Metrics &amp; evidence <span aria-hidden="true">→</span>
+                Metrics <span aria-hidden="true">→</span>
               </Link>
             </div>
           </div>

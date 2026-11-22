@@ -211,6 +211,42 @@ export default function StudyPreparationPage() {
     }
   }
 
+  function renderQuestionForm() {
+    return (
+                <form onSubmit={submitQuestion} id="question-editor" aria-label="Retrieval question editor" className="question-editor mt-4 space-y-3 p-4">
+                  <div>
+                    <h3 className="font-extrabold text-[var(--p6-text)]">{editingQuestionId ? "Create a replacement version" : "Add a retrieval question"}</h3>
+                    <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">{editingQuestionId ? "Saving creates a new question ID; the previous question remains available for historical and unfinished-session references." : "A useful topic bank contains 3–5 active questions, including at least 3 Gate and 2 Review questions."}</p>
+                  </div>
+                  <label className="block text-sm font-bold text-[var(--p6-text)]">Question prompt
+                    <textarea required rows={2} className={fieldClass} value={questionDraft.prompt} onChange={(event) => setQuestionDraft((current) => ({ ...current, prompt: event.target.value }))} />
+                  </label>
+                  <label className="block text-sm font-bold text-[var(--p6-text)]">Expected answer criteria
+                    <textarea required rows={3} className={fieldClass} value={questionDraft.expected_answer_criteria} onChange={(event) => setQuestionDraft((current) => ({ ...current, expected_answer_criteria: event.target.value }))} />
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <label className="text-sm font-bold text-[var(--p6-text)]">Question type
+                      <select className={fieldClass} value={questionDraft.task_type} onChange={(event) => setQuestionDraft((current) => ({ ...current, task_type: event.target.value as RetrievalTaskType }))}>
+                        {TASK_TYPES.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-sm font-bold text-[var(--p6-text)]">Purpose
+                      <select className={fieldClass} value={questionDraft.purpose} onChange={(event) => setQuestionDraft((current) => ({ ...current, purpose: event.target.value as RetrievalPurpose }))}>
+                        {PURPOSES.map((purpose) => <option key={purpose} value={purpose}>{purpose}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-sm font-bold text-[var(--p6-text)]">Estimated minutes
+                      <input type="number" min={1} max={180} step={1} required className={fieldClass} value={questionDraft.estimated_duration_min} onChange={(event) => setQuestionDraft((current) => ({ ...current, estimated_duration_min: Number(event.target.value) }))} />
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="submit" className={primaryButton}>{editingQuestionId ? "Save new version" : "Add question"}</button>
+                    {editingQuestionId && <button type="button" onClick={cancelQuestionEdit} className={secondaryButton}>Cancel version edit</button>}
+                  </div>
+                </form>
+    );
+  }
+
   if (loadingError) {
     return <main className="study-preparation-page mx-auto max-w-5xl p-5"><p role="alert" className="text-rose-700">{loadingError}</p><Link href="/study" className="mt-4 inline-block underline">Return to Study</Link></main>;
   }
@@ -396,42 +432,13 @@ export default function StudyPreparationPage() {
                             )}
                           </div>
                         </div>
-                      </article>
+                                              {editingQuestionId === task.id && renderQuestionForm()}
+</article>
                     );
                   })}
                 </div>
 
-                <form onSubmit={submitQuestion} className="mt-5 space-y-3 rounded-xl bg-[var(--p6-surface-subtle)] p-4">
-                  <div>
-                    <h3 className="font-extrabold text-[var(--p6-text)]">{editingQuestionId ? "Create a replacement version" : "Add a retrieval question"}</h3>
-                    <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">{editingQuestionId ? "Saving creates a new question ID; the previous question remains available for historical and unfinished-session references." : "A useful topic bank contains 3–5 active questions, including at least 3 Gate and 2 Review questions."}</p>
-                  </div>
-                  <label className="block text-sm font-bold text-[var(--p6-text)]">Question prompt
-                    <textarea required rows={2} className={fieldClass} value={questionDraft.prompt} onChange={(event) => setQuestionDraft((current) => ({ ...current, prompt: event.target.value }))} />
-                  </label>
-                  <label className="block text-sm font-bold text-[var(--p6-text)]">Expected answer criteria
-                    <textarea required rows={3} className={fieldClass} value={questionDraft.expected_answer_criteria} onChange={(event) => setQuestionDraft((current) => ({ ...current, expected_answer_criteria: event.target.value }))} />
-                  </label>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <label className="text-sm font-bold text-[var(--p6-text)]">Question type
-                      <select className={fieldClass} value={questionDraft.task_type} onChange={(event) => setQuestionDraft((current) => ({ ...current, task_type: event.target.value as RetrievalTaskType }))}>
-                        {TASK_TYPES.map((type) => <option key={type} value={type}>{type.replace(/_/g, " ")}</option>)}
-                      </select>
-                    </label>
-                    <label className="text-sm font-bold text-[var(--p6-text)]">Purpose
-                      <select className={fieldClass} value={questionDraft.purpose} onChange={(event) => setQuestionDraft((current) => ({ ...current, purpose: event.target.value as RetrievalPurpose }))}>
-                        {PURPOSES.map((purpose) => <option key={purpose} value={purpose}>{purpose}</option>)}
-                      </select>
-                    </label>
-                    <label className="text-sm font-bold text-[var(--p6-text)]">Estimated minutes
-                      <input type="number" min={1} max={180} step={1} required className={fieldClass} value={questionDraft.estimated_duration_min} onChange={(event) => setQuestionDraft((current) => ({ ...current, estimated_duration_min: Number(event.target.value) }))} />
-                    </label>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="submit" className={primaryButton}>{editingQuestionId ? "Save new version" : "Add question"}</button>
-                    {editingQuestionId && <button type="button" onClick={cancelQuestionEdit} className={secondaryButton}>Cancel version edit</button>}
-                  </div>
-                </form>
+                {editingQuestionId === null && renderQuestionForm()}
                 <p className="mt-4 text-xs leading-5 text-[var(--p6-text-secondary)]">
                   Deactivation affects future question selection only. Scheduled Reviews and unfinished Gate sessions keep their original question IDs. Resuming an unfinished Gate can reactivate its exact original questions; no replacement is substituted automatically.
                 </p>

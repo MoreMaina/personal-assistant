@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
+}
+
+:root {
   /* Legacy semantic aliases now resolve to Palette 6 everywhere. */
   --background: var(--p6-page);
   --surface: var(--p6-surface);
@@ -3011,7 +3015,8 @@ body:has(.today-page) .app-utilities__panel {
 }
 
 .app-content .today-page__metrics > div:nth-child(2) {
-  border-inline-start: 0.1875rem solid var(--p6-accent-coral) !important;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-inline-start: 1px solid var(--p6-border-decorative) !important;
   background: var(--p6-accent-warm) !important;
 }
 
@@ -8496,12 +8501,7 @@ body:has(.study-page) .page-shell {
   box-shadow: none !important;
 }
 
-/* Free-time is informational, so it should not carry a heavy outline. */
-.app-content .today-page__schedule .timeline-free-slot {
-  border: 0 !important;
-  background: var(--p6-surface-subtle) !important;
-  box-shadow: none !important;
-}
+/* The separate schedule free-time slot keeps its light dashed outline. */
 
 /* Back navigation should not push detail-page content down. */
 .app-content .reading-detail-page > .reading-detail-page__back {
@@ -8640,8 +8640,8 @@ body:has(.study-page) .page-shell {
 
 /* Use the device appearance preference without changing stored data
    or introducing a separate theme setting. */
-@media (prefers-color-scheme: dark) {
-  :root {
+html[data-theme="dark"] {
+  & {
     color-scheme: dark;
     --p6-page: #101d22;
     --p6-surface: #17282e;
@@ -8661,7 +8661,7 @@ body:has(.study-page) .page-shell {
     --p6-elevation-interactive: 0 3px 0 rgba(0, 0, 0, 0.34);
   }
 
-  html,
+  &,
   body {
     background: var(--p6-page);
     color: var(--p6-text);
@@ -8944,4 +8944,231 @@ body:has(.study-page) .page-shell {
   .app-content textarea:focus-visible {
     outline-color: var(--p6-focus);
   }
+
+}
+
+
+/* Palette 6 shell surfaces: the top bar and both navigation variants. */
+.app-sidebar {
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  border-right: 1px solid var(--p6-border-decorative);
+}
+.assistant-button {
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text);
+  box-shadow: none;
+}
+.assistant-button:hover { background: var(--p6-surface-selected); box-shadow: none; }
+.assistant-button__mark { border-color: var(--p6-border-strong); color: var(--p6-primary); }
+.sidebar-nav__link { color: var(--p6-text-secondary); }
+.sidebar-nav__link:hover { background: var(--p6-surface-subtle); color: var(--p6-text); transform: none; }
+.sidebar-nav__link--active { background: var(--p6-surface-selected); color: var(--p6-primary-hover); box-shadow: none; }
+.sidebar-note { border-top-color: var(--p6-border-decorative); color: var(--p6-text-secondary); }
+.sidebar-note__leaf { color: var(--p6-accent-coral); }
+.topbar {
+  background: color-mix(in srgb, var(--p6-surface) 94%, transparent);
+  border-bottom: 1px solid var(--p6-border-decorative);
+  color: var(--p6-text);
+}
+.topbar__brand { color: var(--p6-text); }
+.topbar__brand-mark {
+  border: 1px solid var(--p6-border-strong);
+  background: var(--p6-primary);
+  color: var(--p6-surface);
+}
+.topbar__icon-button {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: none;
+}
+.profile-dot { background: var(--p6-primary); color: var(--p6-surface); }
+.mobile-nav {
+  background: var(--p6-surface) !important;
+  border-top: 1px solid var(--p6-border-decorative) !important;
+  box-shadow: 0 -2px 10px rgba(20, 45, 52, 0.07) !important;
+}
+.mobile-nav__item { color: var(--p6-text-secondary); }
+.mobile-nav__content--active {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  box-shadow: none !important;
+}
+
+/* Copilot uses the same surfaces, borders and controls in both themes. */
+.app-content .ai-copilot { color: var(--p6-text); }
+.app-content .ai-copilot__panel {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: var(--p6-elevation-card);
+}
+.app-content .ai-copilot__disclosure {
+  border-color: var(--p6-border-decorative);
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text-secondary);
+}
+.app-content article.ai-copilot__message--user {
+  border: 1px solid var(--p6-border-strong) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.app-content article.ai-copilot__message--assistant {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.app-content .ai-copilot__suggestion,
+.app-content .ai-copilot__voice-button,
+.app-content .ai-copilot__message-action {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: none;
+}
+.app-content .ai-copilot__suggestion:hover,
+.app-content .ai-copilot__voice-button:hover:not(:disabled),
+.app-content .ai-copilot__message-action:hover {
+  background: var(--p6-surface-selected);
+  color: var(--p6-primary-hover);
+}
+.app-content .ai-copilot__form { border-top: 1px solid var(--p6-border-decorative); }
+.app-content .ai-copilot__form textarea {
+  border: 1px solid var(--p6-border-control);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+}
+.app-content .ai-copilot__markdown blockquote {
+  border-left-color: var(--p6-border-strong);
+  color: var(--p6-text-secondary);
+}
+.app-content .ai-copilot__markdown-code,
+.app-content .ai-copilot__markdown :not(pre) > code {
+  background: var(--p6-surface-selected);
+  color: var(--p6-text);
+}
+.app-content .ai-copilot__markdown th,
+.app-content .ai-copilot__markdown td { border-color: var(--p6-border-decorative); }
+.app-content .ai-copilot__markdown th {
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text);
+}
+.app-content .ai-copilot__send {
+  border: 1px solid var(--p6-primary);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-primary);
+  color: #fff;
+}
+.app-content .ai-copilot__jump-to-input {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: var(--p6-elevation-dropdown);
+}
+
+/* Numbered Books and Essays shelves with lighter separators. */
+.app-content .workspace-page .reading-numbered-shelf__list { counter-reset: reading-entry; }
+.app-content .workspace-page .reading-numbered-shelf__list > li { counter-increment: reading-entry; }
+.app-content .workspace-page .reading-numbered-shelf__list > li + li { border-top-color: #e7eff1; }
+.app-content .workspace-page .reading-list-row { border-bottom-color: #e7eff1; }
+.app-content .workspace-page .reading-numbered-shelf__list .reading-list-row::before {
+  content: counter(reading-entry);
+  display: inline-flex;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: 0 0 1.65rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+html[data-theme="dark"] .app-content .workspace-page .reading-list-row,
+html[data-theme="dark"] .app-content .workspace-page .reading-numbered-shelf__list > li + li {
+  border-color: #405a62;
+}
+
+/* Compact Study links share one row with "1. Plan" and cloud sync. */
+.app-content .study-page .study-page__daily-plan-heading-top { flex-wrap: nowrap; align-items: center; }
+.app-content .study-page .study-page__daily-plan-actions { flex-wrap: nowrap; gap: 0.4rem; white-space: nowrap; }
+.app-content .study-page .study-page__metrics-link {
+  display: inline-flex;
+  min-height: 2.5rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-surface);
+  color: var(--p6-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.app-content .study-page .study-page__metrics-link:hover { background: var(--p6-surface-selected); }
+@media (max-width: 380px) {
+  .app-content .study-page .study-page__daily-plan-actions { gap: 0.2rem; }
+  .app-content .study-page .study-page__metrics-link { padding-inline: 0.35rem; font-size: 0.69rem; }
+  .app-content .study-page .study-page__daily-plan-eyebrow { font-size: 0.68rem; }
+}
+
+/* Topic Preparation cards align with the app content width and card treatment. */
+.app-content .study-preparation-page {
+  width: min(100%, 72rem);
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.app-content .study-preparation-page section.rounded-2xl,
+.app-content .study-preparation-page section.rounded-xl {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card);
+}
+.app-content .study-preparation-page article {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle);
+  box-shadow: none;
+}
+.app-content .study-preparation-page .question-editor {
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface-subtle);
+}
+.app-content .study-preparation-page .question-editor button { box-shadow: none; }
+
+/* Consistent Settings section heading scale; badges are reserved for Study System settings. */
+.general-settings-page > .settings-section > summary,
+.general-settings-page > details > summary { color: var(--p6-text); font-size: 1rem; font-weight: 700; }
+.general-settings-page .settings-section-title { color: var(--p6-text); font-size: 1.05rem; font-weight: 800; }
+.general-settings-page .settings-section__summary {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+}
+.general-settings-page .settings-section__summary::-webkit-details-marker { display: none; }
+.general-settings-page .settings-section__chevron {
+  flex: 0 0 auto;
+  color: var(--p6-text-secondary);
+  transition: transform var(--p6-motion-base) var(--p6-ease-standard);
+}
+.general-settings-page details[open] .settings-section__chevron { transform: rotate(180deg); }
+.general-settings-page .settings-appearance-section {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card);
 }

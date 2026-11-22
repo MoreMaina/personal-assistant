@@ -180,6 +180,15 @@ export default function AppUtilitiesMenu() {
             <AppIcon name="metrics" size={18} />
             <span>Study metrics</span>
           </Link>
+          <Link
+            href="/study/preparation"
+            role="menuitem"
+            className="app-utilities__action"
+            onClick={() => setOpen(false)}
+          >
+            <AppIcon name="study" size={18} />
+            <span>Topic preparation</span>
+          </Link>
           <div className="app-utilities__divider" />
 
           <div className="app-utilities__sync-row">

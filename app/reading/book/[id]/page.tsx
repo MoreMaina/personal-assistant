@@ -631,11 +631,7 @@ const methodInfo = READING_METHODS.find(
 
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="reading-detail-page__eyebrow">Your reading workspace</p>
           <h1>{book.title}</h1>
-          <p className="reading-detail-page__subtitle">
-            {book.author || "Author not specified"} · {book.category}
-          </p>
         </div>
         <CardMenu
           title="Book actions"

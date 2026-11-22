@@ -574,7 +574,6 @@ function EssayDetailContent() {
 
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="reading-detail-page__eyebrow">Essay workspace</p>
           <h1>{essay.title}</h1>
         </div>
         <CardMenu
