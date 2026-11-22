@@ -410,9 +410,7 @@ const previousQuestions = useMemo(
                   <p className="mt-3 text-xs text-[var(--p6-text-secondary)]">This is a legacy topic without an explicit preparation status. It remains planner-compatible until you review it; it is not represented as Ready.</p>
                 )}
                 </div>
-              </details>
-
-          {selectedUnit && (
+                {selectedUnit && (
             <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4">
               <div>
                 <h2 className="font-extrabold text-[var(--p6-text)]">Unit planner eligibility</h2>
@@ -426,6 +424,9 @@ const previousQuestions = useMemo(
               </button>
             </section>
           )}
+              </details>
+
+          
 
               <details open className="study-preparation-section">
                 <summary className="study-preparation-section__summary">

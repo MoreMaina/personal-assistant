@@ -9657,3 +9657,10 @@ html[data-theme="dark"] .app-content [class~="text-blue-900"],
 html[data-theme="dark"] .app-content [class~="text-sky-900"] {
   color: var(--p6-info-text) !important;
 }
+/* Anchor the Reading workspace to the left of the shared content rail. */
+body:has(.workspace-page) .app-content > .page-shell {
+  box-sizing: border-box;
+  width: calc(100% - var(--p6-space-gutter) - var(--p6-space-gutter)) !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
