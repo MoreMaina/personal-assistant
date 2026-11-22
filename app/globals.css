@@ -9561,6 +9561,93 @@ html[data-theme="dark"] .mobile-nav {
   background: var(--p6-error-bg) !important;
   color: var(--p6-error-text) !important;
 }
+
+/* Follow-up: Palette 6 dark-mode controls and left-aligned reading shelves. */
+:root {
+  --p6-on-primary: #ffffff;
+}
+html[data-theme="dark"] {
+  --p6-on-primary: #102328;
+}
+
+/* Teal primary actions remain readable in both themes. */
+.app-content .action-primary--terracotta,
+.app-content .action-primary--forest,
+.app-content .action-primary--sage,
+.app-content .action-primary--blue,
+.app-content .right-now-start-button,
+.app-content button[class*="bg-[#006d77]"],
+.app-content a[class*="bg-[#006d77]"] {
+  background: var(--p6-primary) !important;
+  border-color: var(--p6-primary) !important;
+  color: var(--p6-on-primary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .action-primary--terracotta:hover:not(:disabled),
+.app-content .action-primary--forest:hover:not(:disabled),
+.app-content .action-primary--sage:hover:not(:disabled),
+.app-content .action-primary--blue:hover:not(:disabled),
+.app-content .right-now-start-button:hover,
+.app-content button[class*="bg-[#006d77]"]:hover,
+.app-content a[class*="bg-[#006d77]"]:hover {
+  background: var(--p6-primary-hover) !important;
+  color: var(--p6-on-primary) !important;
+}
+
+.app-content .action-primary--terracotta:active:not(:disabled),
+.app-content .action-primary--forest:active:not(:disabled),
+.app-content .action-primary--sage:active:not(:disabled),
+.app-content .action-primary--blue:active:not(:disabled) {
+  transform: none;
+  box-shadow: none !important;
+}
+
+/* Right Now: Starts panel and Study tag. */
+html[data-theme="dark"] .app-content .today-page__right-now [class*="bg-[var(--yellow-soft)]"] {
+  background: var(--p6-surface-selected) !important;
+  border-color: var(--p6-border-strong) !important;
+  color: var(--p6-text) !important;
+}
+
+html[data-theme="dark"] .app-content .today-page__right-now [class*="text-[var(--primary-dark)]"] {
+  color: var(--p6-text) !important;
+}
+
+/* Books and Essays shelves start at the left edge of the workspace. */
+.app-content .workspace-page__container {
+  margin-inline-start: 0 !important;
+  margin-inline-end: auto !important;
+  max-width: 72rem !important;
+}
+
+.app-content .workspace-page .reading-numbered-shelf {
+  width: 100%;
+  margin-inline: 0 !important;
+  text-align: left !important;
+}
+
+.app-content .workspace-page .reading-numbered-shelf__list,
+.app-content .workspace-page .reading-numbered-shelf__list > li {
+  width: 100%;
+  margin-inline: 0 !important;
+  text-align: left !important;
+}
+
+.app-content .workspace-page .reading-numbered-shelf__list {
+  padding-inline: 0 !important;
+}
+
+.app-content .workspace-page .reading-list-row {
+  width: 100%;
+  margin-inline: 0 !important;
+  text-align: left !important;
+}
+
+.app-content .workspace-page .reading-list-row__title,
+.app-content .workspace-page .reading-numbered-shelf h2 {
+  text-align: left !important;
+}
 html[data-theme="dark"] .app-content [class~="bg-blue-50"],
 html[data-theme="dark"] .app-content [class~="bg-sky-50"] {
   background: var(--p6-info-bg) !important;
