@@ -338,6 +338,7 @@ const previousQuestions = useMemo(
             </label>
           </div>
         )}
+                  <div className="study-preparation-selectors grid gap-3 sm:grid-cols-3">
       </section>
 
       {(notice || problem || formMessage || formProblem) && (
@@ -365,7 +366,7 @@ const previousQuestions = useMemo(
               <details className="study-preparation-section">
   <summary className="study-preparation-section__summary">
     <span className="text-base font-extrabold text-[var(--p6-text)]">
-      Topic preparation
+      Topic setup & readiness
     </span>
     <span className={readiness?.ready ? "prep-readiness-status prep-readiness-status--ready" : "prep-readiness-status"}>
       {readiness?.ready ? "Ready" : (readiness?.blockers.length ?? 0) + " blockers"}
@@ -410,25 +411,12 @@ const previousQuestions = useMemo(
                   <p className="mt-3 text-xs text-[var(--p6-text-secondary)]">This is a legacy topic without an explicit preparation status. It remains planner-compatible until you review it; it is not represented as Ready.</p>
                 )}
                 </div>
-                {selectedUnit && (
-            <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4">
-              <div>
-                <h2 className="font-extrabold text-[var(--p6-text)]">Unit planner eligibility</h2>
-                <p className="mt-1 text-sm text-[var(--p6-text-secondary)]">
-                  {selectedUnit.planner_excluded ? "This unit is excluded from new initial-learning selections." : "This unit may contribute eligible topics to new initial-learning plans."}
-                </p>
-                <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">Exclusion does not delete topics, question banks, scheduled reviews or unfinished sessions.</p>
-              </div>
-              <button type="button" onClick={toggleUnitExclusion} className={secondaryButton}>
-                {selectedUnit.planner_excluded ? "Restore unit to planner" : "Exclude unit from planner"}
-              </button>
-            </section>
-          )}
+                
               </details>
 
           
 
-              <details open className="study-preparation-section">
+              <details className="study-preparation-section">
                 <summary className="study-preparation-section__summary">
                   <span className="text-base font-extrabold text-[var(--p6-text)]">Question bank</span>
                   <span className="text-sm font-semibold text-[var(--p6-text-secondary)]">{questions.length} questions</span>

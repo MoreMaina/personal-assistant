@@ -9657,10 +9657,23 @@ html[data-theme="dark"] .app-content [class~="text-blue-900"],
 html[data-theme="dark"] .app-content [class~="text-sky-900"] {
   color: var(--p6-info-text) !important;
 }
-/* Anchor the Reading workspace to the left of the shared content rail. */
+/* Reading workspace: full-width content rail, aligned from the left. */
 body:has(.workspace-page) .app-content > .page-shell {
   box-sizing: border-box;
-  width: calc(100% - var(--p6-space-gutter) - var(--p6-space-gutter)) !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-inline: var(--p6-space-gutter) !important;
+}
+
+body:has(.workspace-page) .app-content .workspace-page,
+body:has(.workspace-page) .app-content .workspace-page__container {
+  box-sizing: border-box;
+  width: 100% !important;
   max-width: none !important;
   margin-inline: 0 !important;
+}
+
+body:has(.workspace-page) .app-content .workspace-page__container {
+  padding-inline: 0 !important;
 }
