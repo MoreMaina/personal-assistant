@@ -1711,7 +1711,7 @@ export async function POST(request: Request) {
             { role: "user", content: prompt },
           ],
           stream: false,
-          max_tokens: isTaskProposal ? 250 : MAX_OUTPUT_TOKENS,
+          max_tokens: isTaskProposal ? 700 : MAX_OUTPUT_TOKENS,
           ...(isTaskProposal
             ? {
                 response_format: { type: "json_object" },
@@ -1777,7 +1777,7 @@ export async function POST(request: Request) {
                 parts: [{ text: prompt }],
               }],
               generationConfig: {
-                maxOutputTokens: isTaskProposal ? 250 : isDailyPlan ? 700 : MAX_OUTPUT_TOKENS,
+                maxOutputTokens: isTaskProposal ? 700 : isDailyPlan ? 700 : MAX_OUTPUT_TOKENS,
                 ...(isDailyPlan ? { thinkingConfig: { thinkingLevel: "LOW" } } : {}),
                 ...(isTaskProposal
                   ? {

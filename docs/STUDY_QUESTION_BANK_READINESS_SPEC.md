@@ -1,6 +1,6 @@
 # Study Question Bank and Planner Readiness
 
-Status: Draft for review; not implemented.
+Status: Implementation prepared in the consolidated local patch; Codespace application and acceptance validation pending.
 Date: 21 November 2026.
 This is additive to the locked Study MVP v1.2 specification. It must
 not silently weaken or rewrite that specification.
@@ -38,8 +38,13 @@ Scheduled Review selections and unfinished Gate selections are
 immutable. Editing or deactivating a question must not silently
 change an existing session's selected IDs.
 
-Any explicit replacement inside an unfinished session needs its own
-auditable workflow and must be designed before implementation.
+A replacement does not rewrite an unfinished session. The old question
+remains active for an unfinished Review/Gate/Guided Practice session but
+is marked unavailable for newly created sessions. A replacement is
+appended with a new ID/version and points to the superseded question.
+No mid-session replacement is offered. If the user needs to change a
+selected question in an unfinished session, that requires a separate,
+auditable session-level workflow.
 
 ## 4. Topic preparation status
 
@@ -53,8 +58,10 @@ Proposed controls:
 
 Show actionable reasons why a topic is not Ready.
 
-Existing legacy topics must not silently disappear from the planner.
-Define a transparent backwards-compatible treatment before coding.
+Existing legacy topics remain planner-compatible if their
+`preparation_status` is absent. The UI labels them “Needs review (legacy)”
+and does not represent them as Ready. Newly imported topics default to
+Draft.
 
 ## 5. Unit-level exclusion
 
@@ -78,9 +85,11 @@ Check that:
 The locked Study specification requires 3–5 retrieval tasks per topic,
 at least three selected Gate tasks, and 2–3 tasks for each Review.
 
-Proposed initial rule: at least three usable active Gate-purpose
-questions, with a useful bank of 3–5 tasks. Confirm exact thresholds
-and warning/blocking behaviour before implementation.
+The implemented initial rule is at least three usable Gate-purpose
+questions, at least two usable Review/Retry questions, and 3–5 total
+questions eligible for new sessions. Ready is explicitly user-approved
+but is automatically downgraded to Draft if a later objective or
+question-bank edit invalidates these checks.
 
 Objective validation must reject generic placeholders such as
 "General", "TBD", "N/A" and "To be determined", without relying only
@@ -94,9 +103,11 @@ Show clear blockers: missing or generic objective, missing objective
 type, insufficient active Gate questions, incomplete criteria,
 topic exclusion or unit exclusion.
 
-Do not silently drop existing obligations. Define interactions with
-protected new learning, prerequisites, existing reviews, Gate
-lifecycle and unfinished sessions.
+Existing due Reviews and unfinished Gate sessions retain their original
+selected IDs. Unit exclusion and topic Excluded status prevent new
+planner selection; they do not delete existing Reviews, TaskEvents,
+question records or unfinished session evidence. New initial-learning
+work is filtered through topic readiness and unit exclusion.
 
 ## 8. Acceptance tests
 
@@ -114,14 +125,23 @@ lifecycle and unfinished sessions.
 - [ ] CSV import remains safe with conflicting existing questions.
 - [ ] Add planner, history and snapshot regression tests.
 
-## 9. Decisions required before coding
+## 9. Resolved implementation decisions
 
-- Exact question versioning model.
-- Exact objective validation examples and rules.
-- Whether Ready is manually approved, automatically derived, or both.
-- How selected questions can be replaced in unfinished sessions.
-- How unit exclusion handles already scheduled obligations.
-- How legacy topics receive readiness without silently losing work.
+- Versioning: append-only RetrievalTask IDs with `version_number` and
+  `supersedes_task_id`; the old prompt and criteria are not overwritten.
+- Future availability: `available_for_new_sessions` is separate from
+  `active`, so an in-flight session can finish with the exact question
+  it selected while new sessions use only eligible versions.
+- Ready: manually approved after objective and question checks; edits
+  that invalidate the checks automatically return the topic to Draft.
+- Thresholds: 3–5 total eligible questions, at least three Gate and at
+  least two Review/Retry questions, with non-empty prompts and answer
+  criteria. Generic objectives are blocked in addition to missing ones.
+- Existing legacy topics without explicit preparation status remain
+  eligible until reviewed; newly imported topics default to Draft.
+- Unit exclusion affects future new-topic planner selection and is
+  reversible. Existing Review/Gate work and historical records remain.
 
-Do not begin schema changes until these decisions and migration
-behaviour are explicit.
+The implementation is present in the consolidated patch but has not
+yet passed the Codespace validation cycle. Preserve this document's
+acceptance checklist and complete it against the applied patch.

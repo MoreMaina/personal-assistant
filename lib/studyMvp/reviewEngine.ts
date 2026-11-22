@@ -1,3 +1,4 @@
+import { isRetrievalTaskAvailableForNewSessions } from "./preparationReadiness";
 import type {
   EntityId,
   ISODate,
@@ -180,7 +181,7 @@ export function selectRetrievalTasks(
   const available = tasks.filter(
     (task) =>
       task.topic_id === options.topicId &&
-      task.active,
+      isRetrievalTaskAvailableForNewSessions(task, tasks),
   );
 
   const minimum = options.purpose === "gate" ? 3 : 2;

@@ -95,7 +95,7 @@ function formatTime(milliseconds: number): string {
   );
 }
 
-function completePhase(current: TimerState): {
+function completePhase(current: Pick<TimerState, "phase" | "completedFocusSessions">): {
   state: TimerState;
   message: string;
 } {
@@ -192,7 +192,10 @@ export default function FocusTimer() {
       return;
     }
 
-    const completed = completePhase(timer);
+    const completed = completePhase({
+      phase: timer.phase,
+      completedFocusSessions: timer.completedFocusSessions,
+    });
     setTimer(completed.state);
     setCompletionMessage(completed.message);
   }, [

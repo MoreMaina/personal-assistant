@@ -298,3 +298,254 @@ describe("buildAssistantContext", () => {
   });
 
 });
+
+
+describe("Study progress evidence for AI Copilot", () => {
+  it("provides evidence summaries instead of treating the catalogue as progress", () => {
+    const context = buildAssistantContext(
+      {},
+      "2026-11-22",
+      {
+        courses: [{
+          id: "course-1",
+          name: "Pharmacy",
+          code: "PHA",
+          archived_at: null,
+        }],
+        units: [{
+          id: "unit-1",
+          course_id: "course-1",
+          name: "Pharmacology",
+        }],
+        topics: [
+          {
+            id: "topic-1",
+            unit_id: "unit-1",
+            title: "Autonomic drugs",
+            status: "in_learning",
+            weakness_flag: true,
+          },
+          {
+            id: "topic-2",
+            unit_id: "unit-1",
+            title: "Antibiotics",
+            status: "not_started",
+          },
+        ],
+        review_events: [
+          {
+            id: "review-1",
+            topic_id: "topic-1",
+            status: "pending",
+            current_due_date: "2026-11-19",
+            current_priority: "high",
+          },
+          {
+            id: "review-2",
+            topic_id: "topic-2",
+            status: "completed",
+            current_due_date: "2026-11-21",
+          },
+        ],
+        task_events: [
+          {
+            id: "event-1",
+            event_type: "attempt",
+            logged_at: "2026-11-20T08:00:00.000Z",
+            result: "green",
+            response_text: "PRIVATE STUDENT ANSWER",
+          },
+          {
+            id: "event-2",
+            event_type: "attempt",
+            logged_at: "2026-11-21T08:00:00.000Z",
+            result: "yellow",
+          },
+          {
+            id: "event-3",
+            event_type: "defer",
+            logged_at: "2026-11-21T09:00:00.000Z",
+            disposition: "DEFER",
+            reason: "PRIVATE REASON",
+          },
+          {
+            id: "event-old",
+            event_type: "attempt",
+            logged_at: "2026-11-01T08:00:00.000Z",
+            result: "red",
+          },
+        ],
+        work_sessions: [
+          {
+            id: "session-1",
+            logged_at: "2026-11-20T09:00:00.000Z",
+            actual_duration_min: 45,
+            notes: "PRIVATE SESSION NOTES",
+          },
+          {
+            id: "session-2",
+            logged_at: "2026-11-21T09:00:00.000Z",
+            actual_duration_min: 30,
+          },
+          {
+            id: "session-old",
+            logged_at: "2026-11-01T09:00:00.000Z",
+            actual_duration_min: 120,
+          },
+        ],
+        assignments: [{
+          id: "assignment-1",
+          title: "Research report",
+          due_date: "2026-11-25",
+          status: "in_progress",
+          importance: "high",
+        }],
+        exams: [{
+          id: "exam-1",
+          course_id: "course-1",
+          type: "cat2",
+          date: "2026-12-01",
+        }],
+        settings: {
+          trial_start_date: "2026-11-01",
+          trial_end_date: "2026-11-28",
+          week4_evaluation_start: "2026-11-22",
+          week4_evaluation_end: "2026-11-28",
+        },
+        trial_periods: [{
+          id: "trial-current",
+          start_date: "2026-11-01",
+          end_date: "2026-11-28",
+          week4_evaluation_start: "2026-11-22",
+          week4_evaluation_end: "2026-11-28",
+          created_at: "2026-11-01T07:00:00.000Z",
+          source: "user_confirmed",
+        }],
+        current_trial_id: "trial-current",
+        weekly_metrics: [{
+          trial_id: "trial-current",
+          week_number: 1,
+          week_start: "2026-11-01",
+          week_end: "2026-11-07",
+          overall_on_time_completion_pct: 80,
+          priority_1_3_on_time_completion_pct: 90,
+          deferral_rate_pct: 15,
+          overdue_critical_backlog_min: 20,
+          source_event_ids: ["event-old"],
+          source_snapshot: [],
+        }, {
+          week_number: 2,
+          week_start: "2026-11-08",
+          week_end: "2026-11-14",
+          overall_on_time_completion_pct: 75,
+          priority_1_3_on_time_completion_pct: 85,
+          deferral_rate_pct: 20,
+          overdue_critical_backlog_min: 25,
+          source_event_ids: [],
+          source_snapshot: [],
+        }],
+      },
+      true,
+    );
+
+    const selected = selectRelevantAssistantContext(
+      context,
+      "Review my study progress",
+    );
+
+    expect(selected.contextScope).toBe("study progress review");
+    expect(selected).toHaveProperty("study");
+    expect(selected).not.toHaveProperty("projects");
+    expect(selected).not.toHaveProperty("books");
+
+    const serialized = JSON.stringify(selected);
+    const study = selected.study as {
+      progressEvidence: {
+        topics: {
+          total: number;
+          flaggedWeaknessCount: number;
+          legacyNeedsReviewCount: number;
+        };
+        reviews: {
+          overdueOpenCount: number;
+        };
+        taskEvents: {
+          recentSevenDayCount: number;
+          recentResultCounts: Record<string, number>;
+        };
+        workSessions: {
+          recentStudyMinutes: number;
+          recentStudyDays: number;
+        };
+        upcomingCommitments: {
+          assignmentsWithinFourteenDays: unknown[];
+          examsWithinThirtyDays: unknown[];
+        };
+        trial: { status: string; id: string | null };
+        trialHistory: {
+          currentTrialId: string | null;
+          historyCount: number;
+          periods: Array<{ id: string; status: string; source: string }>;
+        };
+        weeklyMetrics: {
+          legacyUnassignedCount: number;
+          trialAttributedCount: number;
+        };
+      };
+    };
+
+    expect(study.progressEvidence.topics).toMatchObject({
+      total: 2,
+      flaggedWeaknessCount: 1,
+      legacyNeedsReviewCount: 2,
+    });
+    expect(study.progressEvidence.reviews.overdueOpenCount).toBe(1);
+    expect(study.progressEvidence.taskEvents).toMatchObject({
+      recentSevenDayCount: 3,
+      recentResultCounts: {
+        green: 1,
+        yellow: 1,
+      },
+    });
+    expect(study.progressEvidence.workSessions).toMatchObject({
+      recentStudyMinutes: 75,
+      recentStudyDays: 2,
+    });
+    expect(study.progressEvidence.upcomingCommitments.assignmentsWithinFourteenDays)
+      .toHaveLength(1);
+    expect(study.progressEvidence.upcomingCommitments.examsWithinThirtyDays)
+      .toHaveLength(1);
+    expect(study.progressEvidence.trial).toMatchObject({
+      id: "trial-current",
+      status: "active",
+      source: "user_confirmed",
+    });
+    expect(study.progressEvidence.trialHistory).toMatchObject({
+      currentTrialId: "trial-current",
+      historyCount: 1,
+      periods: [{ id: "trial-current", status: "active", source: "user_confirmed" }],
+    });
+    expect(study.progressEvidence.weeklyMetrics).toMatchObject({
+      legacyUnassignedCount: 1,
+      trialAttributedCount: 1,
+    });
+
+    expect(serialized).not.toContain("PRIVATE STUDENT ANSWER");
+    expect(serialized).not.toContain("PRIVATE REASON");
+    expect(serialized).not.toContain("PRIVATE SESSION NOTES");
+  });
+
+  it("does not describe unavailable Study evidence as an empty completed record", () => {
+    const context = buildAssistantContext({}, "2026-11-22", null, false);
+    const selected = selectRelevantAssistantContext(
+      context,
+      "Review my study progress",
+    );
+
+    const study = selected.study as {
+      progressEvidence: { evidenceStatus: string };
+    };
+
+    expect(study.progressEvidence.evidenceStatus).toBe("unavailable");
+  });
+});

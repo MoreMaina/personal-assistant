@@ -167,7 +167,11 @@ export interface Unit {
   code: string;
   name: string;
   order_index: number;
+  /** Reversible exclusion from new planner selection. */
+  planner_excluded?: boolean;
 }
+
+export type TopicPreparationStatus = "draft" | "ready" | "excluded";
 
 export interface Topic {
   id: EntityId;
@@ -194,6 +198,12 @@ export interface Topic {
 
   weakness_flag: boolean;
   topic_importance: TopicImportance;
+
+  /**
+   * Absent on legacy topics: shown as Needs review without changing
+   * their existing planner behaviour until explicitly reviewed.
+   */
+  preparation_status?: TopicPreparationStatus;
 }
 
 export type LectureKind = "lecture" | "lab" | "tutorial";
@@ -218,6 +228,12 @@ export interface RetrievalTask {
   estimated_duration_min: number;
   last_used_on: ISODate | null;
   active: boolean;
+  /** Optional append-only version metadata; absent on legacy questions. */
+  version_number?: number;
+  /** The preceding question version, when this record replaces another. */
+  supersedes_task_id?: EntityId | null;
+  /** False prevents new selections while retaining active unfinished-session references. */
+  available_for_new_sessions?: boolean;
 }
 
 export interface ReviewEvent {
@@ -379,6 +395,24 @@ export interface EngineChangeRecord {
   change: string;
 }
 
+/**
+ * Immutable identity and dates for one four-week Study trial.
+ * Legacy periods are reconstructed without rewriting old evidence.
+ */
+export interface StudyTrialPeriod {
+  id: EntityId;
+  start_date: ISODate;
+  end_date: ISODate;
+  week4_evaluation_start: ISODate;
+  week4_evaluation_end: ISODate;
+  created_at: ISODateTime;
+  source: "legacy" | "user_confirmed";
+  /** Engine version frozen when this trial identity was created, when known. */
+  engine_version?: string;
+  /** Human-readable reason, preserved independently of mutable settings. */
+  creation_reason?: string;
+}
+
 export interface StudySettings {
   timezone: string;
 
@@ -429,6 +463,8 @@ export interface WeeklyMetricSampleCounts {
 }
 
 export interface WeekMetrics {
+  /** Absent/null means this is a legacy snapshot without trial attribution. */
+  trial_id?: EntityId | null;
   week_number: number;
   week_start: ISODate;
   week_end: ISODate;
@@ -514,6 +550,11 @@ export interface StudyMvpState {
 
   settings: StudySettings;
   weekly_metrics: WeekMetrics[];
+
+  /** Optional for backwards compatibility; entries are append-only. */
+  trial_periods?: StudyTrialPeriod[];
+  /** The period currently shown by the Study workspace. */
+  current_trial_id?: EntityId | null;
 
   /**
    * Append-only audit history for settings changes.

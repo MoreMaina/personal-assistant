@@ -42,6 +42,11 @@ export default function GeneralSettingsPage() {
   const [selectedSemesterId, setSelectedSemesterId] = useState("");
   const [ready, setReady] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedAcademicDraft, setSavedAcademicDraft] = useState<{
+    programName: string;
+    studyYear: string;
+    selectedSemesterId: string;
+  } | null>(null);
   const [error, setError] = useState("");
   useAutoDismissMessage(error, setError);
   const {
@@ -83,6 +88,14 @@ export default function GeneralSettingsPage() {
     setStudyLastFinalDateDraft(settings.last_final_exam_date ?? "");
   }, [studyState]);
 
+  const academicDetailsDirty =
+    savedAcademicDraft !== null &&
+    (
+      programName.trim() !== savedAcademicDraft.programName ||
+      studyYear.trim() !== savedAcademicDraft.studyYear ||
+      selectedSemesterId !== savedAcademicDraft.selectedSemesterId
+    );
+
   const [catalogImportText, setCatalogImportText] = useState("");
   const [catalogImportDiagnostics, setCatalogImportDiagnostics] =
     useState<TopicImportDiagnostic[]>([]);
@@ -108,8 +121,12 @@ export default function GeneralSettingsPage() {
 
   useEffect(() => {
     const program = getGlobalProgram();
-    setProgramName(program?.name ?? "");
-    setStudyYear(String(getAcademicSettings().studyYear));
+    const loadedProgramName = program?.name ?? "";
+    const loadedStudyYear = String(getAcademicSettings().studyYear);
+    let loadedSemesterId = "";
+
+    setProgramName(loadedProgramName);
+    setStudyYear(loadedStudyYear);
 
     if (program) {
       const fixed = ensureFixedSemesters(program.id);
@@ -117,9 +134,15 @@ export default function GeneralSettingsPage() {
 
       const currentId = getCurrentSemesterId();
       const currentFixed = fixed.find((semester) => semester.id === currentId);
-      setSelectedSemesterId(currentFixed ? String(currentFixed.id) : "");
+      loadedSemesterId = currentFixed ? String(currentFixed.id) : "";
+      setSelectedSemesterId(loadedSemesterId);
     }
 
+    setSavedAcademicDraft({
+      programName: loadedProgramName.trim(),
+      studyYear: loadedStudyYear,
+      selectedSemesterId: loadedSemesterId,
+    });
     setReady(true);
   }, []);
 
@@ -418,6 +441,13 @@ export default function GeneralSettingsPage() {
       }
 
       setStudyYear(String(year));
+      setSavedAcademicDraft({
+        programName: programName.trim(),
+        studyYear: String(year),
+        selectedSemesterId: activeSemester
+          ? String(activeSemester.id)
+          : "",
+      });
       setSaved(true);
     } catch {
       setError("Settings could not be saved. Please check browser storage and try again.");
@@ -616,10 +646,10 @@ export default function GeneralSettingsPage() {
       </header>
 
       <form onSubmit={handleSave} className="space-y-6">
-        <details className="rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
-          <summary className="cursor-pointer text-xl font-bold">
-            Academic details
-          </summary>
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6">
+          <div className="text-xl font-bold">
+            <h2>Academic details</h2>
+          </div>
 
           <div className="mt-4 space-y-5">
             <section className="space-y-4">
@@ -713,7 +743,7 @@ export default function GeneralSettingsPage() {
 
 
           </div>
-        </details>
+        </section>
 
         {error && (
           <p role="alert" className="rounded-xl bg-[var(--accent-soft)] p-3 font-bold text-[var(--accent-dark)]">
@@ -722,14 +752,16 @@ export default function GeneralSettingsPage() {
         )}
 
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="submit"
-            disabled={!ready}
-            className="min-h-11 rounded-full bg-[var(--primary)] px-5 py-3 font-bold text-white disabled:opacity-50"
-          >
-            Save settings
-          </button>
-          {saved && (
+          {academicDetailsDirty && (
+            <button
+              type="submit"
+              disabled={!ready}
+              className="min-h-11 rounded-full bg-[var(--primary)] px-5 py-3 font-bold text-white disabled:opacity-50"
+            >
+              Save settings
+            </button>
+          )}
+          {saved && !academicDetailsDirty && (
             <p role="status" className="text-sm font-semibold text-[var(--primary-dark)]">
               General settings saved on this device.
             </p>
@@ -740,36 +772,36 @@ export default function GeneralSettingsPage() {
       <details className="group rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)] marker:hidden [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="font-extrabold text-[var(--ink)]">
+            <span className="flex flex-nowrap items-center gap-2">
+              <span className="whitespace-nowrap text-sm font-extrabold text-[var(--ink)]">
                 Study System settings
               </span>
               {studyTrialActive ? (
-                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
+                <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
                   Trial active · locked
                 </span>
               ) : (!studyState || studyLoadingError || studySyncConflict || studyProblem) ? (
-                <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">
+                <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">
                   Study settings need attention
                 </span>
               ) : studyState?.settings.trial_start_date &&
                   studyState.settings.trial_end_date &&
                   studySettingsToday < studyState.settings.trial_start_date ? (
-                <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-900">
+                <span className="shrink-0 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-900">
                   Trial scheduled
                 </span>
               ) : studyState?.settings.trial_start_date &&
                   studyState.settings.trial_end_date &&
                   studySettingsToday > studyState.settings.trial_end_date ? (
-                <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">
+                <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">
                   Trial complete · settings unlocked
                 </span>
               ) : studyState?.settings.trial_start_date ? (
-                <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
+                <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-900">
                   Trial dates set
                 </span>
               ) : (
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-900">
+                <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-900">
                   Pre-trial setup
                 </span>
               )}
@@ -777,10 +809,6 @@ export default function GeneralSettingsPage() {
             <span className="mt-1 block text-sm leading-relaxed text-[var(--ink-soft)]">
               Configure study limits, review intervals and the final-exam cutoff.
             </span>
-          </span>
-          <span className="shrink-0 rounded-full border border-[var(--border)] px-3 py-2 text-xs font-bold text-[var(--ink-soft)]">
-            <span className="group-open:hidden">Show settings</span>
-            <span className="hidden group-open:inline">Hide settings</span>
           </span>
         </summary>
 
@@ -1110,10 +1138,6 @@ export default function GeneralSettingsPage() {
             <span className="mt-1 block text-sm font-medium text-[var(--muted)]">
               Manage external reminders sent to this device.
             </span>
-          </span>
-          <span className="shrink-0 rounded-full border border-[var(--border)] px-3 py-2 text-xs font-bold text-[var(--ink-soft)]">
-            <span className="group-open:hidden">Show settings</span>
-            <span className="hidden group-open:inline">Hide settings</span>
           </span>
         </summary>
         <div className="mt-4">

@@ -145,16 +145,6 @@ export default function AppUtilitiesMenu() {
           </button>
 
           <Link
-            href="/study/metrics"
-            role="menuitem"
-            className="app-utilities__action"
-            onClick={() => setOpen(false)}
-          >
-            <AppIcon name="metrics" size={18} />
-            <span>Study metrics</span>
-          </Link>
-
-          <Link
             href="/settings"
             role="menuitem"
             className="app-utilities__action"
@@ -163,7 +153,6 @@ export default function AppUtilitiesMenu() {
             <AppIcon name="settings" size={18} />
             <span>General settings</span>
           </Link>
-
           <Link
             href="/settings/ai"
             role="menuitem"
@@ -173,7 +162,6 @@ export default function AppUtilitiesMenu() {
             <AppIcon name="settings" size={18} />
             <span>AI settings</span>
           </Link>
-
           <Link
             href="/backup"
             role="menuitem"
@@ -183,7 +171,15 @@ export default function AppUtilitiesMenu() {
             <AppIcon name="backup" size={18} />
             <span>Backup & recovery</span>
           </Link>
-
+          <Link
+            href="/study/metrics"
+            role="menuitem"
+            className="app-utilities__action"
+            onClick={() => setOpen(false)}
+          >
+            <AppIcon name="metrics" size={18} />
+            <span>Study metrics</span>
+          </Link>
           <div className="app-utilities__divider" />
 
           <div className="app-utilities__sync-row">

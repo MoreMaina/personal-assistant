@@ -95,7 +95,7 @@ describe("custom provider request configuration", () => {
     });
   });
 
-  it("preserves the 250-token task-proposal budget", () => {
+  it("uses a larger structured-output budget for task proposals", () => {
     expect(
       buildCustomProviderRequestOptions({
         isGroqGPTOSS: false,
@@ -103,7 +103,7 @@ describe("custom provider request configuration", () => {
         maxOutputTokens: 700,
       }),
     ).toEqual({
-      max_tokens: 250,
+      max_tokens: 700,
       response_format: { type: "json_object" },
     });
   });

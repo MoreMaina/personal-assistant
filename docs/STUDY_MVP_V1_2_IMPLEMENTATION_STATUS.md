@@ -11,6 +11,76 @@
 > This historical log is retained; its earlier checkpoints must not be
 > deleted or mistaken for the latest repository state.
 
+
+## Current continuity checkpoint — 22 November 2026 (consolidated patch pending Codespace application)
+
+This checkpoint supersedes the historical 15 November working-branch
+and next-action instructions below. Preserve the historical log.
+
+### Git baseline and working-tree protection
+
+- Repository: `MoreMaina/personal-assistant`.
+- User's current Codespace branch: `feature/study-completion-and-palette6`.
+- Local HEAD and `origin/main`: `051d9f61c9e122e004eb9fc8215439340a8ec7ca` (PR #13 merge).
+- The feature branch is not present on GitHub; implementation changes
+  are uncommitted and must stay on this branch.
+- The supplied source bundle contains the changed application and
+  library files, including two untracked readiness TS files. Other
+  recovery/helper scripts, cache and the Supabase migration backup were
+  not included in the bundle; preserve them untouched in the Codespace.
+- The user reports more than 90% of Codespaces hours consumed. Do not
+  create another Codespace, install packages unnecessarily or run
+  repeated builds.
+
+### Consolidated implementation included in the prepared patch
+
+- Study preparation route with course/unit/topic selection, objective
+  editing, readiness blockers, Draft/Ready/Excluded state and reversible
+  unit exclusion.
+- Question-bank add, version/replace, deactivate and restore operations.
+  Replacements append a new question ID and version. A separate
+  `available_for_new_sessions` flag keeps questions out of new selections
+  while preserving `active=true` for open Review/Gate/Guided Practice
+  sessions that need the exact original IDs.
+- Planner, Gate, Review and Guided Practice new-selection paths use
+  question availability. Existing selected-session attempts retain their
+  question identities.
+- Newly imported topics default to Draft; unclassified legacy topics
+  remain planner-compatible until reviewed. Ready is demoted to Draft
+  when an edit invalidates objective/question readiness.
+- Append-only repeatable trial identity (`trial_periods`,
+  `current_trial_id`), legacy normalization, engine/version metadata,
+  non-overlap checks and trial-specific weekly metric identities.
+- Trial-aware Metrics reporting, historical period selection,
+  trial-scoped snapshots/comparison flags/exports, and unassigned legacy
+  metric handling. The legacy date-reset UI path is removed.
+- AI Copilot progress context includes trial history and distinguishes
+  trial-attributed metrics from unassigned legacy snapshots.
+- Preserve the user's previous Books, Essays, Settings, Today, Calendar,
+  Palette 6, system dark-mode, TimeInput, utilities-menu and Study UI
+  refinements. Full visual verification remains pending.
+
+### Validation status and exact next action
+
+- The 127 previously reported tests were from the earlier local work;
+  they are not a validation of this consolidated patch.
+- Additional regression tests are included for preparation readiness,
+  question versioning/session preservation and trial-linked metrics.
+- The supplied bundle did not contain `node_modules`; no full Vitest,
+  ESLint or Next production build could be run in the patch-preparation
+  environment. Global TypeScript checking was attempted but cannot
+  resolve the project's missing Next/React/Vitest/Node dependencies.
+- Apply the delivered patch to the existing Codespace only after
+  `git apply --check` passes. Then run `git diff --check`,
+  `npx tsc --noEmit`, focused Study tests, full `npm test`, lint and one
+  final `npm run build` in a single validation cycle using existing
+  dependencies. Fix any failures before staging.
+- Do not start or reset a trial, change Supabase, merge `main` or deploy.
+- Review and explicitly stage only intended named files. Preserve all
+  untracked recovery files. Commit/push the feature branch only after the
+  user reviews the final validation results.
+
+
 Study MVP v1.2 — Implementation Status & Conversation Handoff
 Last updated: 15 November 2026 (Africa/Nairobi)
 Repository: MoreMaina/personal-assistant

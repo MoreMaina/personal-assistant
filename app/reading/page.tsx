@@ -25,9 +25,6 @@ import {
   updateBook,
   updateEssay,
 } from "@/lib/readingStorage";
-import { getCombinedActivitySessions } from "@/lib/activity/queries";
-import { toReadingActivitySession } from "@/lib/activity/adapters/readingSession";
-import type { ActivitySession } from "@/lib/activity/types";
 import ProjectsPanel from "@/app/components/ProjectsPanel";
 
 type Tab = "books" | "essays" | "projects";
@@ -89,14 +86,6 @@ function formatDuration(
     .padStart(2, "0")}`;
 }
 
-const READING_BOOK_ACTIVITY_KEY_PREFIX = "pa:v1:reading:book:";
-
-function getReadingBookActivitySessions(): ActivitySession[] {
-  return getCombinedActivitySessions().filter((session) =>
-    session.activityKey.startsWith(READING_BOOK_ACTIVITY_KEY_PREFIX),
-  );
-}
-
 export default function ReadingPage() {
   const router = useRouter();
   const [workflowBookId, setWorkflowBookId] = useState<number | null>(null);
@@ -154,11 +143,7 @@ export default function ReadingPage() {
     useState<
       "Pleasure" | "Course"
     >("Pleasure");
-
-  const [totalPages, setTotalPages] =
-    useState("");
-
-  const [essayTitle, setEssayTitle] =
+const [essayTitle, setEssayTitle] =
     useState("");
 
   const [essayAuthor, setEssayAuthor] =
@@ -179,7 +164,6 @@ export default function ReadingPage() {
   const [clock, setClock] =
     useState(0);
 
-  const [sessions, setSessions] = useState<ActivitySession[]>([]);
 
   const [launchHandled, setLaunchHandled] =
     useState(false);
@@ -201,7 +185,6 @@ export default function ReadingPage() {
         setTitle("");
         setAuthor("");
         setCategory("Pleasure");
-        setTotalPages("");
         setShowBookForm(false);
       }
       if (showEssayForm) {
@@ -221,7 +204,6 @@ export default function ReadingPage() {
     const loadedEssays = getEssays();
     setBooks(loadedBooks);
     setEssays(loadedEssays);
-    setSessions(getReadingBookActivitySessions());
     setCollapsedBookIds(new Set(loadedBooks.map((book) => book.id)));
     setCollapsedEssayIds(new Set(loadedEssays.map((essay) => essay.id)));
     setClock(Date.now());
@@ -355,35 +337,17 @@ export default function ReadingPage() {
   ) => {
     event.preventDefault();
 
-    const pages = Number(totalPages);
-    if (
-      !title.trim() ||
-      !author.trim() ||
-      !Number.isSafeInteger(pages) ||
-      pages < 1
-    ) {
-      return;
-    }
+    if (!title.trim() || !author.trim()) return;
 
     const existing = books.find((book) => book.id === editingBookId);
 
     if (existing) {
-      const currentPage = Math.min(existing.currentPage, pages);
-      const status: Book["status"] =
-        currentPage >= pages
-          ? "Finished"
-          : existing.status === "Finished"
-            ? currentPage > 0 ? "Reading" : "Want to read"
-            : existing.status;
-
+      // Preserve legacy page data; it is no longer edited or displayed.
       const updated: Book = {
         ...existing,
         title: title.trim(),
         author: author.trim(),
         category,
-        totalPages: pages,
-        currentPage,
-        status,
       };
 
       updateBook(updated);
@@ -395,7 +359,7 @@ export default function ReadingPage() {
         title: title.trim(),
         author: author.trim(),
         category,
-        totalPages: pages,
+        totalPages: 0,
       });
 
       setBooks((current) => [...current, book]);
@@ -410,7 +374,6 @@ export default function ReadingPage() {
     setTitle("");
     setAuthor("");
     setCategory("Pleasure");
-    setTotalPages("");
     setShowBookForm(false);
   }
 
@@ -726,8 +689,7 @@ export default function ReadingPage() {
         ),
       );
 
-    const session =
-      saveReadingSession({
+    saveReadingSession({
         bookId: activeBookId,
         startedAt,
         endedAt:
@@ -735,49 +697,9 @@ export default function ReadingPage() {
         minutes,
       });
 
-    setSessions((current) => [
-      ...current,
-      toReadingActivitySession(session),
-    ]);
 
     setActiveBookId(null);
     setStartedAt(null);
-  };
-
-  const updateProgress = (
-    book: Book,
-    newPage: number,
-  ) => {
-    const page =
-      Math.min(
-        Math.max(
-          newPage,
-          0,
-        ),
-        book.totalPages,
-      );
-
-    const updated: Book = {
-      ...book,
-      currentPage: page,
-      status:
-        page >=
-        book.totalPages
-          ? "Finished"
-          : page > 0
-            ? "Reading"
-            : book.status,
-    };
-
-    updateBook(updated);
-
-    setBooks((current) =>
-      current.map((item) =>
-        item.id === updated.id
-          ? updated
-          : item,
-      ),
-    );
   };
 
   const startEssayFirstPass = (
@@ -1472,27 +1394,6 @@ export default function ReadingPage() {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium">
-                      Total pages
-                    </label>
-
-                    <input
-                      type="number"
-                      min="1"
-                      value={totalPages}
-                      onChange={(
-                        event,
-                      ) =>
-                        setTotalPages(
-                          event.target
-                            .value,
-                        )
-                      }
-                      className="mt-2 w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-4 py-3 text-[var(--ink)]"
-                      placeholder="300"
-                    />
-                  </div>
                 </div>
 
                 <div className="mt-5 flex justify-end gap-3">
@@ -1525,49 +1426,15 @@ export default function ReadingPage() {
                   </p>
                 ) : (
                   <ol className="reading-numbered-shelf__list">
-                    {books.map((book, index) => (
+                    {books.map((book) => (
                       <li key={book.id}>
                         <Link
                           href={`/reading/book/${book.id}`}
-                          className="reading-numbered-shelf__row"
+                          className="reading-list-row"
                         >
-                          <span className="reading-numbered-shelf__number">
-                            {index + 1}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-medium text-[var(--ink)]">
-                              {book.title}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-[var(--muted)]">
-                              {book.author || "Book"}
-                              {book.totalPages > 0
-                                ? ` · ${book.currentPage} of ${book.totalPages} pages`
-                                : ""}
-                            </span>
-                            <span className="mt-1 block text-[11px] leading-relaxed text-[var(--muted)]">
-                              {book.status === "Want to read"
-                                ? "Next: establish your purpose"
-                                : book.status === "Reading"
-                                  ? "Current stage: first pass"
-                                  : !book.wholeBookReconstruction ||
-                                      ![
-                                        book.wholeBookReconstruction.about,
-                                        book.wholeBookReconstruction.doing,
-                                        book.wholeBookReconstruction.development,
-                                        book.wholeBookReconstruction.changed,
-                                      ].every((value) => value.trim())
-                                    ? "Next: reconstruct the whole from memory"
-                                    : (book.secondPassSections ?? []).some(
-                                          (section) => !section.completed,
-                                        )
-                                      ? "Next: examine selected sections"
-                                      : book.readingDecision
-                                        ? `Decision: ${book.readingDecision}`
-                                        : "Next: choose what to revisit or apply"}
-                            </span>
-                          </span>
-                          <span aria-hidden="true" className="text-sm text-[var(--muted)]">
-                            ›
+                          <span className="reading-list-row__title">{book.title}</span>
+                          <span className="workspace-page__book-status">
+                            {book.status}
                           </span>
                         </Link>
                       </li>
@@ -1587,10 +1454,6 @@ export default function ReadingPage() {
               <div className="space-y-3">
                 {currentlyReading.map(
                   (book) => {
-                    const progress = book.totalPages > 0
-                      ? Math.min(100, Math.max(0, (book.currentPage / book.totalPages) * 100))
-                      : 0;
-
                     const active =
                       activeBookId ===
                       book.id;
@@ -1645,7 +1508,7 @@ export default function ReadingPage() {
                                 {book.title}
                               </Link>
                               <p className="mt-1 break-words text-xs text-[var(--ink-soft)] sm:text-sm">
-                                {book.author} · {book.category} · {book.currentPage}/{book.totalPages} pages
+                                {book.author} · {book.category}
                               </p>
                             </div>
                             <div className="shrink-0">
@@ -1680,26 +1543,7 @@ export default function ReadingPage() {
                           </div>
 
                           {!collapsedBookIds.has(book.id) && (
-                            <>
-                          <div>
-                            <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]">
-                              <div
-                                className="h-full rounded-full bg-[var(--primary)] transition-[width] duration-300"
-                                style={{
-                                  width: `${progress}%`,
-                                }}
-                              />
-                            </div>
-
-                            <p className="mt-1 text-xs text-[var(--muted)]">
-                              {Math.round(
-                                progress,
-                              )}
-                              % complete
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-3">
+                            <><div className="flex flex-wrap items-center gap-3">
                             {active ? (
                               <>
                                 <div className="rounded-xl border-2 border-[var(--border)] bg-[var(--surface-soft)] px-4 py-3 font-mono text-sm font-bold text-[var(--ink)]">
@@ -1732,30 +1576,7 @@ export default function ReadingPage() {
                               </button>
                             )}
 
-                            <details
-                              className="relative"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <summary className="cursor-pointer list-none py-2 text-sm font-bold text-[var(--primary-dark)] underline underline-offset-2">
-                                Edit pages
-                              </summary>
-                              <div className="mt-1 flex items-center gap-2">
-                                <label htmlFor={`book-page-${book.id}`} className="text-xs font-bold text-[var(--muted)]">
-                                  Page
-                                </label>
-                                <input
-                                  id={`book-page-${book.id}`}
-                                  type="number"
-                                  min="0"
-                                  max={book.totalPages}
-                                  value={book.currentPage}
-                                  onChange={(event) =>
-                                    updateProgress(book, Number(event.target.value))
-                                  }
-                                  className="min-h-9 w-20 rounded-lg border border-[var(--border)] bg-[var(--background)] px-2 text-sm font-bold text-[var(--ink)]"
-                                />
-                              </div>
-                            </details>
+
                           </div>
                             </>
                           )}
@@ -1903,7 +1724,7 @@ export default function ReadingPage() {
                           </Link>
                           {!collapsedBookIds.has(book.id) && (
                             <p className="mt-1 text-sm text-[var(--ink-soft)]">
-                              {book.author} · {book.totalPages} pages · Finished
+                              {book.author} · Finished
                             </p>
                           )}
                         </div>
@@ -2076,34 +1897,15 @@ export default function ReadingPage() {
                   </p>
                 ) : (
                   <ol className="reading-numbered-shelf__list">
-                    {essays.map((essay, index) => (
+                    {essays.map((essay) => (
                       <li key={essay.id}>
                         <Link
                           href={`/reading/essay/${essay.id}`}
-                          className="reading-numbered-shelf__row"
+                          className="reading-list-row"
                         >
-                          <span className="reading-numbered-shelf__number">
-                            {index + 1}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-medium text-[var(--ink)]">
-                              {essay.title}
-                            </span>
-                            <span className="workspace-page__essay-status mt-0.5">
-                              {essay.status}
-                            </span>
-                            <span className="mt-1 block text-[11px] leading-relaxed text-[var(--muted)]">
-                              {Object.values(essay.marks).filter(
-                                (value) => value.trim().length > 0,
-                              ).length}/4 structural observations
-                              {" · "}
-                              {Object.values(essay.reflection).filter(
-                                (value) => value.trim().length > 0,
-                              ).length}/3 reconstruction responses
-                            </span>
-                          </span>
-                          <span aria-hidden="true" className="text-sm text-[var(--muted)]">
-                            ›
+                          <span className="reading-list-row__title">{essay.title}</span>
+                          <span className="workspace-page__essay-status">
+                            {essay.status}
                           </span>
                         </Link>
                       </li>

@@ -1,3 +1,4 @@
+import { isRetrievalTaskAvailableForNewSessions } from "./preparationReadiness";
 import type {
   EntityId,
   ISODate,
@@ -34,8 +35,13 @@ export function getGateReadiness(
   today: ISODate,
   unfinishedSessionTaskIds: readonly EntityId[] = [],
 ): GateReadiness {
+  const unfinishedIds = new Set(unfinishedSessionTaskIds);
   const activeTasks = topicTasks.filter(
-    (task) => task.topic_id === topic.id && task.active,
+    (task) =>
+      task.topic_id === topic.id &&
+      task.active &&
+      (unfinishedIds.has(task.id) ||
+        isRetrievalTaskAvailableForNewSessions(task, topicTasks)),
   );
   const dueDate =
     topic.planned_consolidation_date ??

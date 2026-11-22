@@ -78,13 +78,20 @@ function recordArray(
     .filter((item): item is RecordValue => item !== undefined);
 }
 
-function buildCurrentStudyContext(value: unknown, available: boolean) {
+function buildCurrentStudyContext(
+  value: unknown,
+  available: boolean,
+  currentDate: string,
+) {
   if (!available) {
     return {
       catalogueStatus: "unavailable" as const,
       courses: [],
       units: [],
       lectures: [],
+      progressEvidence: {
+        evidenceStatus: "unavailable" as const,
+      },
     };
   }
 
@@ -141,16 +148,29 @@ function buildCurrentStudyContext(value: unknown, available: boolean) {
   );
 
   const rawTopics = Array.isArray(source.topics) ? source.topics : [];
-  const topicUnitById = new Map<string, string>(
-    rawTopics
-      .filter(
-        (topic): topic is RecordValue =>
-          isRecord(topic) &&
-          typeof topic.id === "string" &&
-          typeof topic.unit_id === "string" &&
-          unitById.has(String(topic.unit_id)),
-      )
-      .map((topic) => [String(topic.id), String(topic.unit_id)] as const),
+  const activeTopics = rawTopics.filter(
+    (topic): topic is RecordValue =>
+      isRecord(topic) &&
+      typeof topic.id === "string" &&
+      typeof topic.unit_id === "string" &&
+      unitById.has(String(topic.unit_id)),
+  );
+
+  const topicById = new Map(
+    activeTopics.map((topic) => {
+      const unit = unitById.get(String(topic.unit_id))!;
+      return [
+        String(topic.id),
+        {
+          id: String(topic.id),
+          title: typeof topic.title === "string"
+            ? topic.title.trim().slice(0, MAX_STRING)
+            : "Untitled topic",
+          unitName: unit.name,
+          courseName: unit.courseName,
+        },
+      ] as const;
+    }),
   );
 
   const rawLectures = Array.isArray(source.lectures) ? source.lectures : [];
@@ -161,7 +181,9 @@ function buildCurrentStudyContext(value: unknown, available: boolean) {
         typeof lecture.unit_id === "string"
           ? lecture.unit_id
           : typeof lecture.topic_id === "string"
-            ? topicUnitById.get(lecture.topic_id)
+            ? activeTopics.find(
+                (topic) => topic.id === lecture.topic_id,
+              )?.unit_id as string | undefined
             : undefined;
       const unit = unitId ? unitById.get(unitId) : undefined;
       if (!unit) return [];
@@ -175,11 +197,361 @@ function buildCurrentStudyContext(value: unknown, available: boolean) {
     })
     .slice(0, MAX_RECORDS);
 
+  const validCurrentDate = dateOnly(currentDate) ?? currentDate;
+  const currentDayMs = Date.parse(`${validCurrentDate}T00:00:00.000Z`);
+  const sevenDaysAgoMs = currentDayMs - 6 * 24 * 60 * 60 * 1000;
+  const fourteenDaysAheadMs = currentDayMs + 14 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAheadMs = currentDayMs + 30 * 24 * 60 * 60 * 1000;
+
+  const toFiniteNumber = (item: unknown): number | null =>
+    typeof item === "number" && Number.isFinite(item)
+      ? item
+      : null;
+
+  const isInLastSevenDays = (value: unknown): boolean => {
+    const date = dateOnly(value);
+    if (!date || !Number.isFinite(currentDayMs)) return false;
+    const timestamp = Date.parse(`${date}T00:00:00.000Z`);
+    return timestamp >= sevenDaysAgoMs && timestamp <= currentDayMs;
+  };
+
+  const topicStatusCounts: Record<string, number> = {};
+  const needsReviewTopics: Array<{
+    title: string;
+    unitName: string;
+    courseName: string;
+  }> = [];
+  const weaknessTopics: Array<{
+    title: string;
+    unitName: string;
+    courseName: string;
+  }> = [];
+
+  for (const topic of activeTopics) {
+    const status = typeof topic.status === "string"
+      ? topic.status
+      : "unspecified";
+    topicStatusCounts[status] = (topicStatusCounts[status] ?? 0) + 1;
+
+    const mapped = topicById.get(String(topic.id));
+    if (!mapped) continue;
+
+    const example = {
+      title: mapped.title,
+      unitName: mapped.unitName,
+      courseName: mapped.courseName,
+    };
+
+    // Older topics without the preparation lifecycle field must not
+    // be represented as Ready.
+    if (
+      topic.preparation_status === undefined ||
+      topic.preparation_status === null
+    ) {
+      needsReviewTopics.push(example);
+    }
+
+    if (topic.weakness_flag === true) {
+      weaknessTopics.push(example);
+    }
+  }
+
+  const rawReviewEvents = Array.isArray(source.review_events)
+    ? source.review_events
+    : [];
+  const reviewStatusCounts: Record<string, number> = {};
+  const overdueReviewExamples: Array<{
+    topic: string;
+    dueDate: string;
+    priority: string | null;
+  }> = [];
+  let overdueOpenReviews = 0;
+
+  for (const review of rawReviewEvents) {
+    if (!isRecord(review)) continue;
+
+    const status = typeof review.status === "string"
+      ? review.status
+      : "unspecified";
+    reviewStatusCounts[status] = (reviewStatusCounts[status] ?? 0) + 1;
+
+    if (
+      status !== "pending" &&
+      status !== "in_progress" &&
+      status !== "deferred"
+    ) {
+      continue;
+    }
+
+    const dueDate = dateOnly(review.current_due_date);
+    if (!dueDate || dueDate >= validCurrentDate) continue;
+
+    overdueOpenReviews += 1;
+    if (overdueReviewExamples.length < 5) {
+      const topic = typeof review.topic_id === "string"
+        ? topicById.get(review.topic_id)
+        : undefined;
+      overdueReviewExamples.push({
+        topic: topic?.title ?? "Topic no longer in active catalogue",
+        dueDate,
+        priority: typeof review.current_priority === "string"
+          ? review.current_priority
+          : null,
+      });
+    }
+  }
+
+  const rawTaskEvents = Array.isArray(source.task_events)
+    ? source.task_events
+    : [];
+  const recentTaskEvents = rawTaskEvents.filter(
+    (event): event is RecordValue =>
+      isRecord(event) && isInLastSevenDays(event.logged_at),
+  );
+  const recentEventTypeCounts: Record<string, number> = {};
+  const recentResultCounts: Record<string, number> = {};
+  const recentDispositionCounts: Record<string, number> = {};
+
+  for (const event of recentTaskEvents) {
+    if (typeof event.event_type === "string") {
+      recentEventTypeCounts[event.event_type] =
+        (recentEventTypeCounts[event.event_type] ?? 0) + 1;
+    }
+    if (typeof event.result === "string") {
+      recentResultCounts[event.result] =
+        (recentResultCounts[event.result] ?? 0) + 1;
+    }
+    if (typeof event.disposition === "string") {
+      recentDispositionCounts[event.disposition] =
+        (recentDispositionCounts[event.disposition] ?? 0) + 1;
+    }
+  }
+
+  const rawWorkSessions = Array.isArray(source.work_sessions)
+    ? source.work_sessions
+    : [];
+  const recentSessions = rawWorkSessions.filter(
+    (session): session is RecordValue =>
+      isRecord(session) && isInLastSevenDays(session.logged_at),
+  );
+  const recentStudyDays = new Set<string>();
+  let recentStudyMinutes = 0;
+
+  for (const session of recentSessions) {
+    const date = dateOnly(session.logged_at);
+    const duration = toFiniteNumber(session.actual_duration_min);
+    if (date) recentStudyDays.add(date);
+    if (duration !== null && duration > 0) {
+      recentStudyMinutes += duration;
+    }
+  }
+
+  const assignments = (
+    Array.isArray(source.assignments) ? source.assignments : []
+  ).filter((assignment): assignment is RecordValue => {
+    if (!isRecord(assignment)) return false;
+    if (
+      assignment.status !== "pending" &&
+      assignment.status !== "in_progress"
+    ) {
+      return false;
+    }
+    const dueDate = dateOnly(assignment.due_date);
+    if (!dueDate || !Number.isFinite(currentDayMs)) return false;
+    const timestamp = Date.parse(`${dueDate}T00:00:00.000Z`);
+    return timestamp <= fourteenDaysAheadMs;
+  }).map((assignment) => ({
+    title: typeof assignment.title === "string"
+      ? assignment.title.trim().slice(0, MAX_STRING)
+      : "Untitled assignment",
+    dueDate: dateOnly(assignment.due_date),
+    status: safeScalar(assignment.status),
+    importance: safeScalar(assignment.importance),
+  })).sort((a, b) =>
+    String(a.dueDate).localeCompare(String(b.dueDate)),
+  ).slice(0, 5);
+
+  const exams = (
+    Array.isArray(source.exams) ? source.exams : []
+  ).filter((exam): exam is RecordValue => {
+    if (!isRecord(exam)) return false;
+    const date = dateOnly(exam.date);
+    if (!date || !Number.isFinite(currentDayMs)) return false;
+    const timestamp = Date.parse(`${date}T00:00:00.000Z`);
+    return timestamp >= currentDayMs && timestamp <= thirtyDaysAheadMs;
+  }).map((exam) => {
+    const course = typeof exam.course_id === "string"
+      ? courseById.get(exam.course_id)
+      : undefined;
+    return {
+      courseName: course?.name ?? "Course no longer active",
+      type: safeScalar(exam.type),
+      date: dateOnly(exam.date),
+    };
+  }).sort((a, b) =>
+    String(a.date).localeCompare(String(b.date)),
+  ).slice(0, 5);
+
+  const settings = isRecord(source.settings) ? source.settings : {};
+  const trialStart = dateOnly(settings.trial_start_date);
+  const trialEnd = dateOnly(settings.trial_end_date);
+  let trialStatus: string = "not configured";
+  if (trialStart && trialEnd) {
+    trialStatus = validCurrentDate < trialStart
+      ? "scheduled"
+      : validCurrentDate <= trialEnd
+        ? "active"
+        : "completed";
+  }
+
+  const rawTrialPeriods = Array.isArray(source.trial_periods)
+    ? source.trial_periods
+    : [];
+  const currentTrialId = typeof source.current_trial_id === "string"
+    ? source.current_trial_id
+    : null;
+
+  const rawWeeklyMetrics = Array.isArray(source.weekly_metrics)
+    ? source.weekly_metrics
+    : [];
+  const weeklyMetrics = rawWeeklyMetrics
+    .filter((metric): metric is RecordValue =>
+      isRecord(metric) &&
+      dateOnly(metric.week_start) !== null &&
+      dateOnly(metric.week_end) !== null,
+    )
+    .sort((a, b) =>
+      String(a.week_start).localeCompare(String(b.week_start)),
+    )
+    .slice(-8)
+    .map((metric) => ({
+      weekNumber: toFiniteNumber(metric.week_number),
+      weekStart: dateOnly(metric.week_start),
+      weekEnd: dateOnly(metric.week_end),
+      onTimeCompletionPct:
+        toFiniteNumber(metric.overall_on_time_completion_pct),
+      priorityOneToThreeOnTimePct:
+        toFiniteNumber(metric.priority_1_3_on_time_completion_pct),
+      deferralRatePct: toFiniteNumber(metric.deferral_rate_pct),
+      overdueCriticalBacklogMinutes:
+        toFiniteNumber(metric.overdue_critical_backlog_min),
+      // Historical metrics without trial IDs stay explicitly unassigned.
+      trialId: safeScalar(metric.trial_id),
+      trialAssociation:
+        typeof metric.trial_id === "string" && metric.trial_id
+          ? "identified"
+          : "legacy_unassigned",
+    }));
+
+  const metricsWithoutTrialId = weeklyMetrics.filter(
+    (metric) => metric.trialAssociation === "legacy_unassigned",
+  ).length;
+
+  const trialHistory = rawTrialPeriods
+    .filter((period): period is RecordValue =>
+      isRecord(period) &&
+      typeof period.id === "string" &&
+      dateOnly(period.start_date) !== null &&
+      dateOnly(period.end_date) !== null,
+    )
+    .sort((a, b) =>
+      String(a.start_date).localeCompare(String(b.start_date)),
+    )
+    .slice(-6)
+    .map((period) => {
+      const startDate = dateOnly(period.start_date)!;
+      const endDate = dateOnly(period.end_date)!;
+      const status = validCurrentDate < startDate
+        ? "scheduled"
+        : validCurrentDate <= endDate
+          ? "active"
+          : "completed";
+      const periodMetrics = weeklyMetrics
+        .filter((metric) => metric.trialId === period.id)
+        .map((metric) => ({
+          weekNumber: metric.weekNumber,
+          weekStart: metric.weekStart,
+          weekEnd: metric.weekEnd,
+          onTimeCompletionPct: metric.onTimeCompletionPct,
+          deferralRatePct: metric.deferralRatePct,
+          overdueCriticalBacklogMinutes: metric.overdueCriticalBacklogMinutes,
+        }));
+      return {
+        id: String(period.id),
+        startDate,
+        endDate,
+        weekFourStartDate: dateOnly(period.week4_evaluation_start),
+        weekFourEndDate: dateOnly(period.week4_evaluation_end),
+        source: period.source === "legacy" ? "legacy" : "user_confirmed",
+        status,
+        metricSnapshots: periodMetrics.slice(0, 4),
+      };
+    });
+  const currentTrial = trialHistory.find((period) => period.id === currentTrialId) ?? null;
+
   return {
     catalogueStatus: "current" as const,
     courses: [...courseById.values()].slice(0, MAX_RECORDS),
     units: [...unitById.values()].slice(0, MAX_RECORDS),
     lectures,
+    progressEvidence: {
+      evidenceStatus: "available" as const,
+      currentDate: validCurrentDate,
+      recentWindow: {
+        startDate: new Date(sevenDaysAgoMs).toISOString().slice(0, 10),
+        endDate: validCurrentDate,
+      },
+      topics: {
+        total: activeTopics.length,
+        statusCounts: topicStatusCounts,
+        legacyNeedsReviewCount: needsReviewTopics.length,
+        legacyNeedsReviewExamples: needsReviewTopics.slice(0, 5),
+        flaggedWeaknessCount: weaknessTopics.length,
+        flaggedWeaknessExamples: weaknessTopics.slice(0, 5),
+      },
+      reviews: {
+        totalRecorded: rawReviewEvents.length,
+        statusCounts: reviewStatusCounts,
+        overdueOpenCount: overdueOpenReviews,
+        overdueExamples: overdueReviewExamples,
+      },
+      taskEvents: {
+        totalRecorded: rawTaskEvents.length,
+        recentSevenDayCount: recentTaskEvents.length,
+        recentEventTypeCounts,
+        recentResultCounts,
+        recentDispositionCounts,
+      },
+      workSessions: {
+        totalRecorded: rawWorkSessions.length,
+        recentSevenDayCount: recentSessions.length,
+        recentStudyMinutes: recentStudyMinutes,
+        recentStudyDays: recentStudyDays.size,
+      },
+      upcomingCommitments: {
+        assignmentsWithinFourteenDays: assignments,
+        examsWithinThirtyDays: exams,
+      },
+      trial: {
+        id: currentTrial?.id ?? null,
+        status: currentTrial?.status ?? trialStatus,
+        startDate: currentTrial?.startDate ?? trialStart,
+        endDate: currentTrial?.endDate ?? trialEnd,
+        weekFourStartDate: currentTrial?.weekFourStartDate ?? dateOnly(settings.week4_evaluation_start),
+        weekFourEndDate: currentTrial?.weekFourEndDate ?? dateOnly(settings.week4_evaluation_end),
+        source: currentTrial?.source ?? "legacy_settings",
+      },
+      trialHistory: {
+        currentTrialId,
+        periods: trialHistory,
+        historyCount: rawTrialPeriods.length,
+      },
+      weeklyMetrics: {
+        snapshots: weeklyMetrics,
+        legacyUnassignedCount: metricsWithoutTrialId,
+        trialAttributedCount: weeklyMetrics.filter((metric) => metric.trialAssociation === "identified").length,
+      },
+    },
   };
 }
 
@@ -388,6 +760,7 @@ export function buildAssistantContext(
     study: buildCurrentStudyContext(
       currentStudyState,
       studyCatalogueAvailable,
+      currentDate,
     ),
   };
 
@@ -444,6 +817,17 @@ export function selectRelevantAssistantContext(
       ),
     );
     return { ...weeklyContext, contextScope: "full weekly review" };
+  }
+
+  const asksStudyProgressReview =
+    /\b(?:review|summari[sz]e|assess|analy[sz]e)\s+(?:my\s+)?(?:study|studies|academic)\s+progress\b|\bhow am i doing\s+(?:with|in|on)\s+(?:my\s+)?(?:stud(?:y|ies)|academics)\b/i
+      .test(question);
+
+  if (asksStudyProgressReview) {
+    return {
+      study: context.study,
+      contextScope: "study progress review",
+    };
   }
 
   const asksBroadOverview =

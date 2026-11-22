@@ -8477,3 +8477,471 @@ body:has(.study-page) .page-shell {
   background: var(--p6-surface-selected) !important;
   color: var(--p6-text-secondary) !important;
 }
+
+/* Consolidated interaction and detail-navigation refinements. */
+
+/* Touch feedback is transient; touch devices must not retain hover styling. */
+@media (hover: hover) and (pointer: fine) {
+  .app-content .calendar-overview button.calendar-today-button:hover:not(:disabled) {
+    background: var(--p6-primary-hover) !important;
+    color: #ffffff !important;
+    transform: translateY(-1px) !important;
+  }
+}
+
+.app-content .calendar-overview button.calendar-today-button:active:not(:disabled) {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  transform: translateY(1px) !important;
+  box-shadow: none !important;
+}
+
+/* Free-time is informational, so it should not carry a heavy outline. */
+.app-content .today-page__schedule .timeline-free-slot {
+  border: 0 !important;
+  background: var(--p6-surface-subtle) !important;
+  box-shadow: none !important;
+}
+
+/* Back navigation should not push detail-page content down. */
+.app-content .reading-detail-page > .reading-detail-page__back {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 0;
+  margin: 0 0 0.5rem;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+
+/* Consolidated reading list and detail metadata refinements. */
+.app-content .workspace-page .reading-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.65rem 0.35rem;
+  border-bottom: 1px solid var(--p6-border-decorative);
+  border-radius: 0;
+}
+.app-content .workspace-page .reading-list-row:hover {
+  background: var(--p6-surface-subtle);
+}
+.app-content .workspace-page .reading-list-row__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--p6-text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-content .workspace-page .workspace-page__book-status {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  border: 1px solid #b9d9d3;
+  border-radius: var(--p6-radius-pill);
+  background: var(--p6-surface-selected);
+  color: var(--p6-primary-hover);
+  padding: 0.25rem 0.65rem;
+  font-size: var(--p6-font-metadata);
+  font-weight: var(--p6-weight-semibold);
+}
+.app-content .reading-detail-page .reading-detail-page__metadata {
+  margin: 0.75rem 0 1.25rem;
+  border-bottom: 1px solid var(--p6-border-decorative);
+  padding: 0 0 0.75rem;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  color: var(--p6-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata summary::-webkit-details-marker {
+  display: none;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata-toggle {
+  flex-shrink: 0;
+  color: var(--p6-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata dl {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.9rem 0 0;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata dt {
+  min-width: 5rem;
+  color: var(--p6-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata dd {
+  margin: 0;
+  color: var(--p6-text);
+  font-size: 0.85rem;
+}
+.app-content .reading-detail-page > .reading-detail-page__back {
+  min-height: 0 !important;
+  margin: 0 0 0.5rem;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0.15rem 0.25rem;
+  font-size: 0.8rem;
+}
+.app-content .reading-detail-page .reading-detail-page__panel {
+  border: 0 !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card);
+}
+.app-content .reading-detail-page .reading-detail-page__note {
+  border: 0 !important;
+  background: var(--p6-surface-subtle) !important;
+}
+
+
+/* Consolidated touch, dark-theme and settings refinements. */
+
+/* The Today control returns to teal after a tap. Pale green is
+   reserved for the short-lived pressed state on touch devices. */
+@media (hover: none), (pointer: coarse) {
+  .app-content .calendar-overview button.calendar-today-button:hover:not(:disabled),
+  .app-content .calendar-page button.calendar-today-button:hover:not(:disabled) {
+    background: var(--p6-primary) !important;
+    color: #ffffff !important;
+    transform: none !important;
+    box-shadow: var(--p6-elevation-interactive) !important;
+  }
+
+  .app-content .calendar-overview button.calendar-today-button:active:not(:disabled),
+  .app-content .calendar-page button.calendar-today-button:active:not(:disabled) {
+    background: var(--p6-surface-selected) !important;
+    color: var(--p6-primary-hover) !important;
+    transform: translateY(2px) !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Use the device appearance preference without changing stored data
+   or introducing a separate theme setting. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --p6-page: #101d22;
+    --p6-surface: #17282e;
+    --p6-surface-subtle: #1d343b;
+    --p6-surface-selected: #25454a;
+    --p6-text: #e8f1f2;
+    --p6-text-secondary: #b7c8cc;
+    --p6-border-decorative: #334a51;
+    --p6-border-strong: #4c6871;
+    --p6-border-control: #66828a;
+    --p6-focus: #9bd5ce;
+    --p6-primary: #82c9c2;
+    --p6-primary-hover: #a1d9d3;
+    --p6-accent-warm: #49352f;
+    --p6-accent-coral: #e0a087;
+    --p6-elevation-card: 0 3px 14px rgba(0, 0, 0, 0.24);
+    --p6-elevation-interactive: 0 3px 0 rgba(0, 0, 0, 0.34);
+  }
+
+  html,
+  body {
+    background: var(--p6-page);
+    color: var(--p6-text);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    color-scheme: dark;
+    border-color: var(--p6-border-control) !important;
+    background-color: var(--p6-surface) !important;
+    color: var(--p6-text) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--p6-text-secondary) !important;
+    opacity: 1;
+  }
+
+  select option {
+    background: var(--p6-surface);
+    color: var(--p6-text);
+  }
+
+  ::selection {
+    background: var(--p6-surface-selected);
+    color: var(--p6-text);
+  }
+
+  .app-content .today-page__loading {
+    border-color: var(--p6-border-decorative);
+    background: var(--p6-surface);
+    color: var(--p6-text);
+    box-shadow: none;
+  }
+
+  .app-content .workspace-page .reading-list-row {
+    border-color: var(--p6-border-decorative);
+  }
+
+  .app-content .workspace-page .reading-list-row:hover {
+    background: var(--p6-surface-subtle);
+  }
+
+  .app-content .workspace-page .workspace-page__book-status {
+    border-color: var(--p6-border-strong);
+    background: var(--p6-surface-selected);
+    color: var(--p6-primary-hover);
+  }
+
+  .app-content .reading-detail-page .reading-detail-page__metadata,
+  .app-content .reading-detail-page .reading-detail-page__metadata dt,
+  .app-content .reading-detail-page .reading-detail-page__metadata dd {
+    border-color: var(--p6-border-decorative);
+    color: var(--p6-text-secondary);
+  }
+
+  .app-content .reading-detail-page .reading-detail-page__metadata summary {
+    color: var(--p6-text);
+  }
+
+  .app-content .reading-detail-page .reading-detail-page__panel {
+    border-color: var(--p6-border-decorative) !important;
+    background: var(--p6-surface) !important;
+    box-shadow: var(--p6-elevation-card);
+  }
+
+  .app-content .reading-detail-page .reading-detail-page__note {
+    background: var(--p6-surface-subtle) !important;
+    color: var(--p6-text);
+  }
+
+  .app-content .calendar-overview button.calendar-today-button,
+  .app-content .calendar-page button.calendar-today-button {
+    background: var(--p6-primary);
+    color: #102328;
+  }
+
+  /* Convert common legacy light utility surfaces to palette-aware dark
+     surfaces without changing the saved theme preference or component data. */
+  .app-content [class~="bg-white"],
+  .app-content [class~="bg-white/80"],
+  .app-content [class~="bg-stone-50"],
+  .app-content [class~="bg-slate-50"],
+  .app-content [class*="bg-[#fffaf1]"],
+  .app-content [class*="bg-[#f8f4eb]"],
+  .app-content [class*="bg-[#fdfbf6]"] {
+    background-color: var(--p6-surface) !important;
+    color: var(--p6-text) !important;
+  }
+
+  .app-content [class~="bg-amber-50"],
+  .app-content [class~="bg-yellow-50"] {
+    background-color: #302b22 !important;
+    color: #f3dfb4 !important;
+  }
+
+  .app-content [class~="bg-rose-50"],
+  .app-content [class~="bg-red-50"] {
+    background-color: #35252b !important;
+    color: #f4cbd2 !important;
+  }
+
+  .app-content [class~="bg-emerald-50"],
+  .app-content [class~="bg-green-50"] {
+    background-color: #20332d !important;
+    color: #c8e8d7 !important;
+  }
+
+  .app-content [class~="bg-sky-50"],
+  .app-content [class~="bg-blue-50"] {
+    background-color: #20313a !important;
+    color: #cce3f1 !important;
+  }
+
+  .app-content [class~="text-amber-950"],
+  .app-content [class~="text-amber-900"],
+  .app-content [class~="text-amber-800"],
+  .app-content [class~="text-yellow-950"],
+  .app-content [class~="text-yellow-900"] {
+    color: #f3dfb4 !important;
+  }
+
+  .app-content [class~="text-rose-950"],
+  .app-content [class~="text-rose-900"],
+  .app-content [class~="text-red-950"],
+  .app-content [class~="text-red-900"] {
+    color: #f4cbd2 !important;
+  }
+
+  .app-content [class~="text-emerald-950"],
+  .app-content [class~="text-emerald-900"],
+  .app-content [class~="text-green-950"],
+  .app-content [class~="text-green-900"] {
+    color: #c8e8d7 !important;
+  }
+
+  .app-content [class~="text-sky-950"],
+  .app-content [class~="text-sky-900"],
+  .app-content [class~="text-blue-950"],
+  .app-content [class~="text-blue-900"] {
+    color: #cce3f1 !important;
+  }
+
+  .app-content [class*="bg-[#23412f]"],
+  .app-content [class*="bg-[#1a2e24]"],
+  .app-content [class~="bg-emerald-900"],
+  .app-content [class~="bg-green-900"] {
+    background-color: var(--p6-primary) !important;
+    color: #102328 !important;
+  }
+
+  .app-content [class~="text-stone-950"],
+  .app-content [class~="text-stone-900"],
+  .app-content [class~="text-stone-800"],
+  .app-content [class~="text-gray-900"],
+  .app-content [class~="text-gray-800"] {
+    color: var(--p6-text) !important;
+  }
+
+  .app-content [class~="text-stone-700"],
+  .app-content [class~="text-stone-600"],
+  .app-content [class~="text-stone-500"],
+  .app-content [class~="text-gray-700"],
+  .app-content [class~="text-gray-600"],
+  .app-content [class~="text-gray-500"] {
+    color: var(--p6-text-secondary) !important;
+  }
+
+  .app-content [class*="border-[#d8ccb8]"],
+  .app-content [class*="border-[#e4dac9]"],
+  .app-content [class~="border-stone-200"],
+  .app-content [class~="border-stone-300"],
+  .app-content [class~="border-amber-200"],
+  .app-content [class~="border-sky-200"],
+  .app-content [class~="border-rose-200"],
+  .app-content [class~="border-emerald-200"] {
+    border-color: var(--p6-border-decorative) !important;
+  }
+
+  .app-content .study-page,
+  .app-content .study-metrics-page,
+  .app-content .study-preparation-page {
+    color: var(--p6-text);
+  }
+
+  /* The shared shell sits outside .app-content, so theme it explicitly. */
+  .app-sidebar {
+    background: linear-gradient(180deg, #10262c 0%, #142d33 70%, #172f35 100%);
+    color: var(--p6-text);
+  }
+
+  .assistant-button {
+    border-color: var(--p6-border-strong);
+    background: var(--p6-surface-subtle);
+    color: var(--p6-text);
+    box-shadow: var(--p6-elevation-card);
+  }
+
+  .assistant-button:hover {
+    background: var(--p6-surface-selected);
+  }
+
+  .assistant-button__mark {
+    border-color: var(--p6-primary);
+    color: var(--p6-primary);
+  }
+
+  .sidebar-nav__link {
+    color: var(--p6-text-secondary);
+  }
+
+  .sidebar-nav__link:hover {
+    background: var(--p6-surface-subtle);
+    color: var(--p6-text);
+  }
+
+  .sidebar-nav__link--active {
+    background: var(--p6-surface-selected);
+    color: var(--p6-primary-hover);
+    box-shadow: none;
+  }
+
+  .sidebar-note {
+    border-top-color: var(--p6-border-decorative);
+    color: var(--p6-text-secondary);
+  }
+
+  .sidebar-note__leaf {
+    color: var(--p6-accent-coral);
+  }
+
+  .topbar {
+    border-bottom: 1px solid var(--p6-border-decorative);
+    background: rgba(23, 40, 46, 0.96);
+  }
+
+  .topbar__brand {
+    color: var(--p6-text);
+  }
+
+  .topbar__brand-mark {
+    border-color: var(--p6-primary);
+    background: var(--p6-primary);
+    color: #102328;
+  }
+
+  .app-utilities__trigger {
+    border-color: var(--p6-border-decorative);
+    background: var(--p6-surface);
+    color: var(--p6-text-secondary);
+  }
+
+  .app-utilities__trigger:hover {
+    background: var(--p6-surface-selected);
+    color: var(--p6-primary-hover);
+  }
+
+  .mobile-nav {
+    border-top: 1px solid var(--p6-border-decorative) !important;
+    background: rgba(23, 40, 46, 0.98) !important;
+    box-shadow: 0 -3px 14px rgba(0, 0, 0, 0.28) !important;
+  }
+
+  .mobile-nav__item {
+    color: var(--p6-text-secondary);
+  }
+
+  .mobile-nav__content--active {
+    background: var(--p6-surface-selected) !important;
+    color: var(--p6-primary-hover) !important;
+    box-shadow: none !important;
+  }
+
+  .app-content button:focus-visible,
+  .app-content a:focus-visible,
+  .app-content input:focus-visible,
+  .app-content select:focus-visible,
+  .app-content textarea:focus-visible {
+    outline-color: var(--p6-focus);
+  }
+}

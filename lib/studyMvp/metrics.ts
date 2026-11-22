@@ -12,6 +12,7 @@ const TASK_TYPES: RetrievalTaskType[] = [
 ];
 
 export interface WeeklyMetricsInput {
+  trial_id?: string | null;
   week_number: number;
   week_start: ISODate;
   week_end: ISODate;
@@ -266,7 +267,7 @@ function completionDate(
 export function calculateWeeklyMetrics(
   input: WeeklyMetricsInput,
 ): WeeklyMetricsCalculation {
-  const { week_number, week_start, week_end, timezone, events } = input;
+  const { trial_id, week_number, week_start, week_end, timezone, events } = input;
 
   if (!Number.isSafeInteger(week_number) || week_number < 1) {
     throw new Error("week_number must be a positive integer.");
@@ -509,6 +510,7 @@ export function calculateWeeklyMetrics(
   const uniqueIssues = [...new Set(issues)];
 
   const snapshot: WeekMetrics = {
+    ...(trial_id ? { trial_id } : {}),
     week_number,
     week_start,
     week_end,

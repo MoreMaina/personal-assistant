@@ -1334,7 +1334,7 @@ export default function ClassesPage() {
                       >
                         <span className="block text-[10px] font-semibold">{dayName.slice(0, 3)}</span>
                         <span className={`mx-auto mt-1 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                          classCount > 0 ? "bg-[var(--surface)]" : "opacity-60"
+                          classCount > 0 ? "bg-[var(--surface)] text-[var(--p6-primary-hover)]" : "text-current opacity-60"
                         }`}>
                           {classCount}
                         </span>
