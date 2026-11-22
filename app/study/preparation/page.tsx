@@ -338,7 +338,32 @@ const previousQuestions = useMemo(
             </label>
           </div>
         )}
-                  <div className="study-preparation-selectors grid gap-3 sm:grid-cols-3">
+                          {selectedUnit && (
+          <section className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4">
+            <div>
+              <h2 className="font-extrabold text-[var(--p6-text)]">
+                Unit planner eligibility
+              </h2>
+              <p className="mt-1 text-sm text-[var(--p6-text-secondary)]">
+                {selectedUnit.planner_excluded
+                  ? "This unit is excluded from new initial-learning selections."
+                  : "This unit may contribute eligible topics to new initial-learning plans."}
+              </p>
+              <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">
+                Exclusion does not delete topics, question banks, scheduled reviews or unfinished sessions.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleUnitExclusion}
+              className={secondaryButton}
+            >
+              {selectedUnit.planner_excluded
+                ? "Restore unit to planner"
+                : "Exclude unit from planner"}
+            </button>
+          </section>
+        )}
       </section>
 
       {(notice || problem || formMessage || formProblem) && (
