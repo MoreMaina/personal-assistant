@@ -929,6 +929,65 @@ export function assertStudyStateIntegrity(
     );
   }
 
+  const trialPeriods = state.trial_periods ?? [];
+
+  if (!Array.isArray(trialPeriods)) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "Trial period history must be an array.",
+    );
+  }
+
+  for (const period of trialPeriods) {
+    if (
+      !isRecord(period) ||
+      typeof period.id !== "string" ||
+      !period.id.trim() ||
+      !isDateOnly(period.start_date) ||
+      !isDateOnly(period.end_date) ||
+      !isDateOnly(period.week4_evaluation_start) ||
+      !isDateOnly(period.week4_evaluation_end) ||
+      period.end_date !== addCalendarDays(period.start_date, 27) ||
+      period.week4_evaluation_start !== addCalendarDays(period.start_date, 21) ||
+      period.week4_evaluation_end !== period.end_date ||
+      typeof period.created_at !== "string" ||
+      !hasTimezone(period.created_at) ||
+      (period.engine_version !== undefined && (typeof period.engine_version !== "string" || !period.engine_version.trim())) ||
+      (period.creation_reason !== undefined && (typeof period.creation_reason !== "string" || !period.creation_reason.trim())) ||
+      !["legacy", "user_confirmed"].includes(String(period.source))
+    ) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "A trial period has invalid dates or metadata.",
+      );
+    }
+  }
+
+  const orderedPeriods = [...trialPeriods].sort(
+    (left, right) => left.start_date.localeCompare(right.start_date),
+  );
+  for (let index = 1; index < orderedPeriods.length; index += 1) {
+    const previous = orderedPeriods[index - 1];
+    const current = orderedPeriods[index];
+    if (current.start_date <= previous.end_date) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "Trial periods cannot overlap.",
+      );
+    }
+  }
+
+  if (
+    state.current_trial_id !== undefined &&
+    state.current_trial_id !== null &&
+    !trialPeriods.some((period) => period.id === state.current_trial_id)
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "The current trial ID does not reference a stored period.",
+    );
+  }
+
   assertDailyPlanHistory(state.daily_plan_history);
   const dailyPlanHistory = state.daily_plan_history ?? [];
 
@@ -955,6 +1014,7 @@ export function assertStudyStateIntegrity(
     ["assignments", state.assignments],
     ["exams", state.exams],
     ["settings_change_history", state.settings_change_history],
+    ["trial_periods", trialPeriods],
     ["daily_plan_history", dailyPlanHistory],
     ["daily_plan_executions", dailyPlanExecutions],
   ];
@@ -1104,6 +1164,63 @@ export function assertStudyStateIntegrity(
     ]),
   );
 
+  const supersededTaskIds = new Set<string>();
+  for (const task of state.retrieval_tasks) {
+    if (task.available_for_new_sessions !== undefined && typeof task.available_for_new_sessions !== "boolean") {
+      throw new StudyStorageError(
+        "invalid-shape",
+        `RetrievalTask "${task.id}" has an invalid new-session availability value.`,
+      );
+    }
+
+    if (task.version_number !== undefined &&
+        (!Number.isSafeInteger(task.version_number) || task.version_number < 1)) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        `RetrievalTask "${task.id}" has an invalid version number.`,
+      );
+    }
+
+    const supersedesId = task.supersedes_task_id ?? null;
+    if (supersedesId !== null) {
+      const previous = retrievalTasksById.get(supersedesId);
+      if (
+        !previous ||
+        previous.id === task.id ||
+        previous.topic_id !== task.topic_id ||
+        (task.version_number ?? 1) <= (previous.version_number ?? 1) ||
+        supersededTaskIds.has(supersedesId)
+      ) {
+        throw new StudyStorageError(
+          "invalid-shape",
+          `RetrievalTask "${task.id}" has an invalid or duplicate question-version link.`,
+        );
+      }
+      supersededTaskIds.add(supersedesId);
+    }
+  }
+
+  for (const topic of state.topics) {
+    if (
+      topic.preparation_status !== undefined &&
+      !["draft", "ready", "excluded"].includes(topic.preparation_status)
+    ) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        `Topic "${topic.id}" has an invalid preparation status.`,
+      );
+    }
+  }
+
+  for (const unit of state.units) {
+    if (unit.planner_excluded !== undefined && typeof unit.planner_excluded !== "boolean") {
+      throw new StudyStorageError(
+        "invalid-shape",
+        `Unit "${unit.id}" has an invalid planner-exclusion value.`,
+      );
+    }
+  }
+
   const guidedPracticeSnapshots = new Map<
     string,
     string
@@ -1242,7 +1359,12 @@ export function assertStudyStateIntegrity(
       !isDateOnly(metric.week_start) ||
       !isDateOnly(metric.week_end) ||
       !Array.isArray(metric.source_event_ids) ||
-      !Array.isArray(metric.source_snapshot)
+      !Array.isArray(metric.source_snapshot) ||
+      (
+        metric.trial_id !== undefined &&
+        metric.trial_id !== null &&
+        (typeof metric.trial_id !== "string" || !metric.trial_id.trim())
+      )
     ) {
       throw new StudyStorageError(
         "invalid-shape",
@@ -1252,7 +1374,8 @@ export function assertStudyStateIntegrity(
   }
 
   const metricWeeks = state.weekly_metrics.map(
-    (metric) => `${metric.week_number}:${metric.week_start}`,
+    (metric) =>
+      `${metric.trial_id ?? "legacy-unassigned"}:${metric.week_number}:${metric.week_start}`,
   );
 
   if (new Set(metricWeeks).size !== metricWeeks.length) {
@@ -1329,6 +1452,113 @@ function preserveInvalidValue(
   );
 }
 
+
+/**
+ * Reconstruct one legacy trial identity from the old settings fields.
+ * Existing metrics deliberately remain unassigned.
+ */
+export function normalizeLegacyStudyTrialPeriods(
+  state: StudyMvpState,
+): StudyMvpState {
+  const periods = state.trial_periods ?? [];
+  const settings = state.settings;
+
+  if (!Array.isArray(periods)) return state;
+
+  if (
+    state.current_trial_id &&
+    periods.some((period) => period.id === state.current_trial_id)
+  ) {
+    return state;
+  }
+
+  const start = settings.trial_start_date;
+  const end = settings.trial_end_date;
+  const week4Start = settings.week4_evaluation_start;
+  const week4End = settings.week4_evaluation_end;
+
+  const datesAreComplete =
+    isDateOnly(start) &&
+    isDateOnly(end) &&
+    isDateOnly(week4Start) &&
+    isDateOnly(week4End) &&
+    end === addCalendarDays(start, 27) &&
+    week4Start === addCalendarDays(start, 21) &&
+    week4End === end;
+
+  if (!datesAreComplete) {
+    return {
+      ...state,
+      trial_periods: periods,
+      current_trial_id: state.current_trial_id ?? null,
+    };
+  }
+
+  const matching = periods.find(
+    (period) =>
+      period.start_date === start &&
+      period.end_date === end,
+  );
+
+  if (matching) {
+    return {
+      ...state,
+      trial_periods: periods,
+      current_trial_id: matching.id,
+    };
+  }
+
+  if (periods.length > 0) {
+    return {
+      ...state,
+      trial_periods: periods,
+      current_trial_id: null,
+    };
+  }
+
+  const audit = state.settings_change_history.find(
+    (record) =>
+      record.new_values.trial_start_date === start &&
+      record.new_values.trial_end_date === end,
+  );
+
+  const legacyPeriod: import("./types").StudyTrialPeriod = {
+    id: `legacy-trial-${start}`,
+    start_date: start,
+    end_date: end,
+    week4_evaluation_start: week4Start,
+    week4_evaluation_end: week4End,
+    created_at: audit?.changed_at ?? `${start}T00:00:00.000Z`,
+    source: "legacy",
+    engine_version: settings.engine_version,
+    creation_reason: audit?.reason ?? "Reconstructed from legacy trial settings; original trial identity was not recorded.",
+  };
+
+  return {
+    ...state,
+    trial_periods: [legacyPeriod],
+    current_trial_id: legacyPeriod.id,
+  };
+}
+
+export function getStudyTrialPeriods(
+  state: StudyMvpState,
+): import("./types").StudyTrialPeriod[] {
+  return normalizeLegacyStudyTrialPeriods(state).trial_periods ?? [];
+}
+
+export function getCurrentStudyTrialPeriod(
+  state: StudyMvpState,
+): import("./types").StudyTrialPeriod | null {
+  const normalized = normalizeLegacyStudyTrialPeriods(state);
+  const id = normalized.current_trial_id;
+  if (!id) return null;
+
+  return (normalized.trial_periods ?? []).find(
+    (period) => period.id === id,
+  ) ?? null;
+}
+
 function parseState(
   rawValue: string,
 ): StudyMvpState {
@@ -1357,7 +1587,9 @@ function parseState(
     let normalizedState: StudyMvpState;
 
   try {
-    normalizedState = normalizeLegacyDailyPlanExecutions(parsed);
+    normalizedState = normalizeLegacyStudyTrialPeriods(
+      normalizeLegacyDailyPlanExecutions(parsed),
+    );
     assertStudyStateIntegrity(normalizedState);
   } catch (error) {
     preserveInvalidValue(rawValue, "invalid-shape");
@@ -1448,6 +1680,8 @@ export function createEmptyStudyState(
     ),
 
     weekly_metrics: [],
+    trial_periods: [],
+    current_trial_id: null,
     settings_change_history: [],
     daily_plan_history: [],
     daily_plan_executions: [],
@@ -1654,6 +1888,49 @@ function assertReviewIdentity(
   }
 }
 
+function assertReferencedQuestionContentImmutable(
+  previous: StudyMvpState,
+  next: StudyMvpState,
+): void {
+  const referencedIds = new Set<string>();
+
+  for (const review of previous.review_events) {
+    for (const id of review.selected_task_ids) referencedIds.add(id);
+  }
+  for (const event of previous.task_events) {
+    if (event.retrieval_task_id) referencedIds.add(event.retrieval_task_id);
+    for (const id of event.review_selected_task_ids_snapshot ?? []) referencedIds.add(id);
+    for (const id of event.gate_selected_task_ids_snapshot ?? []) referencedIds.add(id);
+    for (const id of event.guided_practice_selected_task_ids_snapshot ?? []) referencedIds.add(id);
+  }
+
+  const nextById = new Map(next.retrieval_tasks.map((task) => [task.id, task]));
+  const immutableFields = [
+    "topic_id",
+    "prompt",
+    "expected_answer_criteria",
+    "task_type",
+    "purpose",
+    "version_number",
+    "supersedes_task_id",
+  ] as const;
+
+  for (const oldTask of previous.retrieval_tasks) {
+    if (!referencedIds.has(oldTask.id)) continue;
+    const replacement = nextById.get(oldTask.id);
+    if (!replacement) continue; // Stable-ID checks report deletion with the canonical error.
+
+    for (const field of immutableFields) {
+      if (stableJson(oldTask[field]) !== stableJson(replacement[field])) {
+        throw new StudyStorageError(
+          "immutable-history",
+          `RetrievalTask "${oldTask.id}" is referenced by a saved session or attempt and cannot change "${field}". Create a new question version instead.`,
+        );
+      }
+    }
+  }
+}
+
 function assertSafeStateReplacement(
   previous: StudyMvpState,
   next: StudyMvpState,
@@ -1674,6 +1951,12 @@ function assertSafeStateReplacement(
     previous.weekly_metrics,
     next.weekly_metrics,
     "Weekly metrics snapshots",
+  );
+
+  assertAppendOnlyHistory(
+    previous.trial_periods ?? [],
+    next.trial_periods ?? [],
+    "Trial period history",
   );
 
   assertAppendOnlyHistory(
@@ -1703,6 +1986,7 @@ function assertSafeStateReplacement(
     next.retrieval_tasks,
     "RetrievalTask",
   );
+  assertReferencedQuestionContentImmutable(previous, next);
 
   assertStableEntityIds(
     previous.review_events,
@@ -2032,6 +2316,7 @@ export function appendWeeklyMetricsSnapshot(
   return updateStudyMvpState((current) => {
     const alreadyExists = current.weekly_metrics.some(
       (metric) =>
+        (metric.trial_id ?? null) === (snapshot.trial_id ?? null) &&
         metric.week_number === snapshot.week_number &&
         metric.week_start === snapshot.week_start,
     );
@@ -2039,6 +2324,7 @@ export function appendWeeklyMetricsSnapshot(
     if (alreadyExists) {
       const existing = current.weekly_metrics.find(
         (metric) =>
+          (metric.trial_id ?? null) === (snapshot.trial_id ?? null) &&
           metric.week_number === snapshot.week_number &&
           metric.week_start === snapshot.week_start,
       )!;
@@ -2090,10 +2376,22 @@ export interface ApprovedEngineBugFix {
   newVersion: string;
 }
 
+export interface StudyTrialReadinessConfirmation {
+  backupReviewed: boolean;
+  preparationReviewed: boolean;
+  metricsAndPlannerVerified: boolean;
+  phoneAndRecoveryVerified: boolean;
+}
+
 export interface StudySettingsChangeOptions {
   now?: ISODateTime;
   idFactory?: (prefix: string) => EntityId;
   approvedEngineBugFix?: ApprovedEngineBugFix;
+}
+
+export interface StudyTrialStartOptions extends StudySettingsChangeOptions {
+  /** All four manual checks are required to start a real trial. */
+  trialReadinessConfirmation: StudyTrialReadinessConfirmation;
 }
 
 /**
@@ -2246,24 +2544,12 @@ export function startStudyTrial(
   current: StudyMvpState,
   startDate: ISODate,
   today: ISODate,
-  options: StudySettingsChangeOptions = {},
+  options: StudyTrialStartOptions,
 ): StudyMvpState {
   if (!isDateOnly(startDate) || !isDateOnly(today)) {
     throw new StudyStorageError(
       "invalid-shape",
       "Trial dates must be valid ISO calendar dates.",
-    );
-  }
-
-  if (
-    current.settings.trial_start_date !== null ||
-    current.settings.trial_end_date !== null ||
-    current.settings.week4_evaluation_start !== null ||
-    current.settings.week4_evaluation_end !== null
-  ) {
-    throw new StudyStorageError(
-      "immutable-history",
-      "Trial dates are already configured. Reset them before starting another trial.",
     );
   }
 
@@ -2274,19 +2560,111 @@ export function startStudyTrial(
     );
   }
 
-  const settingsPatch: Partial<StudySettings> = {
-    trial_start_date: startDate,
-    trial_end_date: addCalendarDays(startDate, 27),
-    week4_evaluation_start: addCalendarDays(startDate, 21),
-    week4_evaluation_end: addCalendarDays(startDate, 27),
-  };
+  const readiness = options.trialReadinessConfirmation;
+  if (
+    !readiness ||
+    readiness.backupReviewed !== true ||
+    readiness.preparationReviewed !== true ||
+    readiness.metricsAndPlannerVerified !== true ||
+    readiness.phoneAndRecoveryVerified !== true
+  ) {
+    throw new StudyStorageError(
+      "invalid-shape",
+      "The trial cannot start until the user confirms the backup/evidence, preparation, metrics/planner, and phone/persistence/recovery readiness checks.",
+    );
+  }
 
-  return applyStudySettingsChange(
-    current,
-    settingsPatch,
-    `User-confirmed the actual trial start date ${startDate} for the four-week Study MVP v1.2 trial.`,
+  const normalized = normalizeLegacyStudyTrialPeriods(current);
+  const periods = normalized.trial_periods ?? [];
+
+  const hasConfiguredDates = [
+    normalized.settings.trial_start_date,
+    normalized.settings.trial_end_date,
+    normalized.settings.week4_evaluation_start,
+    normalized.settings.week4_evaluation_end,
+  ].some((value) => value !== null);
+
+  if (periods.length === 0 && hasConfiguredDates) {
+    throw new StudyStorageError(
+      "immutable-history",
+      "Existing trial dates are incomplete or cannot be safely attributed. Review them before starting another trial.",
+    );
+  }
+
+  const latestPeriod = [...periods].sort(
+    (left, right) => right.end_date.localeCompare(left.end_date),
+  )[0];
+
+  if (latestPeriod) {
+    if (today <= latestPeriod.end_date) {
+      throw new StudyStorageError(
+        "immutable-history",
+        "The previous trial has not finished. A new trial cannot overlap it.",
+      );
+    }
+
+    if (startDate <= latestPeriod.end_date) {
+      throw new StudyStorageError(
+        "invalid-shape",
+        "A new trial must start after the previous trial's end date.",
+      );
+    }
+
+    const configuredPeriodMatches =
+      normalized.settings.trial_start_date === latestPeriod.start_date &&
+      normalized.settings.trial_end_date === latestPeriod.end_date;
+
+    if (hasConfiguredDates && !configuredPeriodMatches) {
+      throw new StudyStorageError(
+        "immutable-history",
+        "Configured trial dates do not match the latest recorded period.",
+      );
+    }
+  }
+
+  const now = options.now ?? new Date().toISOString();
+  const idFactory = options.idFactory ?? defaultIdFactory;
+  const trialId = idFactory("trial");
+
+  if (!trialId || periods.some((period) => period.id === trialId)) {
+    throw new StudyStorageError(
+      "duplicate-id",
+      "A unique trial ID could not be generated.",
+    );
+  }
+
+  const endDate = addCalendarDays(startDate, 27);
+  const weekFourStart = addCalendarDays(startDate, 21);
+
+  const auditedState = applyStudySettingsChange(
+    normalized,
+    {
+      trial_start_date: startDate,
+      trial_end_date: endDate,
+      week4_evaluation_start: weekFourStart,
+      week4_evaluation_end: endDate,
+    },
+    `User-confirmed the actual first-use date ${startDate}; readiness checks were complete as attested by the user, including backup/evidence review, topic/question preparation, metrics/planner acceptance, and phone/persistence/recovery checks before starting the four-week Study MVP trial.`,
     options,
   );
+
+  const period: import("./types").StudyTrialPeriod = {
+    id: trialId,
+    start_date: startDate,
+    end_date: endDate,
+    week4_evaluation_start: weekFourStart,
+    week4_evaluation_end: endDate,
+    created_at: now,
+    source: "user_confirmed",
+    engine_version: auditedState.settings.engine_version,
+    creation_reason: `User-confirmed the actual first-use date ${startDate} and attested that the pre-trial readiness checks were complete.`,
+  };
+
+  return {
+    ...auditedState,
+    trial_periods: [...periods, period],
+    current_trial_id: trialId,
+  };
 }
 
 /**

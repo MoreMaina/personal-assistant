@@ -2,6 +2,38 @@
 
 Add new decisions at the top. Preserve older entries.
 
+## 22 November 2026 — Consolidated Study completion implementation
+
+- Keep the existing `feature/study-completion-and-palette6` working tree
+  and all untracked recovery files. The user has used more than 90% of
+  Codespaces hours; conserve the existing environment and avoid installs.
+- Question edits/replacements append a new `RetrievalTask` ID/version;
+  historical wording and IDs are never overwritten. Deactivation sets
+  `available_for_new_sessions=false`. If an unfinished Review, Gate or
+  Guided Practice session references the question, retain `active=true`
+  so its exact selected set can finish. New selection paths must check
+  the availability flag and version chain.
+- A topic may be Ready only while its objective and usable question bank
+  satisfy the readiness rules. If an edit invalidates readiness, move it
+  back to Draft. Legacy topics without a preparation status stay
+  planner-compatible until the user reviews them.
+- Unit exclusion is reversible and applies to new planner selection;
+  existing Review/Gate obligations and historical evidence are retained.
+- Each new trial has an append-only unique ID and frozen dates. Weekly
+  metrics are identified by trial ID, week number and week start. Legacy
+  snapshots remain unassigned and must never be rewritten to fit a new
+  trial. The UI reset path that clears the settings projection without
+  reconciling append-only history is removed. Trial start is blocked
+  until the user confirms backup/evidence review, preparation review,
+  metrics/planner verification, and phone/persistence/recovery acceptance.
+  These are explicit user attestations, not inferred test results.
+- Keep the already agreed Books, Essays, Settings, Today, Calendar,
+  Palette 6, dark-mode, time-input, utilities and Study UI refinements.
+- The consolidated patch is prepared from the supplied source bundle;
+  application and full Codespace validation are still pending. No trial
+  has been started; no Production database change, merge or deployment
+  is authorized by this checkpoint.
+
 ## 22 November 2026 — Android push Production release and verification
 
 - The Android external push implementation was merged through PR #11. PR #12 is also merged and exempts only `/api/push/dispatch` from browser-session middleware; the route remains protected by its own bearer-secret check.

@@ -704,6 +704,7 @@ export function importTopicCatalogText(
         objective_type: row.objectiveType,
         prerequisite_topic_ids: prerequisiteIds,
         status: "not_started",
+        preparation_status: "draft",
         planned_consolidation_date: null,
         consolidation_estimated_duration_min: row.consolidationEstimate,
         initial_study_date: null,

@@ -197,7 +197,7 @@ export function useCloudStudyState() {
           acceptCloudState(
             remote.state,
             remote.revision,
-            "Study data is synced with your account.",
+            "",
           );
           return;
         }

@@ -814,7 +814,7 @@ export default function TodayPage() {
   if (!now) {
     return (
       <main className="today-page">
-        <div className="today-page__loading rounded-[24px] border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-8 text-center shadow-[0_4px_0_var(--primary-dark)]">
+        <div className="today-page__loading rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-6 text-center">
           <h1 className="text-2xl">
             Getting today ready...
           </h1>

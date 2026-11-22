@@ -8,9 +8,11 @@ import {
   buildWeeklyMetricFlags,
   calculateWeeklyMetrics,
 } from "@/lib/studyMvp/metrics";
+import { getStudyTrialPeriods } from "@/lib/studyMvp/storage";
 
 import type {
   RetrievalTaskType,
+  StudyTrialPeriod,
   WeekMetrics,
 } from "@/lib/studyMvp/types";
 
@@ -80,6 +82,16 @@ type MetricTrendPoint = {
   saved: boolean;
   closed: boolean;
 };
+
+
+function metricBelongsToTrial(metric: WeekMetrics, trial: StudyTrialPeriod): boolean {
+  if (trial.source === "legacy") {
+    // Legacy snapshots remain unassigned in storage. A precise week/date
+    // match lets the legacy report display them without rewriting identity.
+    return metric.trial_id == null;
+  }
+  return metric.trial_id === trial.id;
+}
 
 function formatShortDate(value: string): string {
   const date = new Date(`${value}T00:00:00.000Z`);
@@ -593,11 +605,42 @@ export default function StudyMetricsPage() {
   } = useCloudStudyState();
 
   const [weekNumber, setWeekNumber] = useState(1);
+  const [selectedTrialId, setSelectedTrialId] = useState("");
   const [today, setToday] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
   const timezone = state?.settings.timezone || "UTC";
-  const trialStart = state?.settings.trial_start_date ?? null;
+  const trialPeriods = useMemo(
+    () => state ? getStudyTrialPeriods(state) : [],
+    [state],
+  );
+
+  useEffect(() => {
+    if (!state || trialPeriods.length === 0) {
+      setSelectedTrialId("");
+      return;
+    }
+    const selectedStillExists = trialPeriods.some((period) => period.id === selectedTrialId);
+    if (!selectedStillExists) {
+      const preferredId = state.current_trial_id &&
+        trialPeriods.some((period) => period.id === state.current_trial_id)
+        ? state.current_trial_id
+        : [...trialPeriods].sort((a, b) => b.start_date.localeCompare(a.start_date))[0].id;
+      setSelectedTrialId(preferredId);
+    }
+  }, [state, trialPeriods, selectedTrialId]);
+
+  const selectedTrial: StudyTrialPeriod | null =
+    trialPeriods.find((period) => period.id === selectedTrialId) ??
+    (state?.current_trial_id
+      ? trialPeriods.find((period) => period.id === state.current_trial_id) ?? null
+      : [...trialPeriods].sort((a, b) => b.start_date.localeCompare(a.start_date))[0] ?? null);
+  const trialStart = selectedTrial?.start_date ?? null;
+  const trialEnd = selectedTrial?.end_date ?? null;
+  const selectedTrialIsLegacy = selectedTrial?.source === "legacy";
+  const snapshotTrialId = selectedTrial && !selectedTrialIsLegacy
+    ? selectedTrial.id
+    : undefined;
 
   useEffect(() => {
     if (!state) return;
@@ -610,7 +653,7 @@ export default function StudyMetricsPage() {
   }, [state, timezone]);
 
   useEffect(() => {
-    if (!trialStart || !today) return;
+    if (!trialStart || !trialEnd || !today) return;
 
     const elapsed =
       (Date.parse(`${today}T00:00:00Z`) -
@@ -618,8 +661,8 @@ export default function StudyMetricsPage() {
       86_400_000;
 
     const currentWeek = Math.floor(Math.max(0, elapsed) / 7) + 1;
-    setWeekNumber(Math.min(4, Math.max(1, currentWeek)));
-  }, [trialStart, today]);
+    setWeekNumber(today > trialEnd ? 4 : Math.min(4, Math.max(1, currentWeek)));
+  }, [trialStart, trialEnd, today, selectedTrialId]);
 
   const period = useMemo(() => {
     if (!trialStart) return null;
@@ -631,10 +674,11 @@ export default function StudyMetricsPage() {
   }, [trialStart, weekNumber]);
 
   const calculation = useMemo(() => {
-    if (!state || !period) return { snapshot: null, error: "" };
+    if (!state || !period || !selectedTrial) return { snapshot: null, error: "" };
 
     try {
       const result = calculateWeeklyMetrics({
+        ...(snapshotTrialId ? { trial_id: snapshotTrialId } : {}),
         week_number: weekNumber,
         week_start: period.start,
         week_end: period.end,
@@ -651,76 +695,50 @@ export default function StudyMetricsPage() {
           : "Could not calculate weekly metrics.",
       };
     }
-  }, [state, period, weekNumber, timezone]);
+  }, [state, period, selectedTrial, snapshotTrialId, weekNumber, timezone]);
 
   const weeklyTrend = useMemo<MetricTrendPoint[]>(() => {
-    if (!state || !trialStart || !today) return [];
+    if (!state || !trialStart || !trialEnd || !selectedTrial || !today) return [];
 
     return [1, 2, 3, 4].map((week) => {
       const weekStart = addDays(trialStart, (week - 1) * 7);
       const weekEnd = addDays(weekStart, 6);
       const saved = state.weekly_metrics.find(
         (item) =>
+          Boolean(selectedTrial && metricBelongsToTrial(item, selectedTrial)) &&
           item.week_number === week &&
           item.week_start === weekStart,
       ) ?? null;
       const closed = today > weekEnd;
 
       if (saved) {
-        return {
-          week_number: week,
-          week_start: weekStart,
-          week_end: weekEnd,
-          snapshot: saved,
-          saved: true,
-          closed,
-        };
+        return { week_number: week, week_start: weekStart, week_end: weekEnd, snapshot: saved, saved: true, closed };
       }
 
       if (weekStart > today) {
-        return {
-          week_number: week,
-          week_start: weekStart,
-          week_end: weekEnd,
-          snapshot: null,
-          saved: false,
-          closed: false,
-        };
+        return { week_number: week, week_start: weekStart, week_end: weekEnd, snapshot: null, saved: false, closed: false };
       }
 
       try {
         const result = calculateWeeklyMetrics({
+          ...(snapshotTrialId ? { trial_id: snapshotTrialId } : {}),
           week_number: week,
           week_start: weekStart,
           week_end: weekEnd,
           timezone,
           events: state.task_events,
         });
-
-        return {
-          week_number: week,
-          week_start: weekStart,
-          week_end: weekEnd,
-          snapshot: result.snapshot,
-          saved: false,
-          closed,
-        };
+        return { week_number: week, week_start: weekStart, week_end: weekEnd, snapshot: result.snapshot, saved: false, closed };
       } catch {
-        return {
-          week_number: week,
-          week_start: weekStart,
-          week_end: weekEnd,
-          snapshot: null,
-          saved: false,
-          closed,
-        };
+        return { week_number: week, week_start: weekStart, week_end: weekEnd, snapshot: null, saved: false, closed };
       }
     });
-  }, [state, trialStart, today, timezone]);
+  }, [state, trialStart, trialEnd, today, timezone, selectedTrial, snapshotTrialId]);
 
-  const savedSnapshot = state && period
+  const savedSnapshot = state && period && selectedTrial
     ? state.weekly_metrics.find(
         (item) =>
+          Boolean(selectedTrial && metricBelongsToTrial(item, selectedTrial)) &&
           item.week_number === weekNumber &&
           item.week_start === period.start,
       ) ?? null
@@ -729,9 +747,12 @@ export default function StudyMetricsPage() {
   // Once saved, the immutable snapshot remains the displayed source of truth.
   const snapshot = savedSnapshot ?? calculation.snapshot;
 
-  const previousSnapshots = state && period
+  const previousSnapshots = state && period && selectedTrial
     ? state.weekly_metrics.filter(
-        (item) => item.week_end < period.start,
+        (item) =>
+          Boolean(selectedTrial && metricBelongsToTrial(item, selectedTrial)) &&
+          item.week_start >= (trialStart ?? item.week_start) &&
+          item.week_end < period.start,
       )
     : [];
 
@@ -742,6 +763,9 @@ export default function StudyMetricsPage() {
   const weekClosed = Boolean(today && period && today > period.end);
   const canSave = Boolean(
     state &&
+    selectedTrial &&
+    !selectedTrialIsLegacy &&
+    state.current_trial_id === selectedTrial.id &&
     calculation.snapshot &&
     !savedSnapshot &&
     weekClosed,
@@ -760,7 +784,7 @@ export default function StudyMetricsPage() {
 
     const accepted = persist(
       nextState,
-      `Week ${weekNumber} metrics evidence saved.`,
+      `Trial ${selectedTrial?.start_date ?? "legacy"}, Week ${weekNumber} metrics evidence saved.`,
     );
 
     setActionMessage(
@@ -774,11 +798,14 @@ export default function StudyMetricsPage() {
     if (!snapshot) return;
 
     downloadFile(
-      `study-week-${weekNumber}-evidence.json`,
+      `study-trial-${selectedTrial?.id ?? "legacy-unassigned"}-week-${weekNumber}-evidence.json`,
       JSON.stringify(
         {
           export_schema_version: 1,
           exported_at: new Date().toISOString(),
+          trial_id: snapshot.trial_id ?? null,
+          trial_start_date: selectedTrial?.start_date ?? null,
+          trial_end_date: selectedTrial?.end_date ?? null,
           week_number: snapshot.week_number,
           week_start: snapshot.week_start,
           week_end: snapshot.week_end,
@@ -801,6 +828,7 @@ export default function StudyMetricsPage() {
     const rows: unknown[][] = [
       [
         "record_type",
+        "trial_id",
         "week_number",
         "week_start",
         "week_end",
@@ -874,6 +902,7 @@ export default function StudyMetricsPage() {
     for (const [label, value, target, sample] of metricRows) {
       rows.push([
         "metric",
+        snapshot.trial_id ?? "",
         snapshot.week_number,
         snapshot.week_start,
         snapshot.week_end,
@@ -893,6 +922,7 @@ export default function StudyMetricsPage() {
       const count = snapshot.duration_error_sample_counts[type] ?? 0;
       rows.push([
         "metric",
+        snapshot.trial_id ?? "",
         snapshot.week_number,
         snapshot.week_start,
         snapshot.week_end,
@@ -911,6 +941,7 @@ export default function StudyMetricsPage() {
     for (const event of snapshot.source_snapshot) {
       rows.push([
         "task_event",
+        snapshot.trial_id ?? "",
         snapshot.week_number,
         snapshot.week_start,
         snapshot.week_end,
@@ -931,7 +962,7 @@ export default function StudyMetricsPage() {
       .join("\r\n");
 
     downloadFile(
-      `study-week-${weekNumber}-evidence.csv`,
+      `study-trial-${selectedTrial?.id ?? "legacy-unassigned"}-week-${weekNumber}-evidence.csv`,
       csv,
       "text/csv;charset=utf-8",
     );
@@ -958,11 +989,11 @@ export default function StudyMetricsPage() {
   }
 
   return (
-    <main className="study-metrics-page mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-6 sm:py-6">
+    <main className="study-metrics-page mx-auto max-w-6xl space-y-3 px-0 pt-2 pb-8 sm:px-0 sm:pt-3">
       <Link href="/study" className="study-metrics-page__back">
         ← Study workspace
       </Link>
-      <header className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+      <header className="rounded-2xl bg-[var(--p6-surface)] p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-stone-950">Weekly metrics</h1>
           <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">
@@ -978,7 +1009,26 @@ export default function StudyMetricsPage() {
         <p className="mt-1 text-xs leading-5 text-stone-500">
           Eight measures from immutable TaskEvent history. Saved snapshots preserve evaluation evidence.
         </p>
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 flex flex-wrap justify-end gap-3">
+          {trialPeriods.length > 1 && (
+            <label className="study-metrics-week-picker">
+              Trial period
+              <select
+                value={selectedTrial?.id ?? ""}
+                onChange={(event) => {
+                  setSelectedTrialId(event.target.value);
+                  setActionMessage("");
+                }}
+                className="study-metrics-week-select"
+              >
+                {[...trialPeriods].sort((a, b) => b.start_date.localeCompare(a.start_date)).map((trial) => (
+                  <option key={trial.id} value={trial.id}>
+                    {trial.start_date} – {trial.end_date}{trial.source === "legacy" ? " · Legacy" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="study-metrics-week-picker">
             Reporting week
             <select
@@ -995,9 +1045,14 @@ export default function StudyMetricsPage() {
             </select>
           </label>
         </div>
-        {period && (
+        {period && selectedTrial && (
           <p className="mt-2 text-xs text-stone-500">
-            {formatShortDate(period.start)} – {formatShortDate(period.end)} · {timezone}
+            {formatShortDate(period.start)} – {formatShortDate(period.end)} · {timezone} · Trial {selectedTrial.id}
+          </p>
+        )}
+        {selectedTrialIsLegacy && (
+          <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
+            This is a reconstructed legacy trial. Historical snapshots without a trial ID remain unassigned in storage and are displayed only when their week dates match. They are not rewritten or attributed to a newer trial.
           </p>
         )}
       </header>
@@ -1015,11 +1070,11 @@ export default function StudyMetricsPage() {
         </div>
       )}
 
-      {!trialStart ? (
+      {!selectedTrial ? (
         <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <h2 className="font-bold text-amber-950">The four-week trial has not started</h2>
           <p className="mt-2 text-sm text-amber-900">
-            Start the trial in the Study workspace before generating Week 1–4 evidence.
+            Start a trial in the Study workspace before generating Week 1–4 evidence.
           </p>
         </section>
       ) : calculation.error ? (
@@ -1080,6 +1135,16 @@ export default function StudyMetricsPage() {
                     still inspect and export the live calculation.
                   </p>
                 )}
+                {!canSave && !savedSnapshot && weekClosed && selectedTrial && state.current_trial_id !== selectedTrial.id && (
+                  <p className="study-metric-evidence-panel__note">
+                    Historical trial reports are read-only here. Their existing evidence is preserved; this page will not backfill or relabel old snapshots.
+                  </p>
+                )}
+                {selectedTrialIsLegacy && savedSnapshot && (
+                  <p className="study-metric-evidence-panel__note">
+                    This is an unassigned legacy snapshot matched by its original week dates. Its stored trial ID remains empty.
+                  </p>
+                )}
                 {savedSnapshot && (
                   <p className="study-metric-evidence-panel__note">
                     This saved snapshot cannot be replaced. Its source event
@@ -1094,7 +1159,7 @@ export default function StudyMetricsPage() {
             <h2 className="font-bold text-stone-950">Dashboard flags</h2>
             {flags.length === 0 ? (
               <p className="mt-3 text-sm text-stone-600">
-                No dashboard flags are triggered by this week's available evidence.
+                No dashboard flags are triggered by this week&apos;s available evidence.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">

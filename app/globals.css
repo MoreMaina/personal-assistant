@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
+}
+
+:root {
   /* Legacy semantic aliases now resolve to Palette 6 everywhere. */
   --background: var(--p6-page);
   --surface: var(--p6-surface);
@@ -3011,7 +3015,8 @@ body:has(.today-page) .app-utilities__panel {
 }
 
 .app-content .today-page__metrics > div:nth-child(2) {
-  border-inline-start: 0.1875rem solid var(--p6-accent-coral) !important;
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-inline-start: 1px solid var(--p6-border-decorative) !important;
   background: var(--p6-accent-warm) !important;
 }
 
@@ -8476,4 +8481,1201 @@ body:has(.study-page) .page-shell {
   border-radius: var(--p6-radius-md);
   background: var(--p6-surface-selected) !important;
   color: var(--p6-text-secondary) !important;
+}
+
+/* Consolidated interaction and detail-navigation refinements. */
+
+/* Touch feedback is transient; touch devices must not retain hover styling. */
+@media (hover: hover) and (pointer: fine) {
+  .app-content .calendar-overview button.calendar-today-button:hover:not(:disabled) {
+    background: var(--p6-primary-hover) !important;
+    color: #ffffff !important;
+    transform: translateY(-1px) !important;
+  }
+}
+
+.app-content .calendar-overview button.calendar-today-button:active:not(:disabled) {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  transform: translateY(1px) !important;
+  box-shadow: none !important;
+}
+
+/* The separate schedule free-time slot keeps its light dashed outline. */
+
+/* Back navigation should not push detail-page content down. */
+.app-content .reading-detail-page > .reading-detail-page__back {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 0;
+  margin: 0 0 0.5rem;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+
+/* Consolidated reading list and detail metadata refinements. */
+.app-content .workspace-page .reading-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0.65rem 0.35rem;
+  border-bottom: 1px solid var(--p6-border-decorative);
+  border-radius: 0;
+}
+.app-content .workspace-page .reading-list-row:hover {
+  background: var(--p6-surface-subtle);
+}
+.app-content .workspace-page .reading-list-row__title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--p6-text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  text-align: left;
+}
+.app-content .workspace-page .workspace-page__book-status {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  border: 1px solid #b9d9d3;
+  border-radius: var(--p6-radius-pill);
+  background: var(--p6-surface-selected);
+  color: var(--p6-primary-hover);
+  padding: 0.25rem 0.65rem;
+  font-size: var(--p6-font-metadata);
+  font-weight: var(--p6-weight-semibold);
+}
+.app-content .reading-detail-page .reading-detail-page__metadata {
+  margin: 0.75rem 0 1.25rem;
+  border-bottom: 1px solid var(--p6-border-decorative);
+  padding: 0 0 0.75rem;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+  color: var(--p6-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata summary::-webkit-details-marker {
+  display: none;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata-toggle {
+  flex-shrink: 0;
+  color: var(--p6-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata dl {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.9rem 0 0;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata dl > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata dt {
+  min-width: 5rem;
+  color: var(--p6-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.app-content .reading-detail-page .reading-detail-page__metadata dd {
+  margin: 0;
+  color: var(--p6-text);
+  font-size: 0.85rem;
+}
+.app-content .reading-detail-page > .reading-detail-page__back {
+  min-height: 0 !important;
+  margin: 0 0 0.5rem;
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0.15rem 0.25rem;
+  font-size: 0.8rem;
+}
+.app-content .reading-detail-page .reading-detail-page__panel {
+  border: 0 !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card);
+}
+.app-content .reading-detail-page .reading-detail-page__note {
+  border: 0 !important;
+  background: var(--p6-surface-subtle) !important;
+}
+
+
+/* Consolidated touch, dark-theme and settings refinements. */
+
+/* The Today control returns to teal after a tap. Pale green is
+   reserved for the short-lived pressed state on touch devices. */
+@media (hover: none), (pointer: coarse) {
+  .app-content .calendar-overview button.calendar-today-button:hover:not(:disabled),
+  .app-content .calendar-page button.calendar-today-button:hover:not(:disabled) {
+    background: var(--p6-primary) !important;
+    color: #ffffff !important;
+    transform: none !important;
+    box-shadow: var(--p6-elevation-interactive) !important;
+  }
+
+  .app-content .calendar-overview button.calendar-today-button:active:not(:disabled),
+  .app-content .calendar-page button.calendar-today-button:active:not(:disabled) {
+    background: var(--p6-surface-selected) !important;
+    color: var(--p6-primary-hover) !important;
+    transform: translateY(2px) !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Use the device appearance preference without changing stored data
+   or introducing a separate theme setting. */
+html[data-theme="dark"] {
+  & {
+    color-scheme: dark;
+    --p6-page: #101d22;
+    --p6-surface: #17282e;
+    --p6-surface-subtle: #1d343b;
+    --p6-surface-selected: #25454a;
+    --p6-text: #e8f1f2;
+    --p6-text-secondary: #b7c8cc;
+    --p6-border-decorative: #334a51;
+    --p6-border-strong: #4c6871;
+    --p6-border-control: #66828a;
+    --p6-focus: #9bd5ce;
+    --p6-primary: #82c9c2;
+    --p6-primary-hover: #a1d9d3;
+    --p6-accent-warm: #49352f;
+    --p6-accent-coral: #e0a087;
+    --p6-elevation-card: 0 3px 14px rgba(0, 0, 0, 0.24);
+    --p6-elevation-interactive: 0 3px 0 rgba(0, 0, 0, 0.34);
+  }
+
+  &,
+  body {
+    background: var(--p6-page);
+    color: var(--p6-text);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    color-scheme: dark;
+    border-color: var(--p6-border-control) !important;
+    background-color: var(--p6-surface) !important;
+    color: var(--p6-text) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--p6-text-secondary) !important;
+    opacity: 1;
+  }
+
+  select option {
+    background: var(--p6-surface);
+    color: var(--p6-text);
+  }
+
+  ::selection {
+    background: var(--p6-surface-selected);
+    color: var(--p6-text);
+  }
+
+  .app-content .today-page__loading {
+    border-color: var(--p6-border-decorative);
+    background: var(--p6-surface);
+    color: var(--p6-text);
+    box-shadow: none;
+  }
+
+  .app-content .workspace-page .reading-list-row {
+    border-color: var(--p6-border-decorative);
+  }
+
+  .app-content .workspace-page .reading-list-row:hover {
+    background: var(--p6-surface-subtle);
+  }
+
+  .app-content .workspace-page .workspace-page__book-status {
+    border-color: var(--p6-border-strong);
+    background: var(--p6-surface-selected);
+    color: var(--p6-primary-hover);
+  }
+
+  .app-content .reading-detail-page .reading-detail-page__metadata,
+  .app-content .reading-detail-page .reading-detail-page__metadata dt,
+  .app-content .reading-detail-page .reading-detail-page__metadata dd {
+    border-color: var(--p6-border-decorative);
+    color: var(--p6-text-secondary);
+  }
+
+  .app-content .reading-detail-page .reading-detail-page__metadata summary {
+    color: var(--p6-text);
+  }
+
+  .app-content .reading-detail-page .reading-detail-page__panel {
+    border-color: var(--p6-border-decorative) !important;
+    background: var(--p6-surface) !important;
+    box-shadow: var(--p6-elevation-card);
+  }
+
+  .app-content .reading-detail-page .reading-detail-page__note {
+    background: var(--p6-surface-subtle) !important;
+    color: var(--p6-text);
+  }
+
+  .app-content .calendar-overview button.calendar-today-button,
+  .app-content .calendar-page button.calendar-today-button {
+    background: var(--p6-primary);
+    color: #102328;
+  }
+
+  /* Convert common legacy light utility surfaces to palette-aware dark
+     surfaces without changing the saved theme preference or component data. */
+  .app-content [class~="bg-white"],
+  .app-content [class~="bg-white/80"],
+  .app-content [class~="bg-stone-50"],
+  .app-content [class~="bg-slate-50"],
+  .app-content [class*="bg-[#fffaf1]"],
+  .app-content [class*="bg-[#f8f4eb]"],
+  .app-content [class*="bg-[#fdfbf6]"] {
+    background-color: var(--p6-surface) !important;
+    color: var(--p6-text) !important;
+  }
+
+  .app-content [class~="bg-amber-50"],
+  .app-content [class~="bg-yellow-50"] {
+    background-color: #302b22 !important;
+    color: #f3dfb4 !important;
+  }
+
+  .app-content [class~="bg-rose-50"],
+  .app-content [class~="bg-red-50"] {
+    background-color: #35252b !important;
+    color: #f4cbd2 !important;
+  }
+
+  .app-content [class~="bg-emerald-50"],
+  .app-content [class~="bg-green-50"] {
+    background-color: #20332d !important;
+    color: #c8e8d7 !important;
+  }
+
+  .app-content [class~="bg-sky-50"],
+  .app-content [class~="bg-blue-50"] {
+    background-color: #20313a !important;
+    color: #cce3f1 !important;
+  }
+
+  .app-content [class~="text-amber-950"],
+  .app-content [class~="text-amber-900"],
+  .app-content [class~="text-amber-800"],
+  .app-content [class~="text-yellow-950"],
+  .app-content [class~="text-yellow-900"] {
+    color: #f3dfb4 !important;
+  }
+
+  .app-content [class~="text-rose-950"],
+  .app-content [class~="text-rose-900"],
+  .app-content [class~="text-red-950"],
+  .app-content [class~="text-red-900"] {
+    color: #f4cbd2 !important;
+  }
+
+  .app-content [class~="text-emerald-950"],
+  .app-content [class~="text-emerald-900"],
+  .app-content [class~="text-green-950"],
+  .app-content [class~="text-green-900"] {
+    color: #c8e8d7 !important;
+  }
+
+  .app-content [class~="text-sky-950"],
+  .app-content [class~="text-sky-900"],
+  .app-content [class~="text-blue-950"],
+  .app-content [class~="text-blue-900"] {
+    color: #cce3f1 !important;
+  }
+
+  .app-content [class*="bg-[#23412f]"],
+  .app-content [class*="bg-[#1a2e24]"],
+  .app-content [class~="bg-emerald-900"],
+  .app-content [class~="bg-green-900"] {
+    background-color: var(--p6-primary) !important;
+    color: #102328 !important;
+  }
+
+  .app-content [class~="text-stone-950"],
+  .app-content [class~="text-stone-900"],
+  .app-content [class~="text-stone-800"],
+  .app-content [class~="text-gray-900"],
+  .app-content [class~="text-gray-800"] {
+    color: var(--p6-text) !important;
+  }
+
+  .app-content [class~="text-stone-700"],
+  .app-content [class~="text-stone-600"],
+  .app-content [class~="text-stone-500"],
+  .app-content [class~="text-gray-700"],
+  .app-content [class~="text-gray-600"],
+  .app-content [class~="text-gray-500"] {
+    color: var(--p6-text-secondary) !important;
+  }
+
+  .app-content [class*="border-[#d8ccb8]"],
+  .app-content [class*="border-[#e4dac9]"],
+  .app-content [class~="border-stone-200"],
+  .app-content [class~="border-stone-300"],
+  .app-content [class~="border-amber-200"],
+  .app-content [class~="border-sky-200"],
+  .app-content [class~="border-rose-200"],
+  .app-content [class~="border-emerald-200"] {
+    border-color: var(--p6-border-decorative) !important;
+  }
+
+  .app-content .study-page,
+  .app-content .study-metrics-page,
+  .app-content .study-preparation-page {
+    color: var(--p6-text);
+  }
+
+  /* The shared shell sits outside .app-content, so theme it explicitly. */
+  .app-sidebar {
+    background: linear-gradient(180deg, #10262c 0%, #142d33 70%, #172f35 100%);
+    color: var(--p6-text);
+  }
+
+  .assistant-button {
+    border-color: var(--p6-border-strong);
+    background: var(--p6-surface-subtle);
+    color: var(--p6-text);
+    box-shadow: var(--p6-elevation-card);
+  }
+
+  .assistant-button:hover {
+    background: var(--p6-surface-selected);
+  }
+
+  .assistant-button__mark {
+    border-color: var(--p6-primary);
+    color: var(--p6-primary);
+  }
+
+  .sidebar-nav__link {
+    color: var(--p6-text-secondary);
+  }
+
+  .sidebar-nav__link:hover {
+    background: var(--p6-surface-subtle);
+    color: var(--p6-text);
+  }
+
+  .sidebar-nav__link--active {
+    background: var(--p6-surface-selected);
+    color: var(--p6-primary-hover);
+    box-shadow: none;
+  }
+
+  .sidebar-note {
+    border-top-color: var(--p6-border-decorative);
+    color: var(--p6-text-secondary);
+  }
+
+  .sidebar-note__leaf {
+    color: var(--p6-accent-coral);
+  }
+
+  .topbar {
+    border-bottom: 1px solid var(--p6-border-decorative);
+    background: rgba(23, 40, 46, 0.96);
+  }
+
+  .topbar__brand {
+    color: var(--p6-text);
+  }
+
+  .topbar__brand-mark {
+    border-color: var(--p6-primary);
+    background: var(--p6-primary);
+    color: #102328;
+  }
+
+  .app-utilities__trigger {
+    border-color: var(--p6-border-decorative);
+    background: var(--p6-surface);
+    color: var(--p6-text-secondary);
+  }
+
+  .app-utilities__trigger:hover {
+    background: var(--p6-surface-selected);
+    color: var(--p6-primary-hover);
+  }
+
+  .mobile-nav {
+    border-top: 1px solid var(--p6-border-decorative) !important;
+    background: rgba(23, 40, 46, 0.98) !important;
+    box-shadow: 0 -3px 14px rgba(0, 0, 0, 0.28) !important;
+  }
+
+  .mobile-nav__item {
+    color: var(--p6-text-secondary);
+  }
+
+  .mobile-nav__content--active {
+    background: var(--p6-surface-selected) !important;
+    color: var(--p6-primary-hover) !important;
+    box-shadow: none !important;
+  }
+
+  .app-content button:focus-visible,
+  .app-content a:focus-visible,
+  .app-content input:focus-visible,
+  .app-content select:focus-visible,
+  .app-content textarea:focus-visible {
+    outline-color: var(--p6-focus);
+  }
+
+}
+
+
+/* Palette 6 shell surfaces: the top bar and both navigation variants. */
+.app-sidebar {
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  border-right: 1px solid var(--p6-border-decorative);
+}
+.assistant-button {
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text);
+  box-shadow: none;
+}
+.assistant-button:hover { background: var(--p6-surface-selected); box-shadow: none; }
+.assistant-button__mark { border-color: var(--p6-border-strong); color: var(--p6-primary); }
+.sidebar-nav__link { color: var(--p6-text-secondary); }
+.sidebar-nav__link:hover { background: var(--p6-surface-subtle); color: var(--p6-text); transform: none; }
+.sidebar-nav__link--active { background: var(--p6-surface-selected); color: var(--p6-primary-hover); box-shadow: none; }
+.sidebar-note { border-top-color: var(--p6-border-decorative); color: var(--p6-text-secondary); }
+.sidebar-note__leaf { color: var(--p6-accent-coral); }
+.topbar {
+  background: color-mix(in srgb, var(--p6-surface) 94%, transparent);
+  border-bottom: 1px solid var(--p6-border-decorative);
+  color: var(--p6-text);
+}
+.topbar__brand { color: var(--p6-text); }
+.topbar__brand-mark {
+  border: 1px solid var(--p6-border-strong);
+  background: var(--p6-primary);
+  color: var(--p6-surface);
+}
+.topbar__icon-button {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: none;
+}
+.profile-dot { background: var(--p6-primary); color: var(--p6-surface); }
+.mobile-nav {
+  background: var(--p6-surface) !important;
+  border-top: 1px solid var(--p6-border-decorative) !important;
+  box-shadow: 0 -2px 10px rgba(20, 45, 52, 0.07) !important;
+}
+.mobile-nav__item { color: var(--p6-text-secondary); }
+.mobile-nav__content--active {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary-hover) !important;
+  box-shadow: none !important;
+}
+
+/* Copilot uses the same surfaces, borders and controls in both themes. */
+.app-content .ai-copilot { color: var(--p6-text); }
+.app-content .ai-copilot__panel {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: var(--p6-elevation-card);
+}
+.app-content .ai-copilot__disclosure {
+  border-color: var(--p6-border-decorative);
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text-secondary);
+}
+.app-content article.ai-copilot__message--user {
+  border: 1px solid var(--p6-border-strong) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.app-content article.ai-copilot__message--assistant {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.app-content .ai-copilot__suggestion,
+.app-content .ai-copilot__voice-button,
+.app-content .ai-copilot__message-action {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: none;
+}
+.app-content .ai-copilot__suggestion:hover,
+.app-content .ai-copilot__voice-button:hover:not(:disabled),
+.app-content .ai-copilot__message-action:hover {
+  background: var(--p6-surface-selected);
+  color: var(--p6-primary-hover);
+}
+.app-content .ai-copilot__form { border-top: 1px solid var(--p6-border-decorative); }
+.app-content .ai-copilot__form textarea {
+  border: 1px solid var(--p6-border-control);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+}
+.app-content .ai-copilot__markdown blockquote {
+  border-left-color: var(--p6-border-strong);
+  color: var(--p6-text-secondary);
+}
+.app-content .ai-copilot__markdown-code,
+.app-content .ai-copilot__markdown :not(pre) > code {
+  background: var(--p6-surface-selected);
+  color: var(--p6-text);
+}
+.app-content .ai-copilot__markdown th,
+.app-content .ai-copilot__markdown td { border-color: var(--p6-border-decorative); }
+.app-content .ai-copilot__markdown th {
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text);
+}
+.app-content .ai-copilot__send {
+  border: 1px solid var(--p6-primary);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-primary);
+  color: #fff;
+}
+.app-content .ai-copilot__jump-to-input {
+  border: 1px solid var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+  box-shadow: var(--p6-elevation-dropdown);
+}
+
+/* Numbered Books and Essays shelves with lighter separators. */
+.app-content .workspace-page .reading-numbered-shelf__list { counter-reset: reading-entry; }
+.app-content .workspace-page .reading-numbered-shelf__list > li { counter-increment: reading-entry; }
+.app-content .workspace-page .reading-numbered-shelf__list > li + li { border-top-color: #e7eff1; }
+.app-content .workspace-page .reading-list-row { border-bottom-color: #e7eff1; }
+.app-content .workspace-page .reading-numbered-shelf__list .reading-list-row::before {
+  content: counter(reading-entry);
+  display: inline-flex;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: 0 0 1.65rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--p6-surface-subtle);
+  color: var(--p6-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+html[data-theme="dark"] .app-content .workspace-page .reading-list-row,
+html[data-theme="dark"] .app-content .workspace-page .reading-numbered-shelf__list > li + li {
+  border-color: #405a62;
+}
+
+/* Compact Study links share one row with "1. Plan" and cloud sync. */
+.app-content .study-page .study-page__daily-plan-heading-top { flex-wrap: nowrap; align-items: center; }
+.app-content .study-page .study-page__daily-plan-actions { flex-wrap: nowrap; gap: 0.4rem; white-space: nowrap; }
+.app-content .study-page .study-page__metrics-link {
+  display: inline-flex;
+  min-height: 2.5rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-md);
+  background: var(--p6-surface);
+  color: var(--p6-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.app-content .study-page .study-page__metrics-link:hover { background: var(--p6-surface-selected); }
+@media (max-width: 380px) {
+  .app-content .study-page .study-page__daily-plan-actions { gap: 0.2rem; }
+  .app-content .study-page .study-page__metrics-link { padding-inline: 0.35rem; font-size: 0.69rem; }
+  .app-content .study-page .study-page__daily-plan-eyebrow { font-size: 0.68rem; }
+}
+
+/* Topic Preparation cards align with the app content width and card treatment. */
+.app-content .study-preparation-page {
+  width: min(100%, 72rem);
+  max-width: 72rem;
+  margin-inline: auto;
+}
+.app-content .study-preparation-page section.rounded-2xl,
+.app-content .study-preparation-page section.rounded-xl {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-xl) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card);
+}
+.app-content .study-preparation-page article {
+  border: 1px solid var(--p6-border-decorative) !important;
+  border-radius: var(--p6-radius-lg) !important;
+  background: var(--p6-surface-subtle);
+  box-shadow: none;
+}
+.app-content .study-preparation-page .question-editor {
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-lg);
+  background: var(--p6-surface-subtle);
+}
+.app-content .study-preparation-page .question-editor button { box-shadow: none; }
+
+/* Consistent Settings section heading scale; badges are reserved for Study System settings. */
+.general-settings-page > .settings-section > summary,
+.general-settings-page > details > summary { color: var(--p6-text); font-size: 1rem; font-weight: 700; }
+.general-settings-page .settings-section-title { color: var(--p6-text); font-size: 1.05rem; font-weight: 800; }
+.general-settings-page .settings-section__summary {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+}
+.general-settings-page .settings-section__summary::-webkit-details-marker { display: none; }
+.general-settings-page .settings-section__chevron {
+  flex: 0 0 auto;
+  color: var(--p6-text-secondary);
+  transition: transform var(--p6-motion-base) var(--p6-ease-standard);
+}
+.general-settings-page details[open] .settings-section__chevron { transform: rotate(180deg); }
+.general-settings-page .settings-appearance-section {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  box-shadow: var(--p6-elevation-card);
+}
+
+
+
+/* Palette 6 consistency layer: unify the legacy shell and older utility colours. */
+:root { --p6-on-primary: #ffffff; }
+html[data-theme="dark"] { --p6-on-primary: #102328; }
+
+.app-utilities__trigger {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text-secondary) !important;
+}
+.app-utilities__trigger:hover {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-text) !important;
+}
+.app-utilities__panel {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: var(--p6-elevation-dropdown) !important;
+}
+
+/* Map the remaining forest/cream Tailwind utilities onto semantic surfaces. */
+.app-content [class*="bg-[#fffaf1]"],
+.app-content [class*="bg-[#efe4d1]"],
+.app-content [class*="bg-[#efe8db]"],
+.app-content [class*="bg-[#f7f1e7]"] {
+  background-color: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+.app-content [class*="bg-[#23412f]"],
+.app-content [class*="bg-[#1a2e24]"] {
+  background-color: var(--p6-primary) !important;
+  color: var(--p6-on-primary) !important;
+}
+.app-content [class*="text-[#23412f]"],
+.app-content [class*="text-[#1a2e24]"],
+.app-content [class*="text-[#26352a]"] {
+  color: var(--p6-primary) !important;
+}
+.app-content [class*="border-[#d8ccb8]"],
+.app-content [class*="border-[#e4dac9]"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+.app-content [class~="bg-white"],
+.app-content [class~="bg-white/80"],
+.app-content [class~="bg-white/60"] {
+  background-color: var(--p6-surface) !important;
+}
+.app-content [class~="bg-stone-50"],
+.app-content [class~="bg-stone-100"] {
+  background-color: var(--p6-surface-subtle) !important;
+}
+.app-content [class~="text-stone-950"],
+.app-content [class~="text-stone-900"],
+.app-content [class~="text-stone-800"] {
+  color: var(--p6-text) !important;
+}
+.app-content [class~="text-stone-700"],
+.app-content [class~="text-stone-600"],
+.app-content [class~="text-stone-500"] {
+  color: var(--p6-text-secondary) !important;
+}
+.app-content [class~="border-stone-200"],
+.app-content [class~="border-stone-300"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+
+/* One shell palette, irrespective of the route that was just navigated to. */
+.app-sidebar,
+.topbar,
+.mobile-nav {
+  color: var(--p6-text) !important;
+  border-color: var(--p6-border-decorative) !important;
+}
+.app-sidebar { background: var(--p6-surface) !important; }
+.topbar { background: color-mix(in srgb, var(--p6-surface) 96%, transparent) !important; }
+.mobile-nav { background: var(--p6-surface) !important; }
+.topbar__brand { color: var(--p6-text) !important; }
+.topbar__icon-button {
+  border-color: var(--p6-border-decorative) !important;
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.sidebar-nav__link { color: var(--p6-text-secondary) !important; }
+.sidebar-nav__link:hover {
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+.sidebar-nav__link--active {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+.mobile-nav__item { color: var(--p6-text-secondary) !important; }
+.mobile-nav__content--active {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+  box-shadow: none !important;
+}
+
+/* Dark controls and statuses use readable semantic contrast. */
+html[data-theme="dark"] .app-content [class~="bg-white"],
+html[data-theme="dark"] .app-content [class~="bg-white/80"],
+html[data-theme="dark"] .app-content [class~="bg-white/60"] {
+  background-color: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="bg-stone-50"],
+html[data-theme="dark"] .app-content [class~="bg-stone-100"],
+html[data-theme="dark"] .app-content [class*="bg-[#fffaf1]"],
+html[data-theme="dark"] .app-content [class*="bg-[#efe4d1]"],
+html[data-theme="dark"] .app-content [class*="bg-[#efe8db]"],
+html[data-theme="dark"] .app-content [class*="bg-[#f7f1e7]"] {
+  background-color: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="text-stone-950"],
+html[data-theme="dark"] .app-content [class~="text-stone-900"],
+html[data-theme="dark"] .app-content [class~="text-stone-800"],
+html[data-theme="dark"] .app-content [class*="text-[#23412f]"],
+html[data-theme="dark"] .app-content [class*="text-[#1a2e24]"],
+html[data-theme="dark"] .app-content [class*="text-[#26352a]"] {
+  color: var(--p6-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="text-stone-700"],
+html[data-theme="dark"] .app-content [class~="text-stone-600"],
+html[data-theme="dark"] .app-content [class~="text-stone-500"] {
+  color: var(--p6-text-secondary) !important;
+}
+html[data-theme="dark"] .app-content [class*="border-[#d8ccb8]"],
+html[data-theme="dark"] .app-content [class*="border-[#e4dac9]"],
+html[data-theme="dark"] .app-content [class~="border-stone-200"],
+html[data-theme="dark"] .app-content [class~="border-stone-300"] {
+  border-color: var(--p6-border-decorative) !important;
+}
+html[data-theme="dark"] .app-content [class~="bg-amber-50"],
+html[data-theme="dark"] .app-content [class~="bg-amber-100"] {
+  background-color: var(--p6-warning-bg) !important;
+  color: var(--p6-warning-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="text-amber-950"],
+html[data-theme="dark"] .app-content [class~="text-amber-900"],
+html[data-theme="dark"] .app-content [class~="text-amber-800"] {
+  color: var(--p6-warning-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="border-amber-200"],
+html[data-theme="dark"] .app-content [class~="border-amber-300"] {
+  border-color: var(--p6-border-strong) !important;
+}
+html[data-theme="dark"] .app-content [class~="bg-rose-50"],
+html[data-theme="dark"] .app-content [class~="bg-rose-100"] {
+  background-color: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="text-rose-900"],
+html[data-theme="dark"] .app-content [class~="text-rose-800"],
+html[data-theme="dark"] .app-content [class~="text-rose-700"],
+html[data-theme="dark"] .app-content [class~="text-red-700"] {
+  color: var(--p6-error-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="border-rose-200"] {
+  border-color: var(--p6-border-strong) !important;
+}
+html[data-theme="dark"] .app-content [class~="bg-emerald-50"],
+html[data-theme="dark"] .app-content [class~="bg-emerald-100"] {
+  background-color: var(--p6-success-bg) !important;
+  color: var(--p6-success-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="text-emerald-900"],
+html[data-theme="dark"] .app-content [class~="text-emerald-800"],
+html[data-theme="dark"] .app-content [class~="text-emerald-700"] {
+  color: var(--p6-success-text) !important;
+}
+html[data-theme="dark"] .app-content [class*="bg-[#23412f]"],
+html[data-theme="dark"] .app-content [class*="bg-[#1a2e24]"],
+html[data-theme="dark"] .app-content [class*="bg-[var(--primary)]"],
+html[data-theme="dark"] .app-content [class*="bg-[var(--p6-primary)]"] {
+  background-color: var(--p6-primary) !important;
+  color: var(--p6-on-primary) !important;
+}
+html[data-theme="dark"] .app-sidebar,
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .mobile-nav {
+  background: var(--p6-surface) !important;
+  color: var(--p6-text) !important;
+  border-color: var(--p6-border-decorative) !important;
+}
+
+/* Topic Preparation shares Study's exact column width and restrained surfaces. */
+.app-content .study-preparation-page {
+  width: 100%;
+  max-width: 72rem;
+  min-width: 0;
+  margin-inline: auto;
+  color: var(--p6-text);
+  font-family: var(--font-body);
+}
+.app-content .study-preparation-toolbar {
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-xl);
+  background: var(--p6-surface);
+  padding: 0.9rem 1.05rem;
+}
+.study-preparation-toolbar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+.study-preparation-toolbar__top h1 {
+  font-size: var(--p6-font-section-title);
+  line-height: var(--p6-line-heading);
+}
+.study-preparation-toolbar .study-sync-status {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-pill);
+  background: var(--p6-surface-selected);
+  color: var(--p6-primary);
+}
+.study-preparation-toolbar .study-sync-status[data-status="syncing"],
+.study-preparation-toolbar .study-sync-status[data-status="loading"] {
+  background: var(--p6-info-bg);
+  color: var(--p6-info-text);
+}
+.study-preparation-toolbar .study-sync-status[data-status="error"],
+.study-preparation-toolbar .study-sync-status[data-status="conflict"] {
+  background: var(--p6-error-bg);
+  color: var(--p6-error-text);
+}
+.study-preparation-selectors label {
+  display: block;
+  min-width: 0;
+}
+.app-content .study-preparation-page .study-preparation-section {
+  overflow: clip;
+  border: 1px solid var(--p6-border-decorative);
+  border-radius: var(--p6-radius-xl);
+  background: var(--p6-surface);
+}
+.study-preparation-section__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.95rem 1.1rem;
+  cursor: pointer;
+  list-style: none;
+}
+.study-preparation-section__summary::-webkit-details-marker { display: none; }
+.study-preparation-section__summary::marker { content: ""; }
+.study-preparation-section__body {
+  border-top: 1px solid var(--p6-border-decorative);
+  padding: 0 1.1rem 1.1rem;
+}
+.study-preparation-readiness {
+  margin-top: 1.1rem;
+  border-top: 1px solid var(--p6-border-decorative);
+  padding: 0.9rem 0 0;
+}
+.prep-readiness-status {
+  border-radius: 999px;
+  background: var(--p6-warning-bg);
+  color: var(--p6-warning-text);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.prep-readiness-status--ready {
+  background: var(--p6-success-bg);
+  color: var(--p6-success-text);
+}
+.prep-question-row {
+  border-bottom: 1px solid var(--p6-border-decorative);
+  padding: 0.9rem 0;
+}
+.prep-question-row:last-child { border-bottom: 0; }
+.question-editor {
+  margin-top: 0.35rem;
+  padding: 0.35rem 0;
+}
+.general-settings-page .settings-section-title {
+  color: var(--p6-text);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.app-content .study-metrics-page {
+  padding-top: 0 !important;
+}
+.app-content .workspace-page__container {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  max-width: 72rem !important;
+}
+.login-page {
+  color: var(--p6-text);
+}
+.login-page > section {
+  border-color: var(--p6-border-decorative);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+}
+.login-page input {
+  border-color: var(--p6-border-control);
+  background: var(--p6-surface);
+  color: var(--p6-text);
+}
+.login-page button[type="submit"] {
+  background: var(--p6-primary);
+  border-color: var(--p6-primary);
+  color: var(--p6-on-primary);
+}
+
+
+
+/* Bring remaining custom primary actions and old green components onto Palette 6. */
+.app-content button.action-primary--terracotta,
+.app-content button.action-primary--forest,
+.app-content button.action-primary--sage,
+.app-content button.action-primary--blue,
+.app-content button[class*="bg-[#23412f]"],
+.app-content button[class*="bg-[#1a2e24]"],
+.app-content button[class~="bg-emerald-700"],
+.app-content .btn--primary,
+.app-content .btn-primary,
+.app-content .right-now-start-button,
+.app-content .plan-generate-button,
+.app-content .project-work-action {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: var(--p6-on-primary) !important;
+  box-shadow: none !important;
+}
+.app-content button.action-primary--terracotta:hover:not(:disabled),
+.app-content button.action-primary--forest:hover:not(:disabled),
+.app-content button.action-primary--sage:hover:not(:disabled),
+.app-content button.action-primary--blue:hover:not(:disabled),
+.app-content button[class*="bg-[#23412f]"]:hover:not(:disabled),
+.app-content button[class*="bg-[#1a2e24]"]:hover:not(:disabled),
+.app-content button[class~="bg-emerald-700"]:hover:not(:disabled),
+.app-content .btn--primary:hover:not(:disabled),
+.app-content .btn-primary:hover:not(:disabled),
+.app-content .right-now-start-button:hover:not(:disabled),
+.app-content .plan-generate-button:hover:not(:disabled),
+.app-content .project-work-action:hover:not(:disabled) {
+  background: var(--p6-primary-hover) !important;
+  box-shadow: none !important;
+  transform: translateY(-1px);
+}
+.app-content .ai-copilot__suggestion {
+  border: 1px solid var(--p6-border-decorative) !important;
+  background: var(--p6-surface-subtle) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.app-content .ai-copilot__suggestion:hover:not(:disabled) {
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-text) !important;
+  box-shadow: none !important;
+}
+.app-content .item-work-tracker__mode--active {
+  border-color: var(--p6-border-strong) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-primary) !important;
+}
+.app-content .course-management__archive {
+  border-color: var(--p6-border-strong) !important;
+  background: var(--p6-surface-selected) !important;
+  color: var(--p6-text) !important;
+}
+.app-content .course-management__restore {
+  border-color: var(--p6-primary) !important;
+  background: var(--p6-primary) !important;
+  color: var(--p6-on-primary) !important;
+}
+.app-content .course-management__delete {
+  border-color: var(--p6-error-text) !important;
+  background: var(--p6-error-bg) !important;
+  color: var(--p6-error-text) !important;
+}
+
+/* Follow-up: Palette 6 dark-mode controls and left-aligned reading shelves. */
+:root {
+  --p6-on-primary: #ffffff;
+}
+html[data-theme="dark"] {
+  --p6-on-primary: #102328;
+}
+
+/* Teal primary actions remain readable in both themes. */
+.app-content .action-primary--terracotta,
+.app-content .action-primary--forest,
+.app-content .action-primary--sage,
+.app-content .action-primary--blue,
+.app-content .right-now-start-button,
+.app-content button[class*="bg-[#006d77]"],
+.app-content a[class*="bg-[#006d77]"] {
+  background: var(--p6-primary) !important;
+  border-color: var(--p6-primary) !important;
+  color: var(--p6-on-primary) !important;
+  box-shadow: none !important;
+}
+
+.app-content .action-primary--terracotta:hover:not(:disabled),
+.app-content .action-primary--forest:hover:not(:disabled),
+.app-content .action-primary--sage:hover:not(:disabled),
+.app-content .action-primary--blue:hover:not(:disabled),
+.app-content .right-now-start-button:hover,
+.app-content button[class*="bg-[#006d77]"]:hover,
+.app-content a[class*="bg-[#006d77]"]:hover {
+  background: var(--p6-primary-hover) !important;
+  color: var(--p6-on-primary) !important;
+}
+
+.app-content .action-primary--terracotta:active:not(:disabled),
+.app-content .action-primary--forest:active:not(:disabled),
+.app-content .action-primary--sage:active:not(:disabled),
+.app-content .action-primary--blue:active:not(:disabled) {
+  transform: none;
+  box-shadow: none !important;
+}
+
+/* Right Now: Starts panel and Study tag. */
+html[data-theme="dark"] .app-content .today-page__right-now [class*="bg-[var(--yellow-soft)]"] {
+  background: var(--p6-surface-selected) !important;
+  border-color: var(--p6-border-strong) !important;
+  color: var(--p6-text) !important;
+}
+
+html[data-theme="dark"] .app-content .today-page__right-now [class*="text-[var(--primary-dark)]"] {
+  color: var(--p6-text) !important;
+}
+
+/* Books and Essays shelves start at the left edge of the workspace. */
+.app-content .workspace-page__container {
+  margin-inline-start: 0 !important;
+  margin-inline-end: auto !important;
+  max-width: 72rem !important;
+}
+
+.app-content .workspace-page .reading-numbered-shelf {
+  width: 100%;
+  margin-inline: 0 !important;
+  text-align: left !important;
+}
+
+.app-content .workspace-page .reading-numbered-shelf__list,
+.app-content .workspace-page .reading-numbered-shelf__list > li {
+  width: 100%;
+  margin-inline: 0 !important;
+  text-align: left !important;
+}
+
+.app-content .workspace-page .reading-numbered-shelf__list {
+  padding-inline: 0 !important;
+}
+
+.app-content .workspace-page .reading-list-row {
+  width: 100%;
+  margin-inline: 0 !important;
+  text-align: left !important;
+}
+
+.app-content .workspace-page .reading-list-row__title,
+.app-content .workspace-page .reading-numbered-shelf h2 {
+  text-align: left !important;
+}
+html[data-theme="dark"] .app-content [class~="bg-blue-50"],
+html[data-theme="dark"] .app-content [class~="bg-sky-50"] {
+  background: var(--p6-info-bg) !important;
+  color: var(--p6-info-text) !important;
+}
+html[data-theme="dark"] .app-content [class~="text-blue-900"],
+html[data-theme="dark"] .app-content [class~="text-sky-900"] {
+  color: var(--p6-info-text) !important;
+}
+/* Reading workspace: full-width content rail, aligned from the left. */
+body:has(.workspace-page) .app-content > .page-shell {
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-inline: var(--p6-space-gutter) !important;
+}
+
+body:has(.workspace-page) .app-content .workspace-page,
+body:has(.workspace-page) .app-content .workspace-page__container {
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+body:has(.workspace-page) .app-content .workspace-page__container {
+  padding-inline: 0 !important;
 }

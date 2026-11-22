@@ -109,16 +109,12 @@ function BookDetailContent() {
   const [feedback, setFeedback] = useState("");
   const [showNotes, setShowNotes] = useState(false);
   const [chapterNotesDraft, setChapterNotesDraft] = useState<Record<string, { centralPoint: string; development: string; questions: string }>>({});
-
-  const [pageValue, setPageValue] = useState("");
-  const [editing, setEditing] = useState(false);
+const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editAuthor, setEditAuthor] = useState("");
   const [editCategory, setEditCategory] =
     useState<Book["category"]>("Pleasure");
-  const [editTotalPages, setEditTotalPages] = useState("");
-
-  const [purposeDraft, setPurposeDraft] = useState("");
+const [purposeDraft, setPurposeDraft] = useState("");
   const [methodDraft, setMethodDraft] = useState<ReadingMethod>("Other");
 
   const [chapterSection, setChapterSection] = useState("");
@@ -146,14 +142,10 @@ function BookDetailContent() {
       : null;
 
     setBook(found);
-    setPageValue(found ? String(found.currentPage) : "");
-
-    setEditTitle(found?.title ?? "");
+setEditTitle(found?.title ?? "");
     setEditAuthor(found?.author ?? "");
     setEditCategory(found?.category ?? "Pleasure");
-    setEditTotalPages(found ? String(found.totalPages) : "");
-
-    setPurposeDraft(found?.readingPurpose ?? "");
+setPurposeDraft(found?.readingPurpose ?? "");
     setMethodDraft(found?.readingMethod ?? "Other");
 
     setReconstructionDraft({
@@ -204,24 +196,6 @@ function BookDetailContent() {
     } catch {
       setFeedback("Your changes could not be saved. Please try again.");
     }
-  }
-
-  function savePage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!book) return;
-
-    const value = Number(pageValue);
-    if (
-      pageValue.trim() === "" ||
-      !Number.isInteger(value) ||
-      value < 0 ||
-      value > book.totalPages
-    ) {
-      setFeedback(`Enter a whole-number page from 0 to ${book.totalPages}.`);
-      return;
-    }
-
-    persistBook({ ...book, currentPage: value }, "Reading progress saved.");
   }
 
   function savePurposeAndMethod(event: FormEvent<HTMLFormElement>) {
@@ -526,28 +500,23 @@ function BookDetailContent() {
     );
     if (!confirmed) return;
 
-    const updated: Book = {
-      ...book,
-      currentPage:
-        book.totalPages > 0 ? book.totalPages : book.currentPage,
-      status: "Finished",
-    };
-
-    setPageValue(String(updated.currentPage));
-    persistBook(updated, "Book marked as finished. The reconstruction stage is ready.");
+    persistBook(
+      { ...book, status: "Finished" },
+      "Book marked as finished. The reconstruction stage is ready.",
+    );
   }
 
   function restartBook() {
     if (!book) return;
 
     const confirmed = window.confirm(
-      `Restart "${book.title}" from page zero and clear its saved notes and workflow progress? Reading-session history will be kept. This cannot be undone.`,
+      `Restart "${book.title}" and clear its saved notes and workflow progress? Reading-session history will be kept. This cannot be undone.`,
     );
     if (!confirmed) return;
 
+    // Do not modify legacy page fields when restarting the workflow.
     const updated: Book = {
       ...book,
-      currentPage: 0,
       status: "Reading",
       readingPurpose: undefined,
       readingMethod: undefined,
@@ -561,7 +530,6 @@ function BookDetailContent() {
     };
 
     clearActiveTimerForBook(book.id);
-    setPageValue("0");
     setPurposeDraft("");
     setMethodDraft("Other");
     setChapterNotesDraft({});
@@ -595,39 +563,18 @@ function BookDetailContent() {
     if (!book) return;
 
     const title = editTitle.trim();
-    const totalPages = Number(editTotalPages);
-
     if (!title) {
       setFeedback("Enter a book title.");
       return;
     }
 
-    if (
-      editTotalPages.trim() === "" ||
-      !Number.isInteger(totalPages) ||
-      totalPages < 0
-    ) {
-      setFeedback("Enter a valid total page count (zero is allowed if unknown).");
-      return;
-    }
-
-    const currentPage = Math.min(book.currentPage, totalPages);
     const updated: Book = {
       ...book,
       title,
       author: editAuthor.trim(),
       category: editCategory,
-      totalPages,
-      currentPage,
-      status:
-        totalPages > 0 && currentPage >= totalPages
-          ? "Finished"
-          : book.status === "Finished" && currentPage < totalPages
-            ? "Reading"
-            : book.status,
     };
 
-    setPageValue(String(currentPage));
     setEditing(false);
     persistBook(updated, "Book details saved.");
   }
@@ -653,19 +600,7 @@ function BookDetailContent() {
       </main>
     );
   }
-
-  const progress =
-    book.totalPages > 0
-      ? Math.min(
-          100,
-          Math.max(
-            0,
-            Math.round((book.currentPage / book.totalPages) * 100),
-          ),
-        )
-      : 0;
-
-  const methodInfo = READING_METHODS.find(
+const methodInfo = READING_METHODS.find(
     (item) => item.value === methodDraft,
   );
 
@@ -696,11 +631,7 @@ function BookDetailContent() {
 
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="reading-detail-page__eyebrow">Your reading workspace</p>
           <h1>{book.title}</h1>
-          <p className="reading-detail-page__subtitle">
-            {book.author || "Author not specified"} · {book.category}
-          </p>
         </div>
         <CardMenu
           title="Book actions"
@@ -722,11 +653,26 @@ function BookDetailContent() {
             ...(book.status !== "Finished"
               ? [{ label: "Mark as finished", onSelect: markFinished }]
               : []),
-            { label: "Restart from page zero", onSelect: restartBook },
+            { label: "Restart reading", onSelect: restartBook },
             { label: "Delete book", onSelect: deleteBook, destructive: true },
           ]}
         />
       </header>
+
+      <details className="reading-detail-page__metadata">
+        <summary>
+          <span>Book details</span>
+          <span className="reading-detail-page__metadata-toggle">
+            <span className="group-open:hidden">Show details</span>
+            <span className="hidden group-open:inline">Hide details</span>
+          </span>
+        </summary>
+        <dl>
+          <div><dt>Author</dt><dd>{book.author || "Not specified"}</dd></div>
+          <div><dt>Category</dt><dd>{book.category}</dd></div>
+        </dl>
+      </details>
+
 
       {activeWorkTimer && (
         <ItemWorkTimer
@@ -854,18 +800,7 @@ function BookDetailContent() {
               <option value="Course">Course</option>
             </select>
           </label>
-          <label className="block">
-            <span className="reading-detail-page__label mb-1 block">Total pages</span>
-            <input
-              required
-              type="number"
-              min="0"
-              step="1"
-              value={editTotalPages}
-              onChange={(event) => setEditTotalPages(event.target.value)}
-              className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-            />
-          </label>
+
           <div className="flex flex-wrap gap-2">
             <button type="submit" className="reading-detail-page__action action-primary--forest">
               Save book details
@@ -899,28 +834,6 @@ function BookDetailContent() {
               Start reading
             </button>
           )}
-        </div>
-
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <span className="reading-detail-page__label">Reading progress</span>
-            <span className="reading-detail-page__value">
-              {book.currentPage} / {book.totalPages} pages · {progress}%
-            </span>
-          </div>
-          <div
-            className="h-2 overflow-hidden rounded-full bg-[var(--surface-soft)]"
-            role="progressbar"
-            aria-label="Book reading progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-          >
-            <div
-              className="h-full rounded-full bg-[var(--primary)] transition-[width]"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
         </div>
       </section>
 
@@ -1000,25 +913,7 @@ function BookDetailContent() {
             difficult, and reconstruct what matters before continuing.
           </p>
 
-          <form onSubmit={savePage} className="flex flex-wrap items-end justify-end gap-3">
-            <label className="min-w-0 flex-1">
-              <span className="reading-detail-page__label mb-1 block">
-                Current page
-              </span>
-              <input
-                type="number"
-                min="0"
-                max={book.totalPages}
-                step="1"
-                value={pageValue}
-                onChange={(event) => setPageValue(event.target.value)}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-              />
-            </label>
-            <button type="submit" className="reading-detail-page__secondary-action">
-              Save progress
-            </button>
-          </form>
+
 
           <div className="border-t border-[var(--border)] pt-4">
             <h3 className="text-sm font-semibold">A brief chapter reflection</h3>

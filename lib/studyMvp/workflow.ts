@@ -1,3 +1,4 @@
+import { isRetrievalTaskAvailableForNewSessions } from "./preparationReadiness";
 import {
   aggregateReviewResult,
   createReviewAfterGate,
@@ -142,8 +143,8 @@ function requireNextReviewTasks(
   const byId = new Map(allTasks.map((task) => [task.id, task]));
   for (const id of taskIds) {
     const task = byId.get(id);
-    if (!task || task.topic_id !== topicId || !task.active) {
-      throw new Error(`Next-review task "${id}" must be an active task belonging to topic "${topicId}".`);
+    if (!task || task.topic_id !== topicId || !isRetrievalTaskAvailableForNewSessions(task, allTasks)) {
+      throw new Error(`Next-review task "${id}" must be available for new sessions and belong to topic "${topicId}".`);
     }
   }
 }
@@ -698,10 +699,19 @@ export function applyGateAttempt(
   }
 
   const tasksById = new Map(state.retrieval_tasks.map((task) => [task.id, task]));
+  const priorSessionEvents = state.task_events.filter((event) =>
+    event.event_type === "gate_attempt" && event.gate_session_id === input.gateSessionId,
+  );
+  const isNewSession = priorSessionEvents.length === 0;
   for (const id of input.selectedTaskIds) {
     const selected = tasksById.get(id);
-    if (!selected || selected.topic_id !== topic.id || !selected.active) {
-      throw new Error(`Gate task "${id}" must be active and belong to topic "${topic.id}".`);
+    if (
+      !selected ||
+      selected.topic_id !== topic.id ||
+      !selected.active ||
+      (isNewSession && !isRetrievalTaskAvailableForNewSessions(selected, state.retrieval_tasks))
+    ) {
+      throw new Error(`Gate task "${id}" must be available for this session and belong to topic "${topic.id}".`);
     }
   }
 
@@ -714,9 +724,6 @@ export function applyGateAttempt(
     throw new Error("A taskless gate attempt must explicitly record a skill demonstrated without hints.");
   }
 
-  const priorSessionEvents = state.task_events.filter((event) =>
-    event.event_type === "gate_attempt" && event.gate_session_id === input.gateSessionId,
-  );
   for (const previous of priorSessionEvents) {
     if (JSON.stringify(previous.gate_selected_task_ids_snapshot) !== JSON.stringify(input.selectedTaskIds)) {
       throw new Error(`Gate session "${input.gateSessionId}" cannot change its selected task set midway through.`);
@@ -744,7 +751,6 @@ export function applyGateAttempt(
     event.event_type === "gate_attempt" &&
     (event.subject_id === topic.id || event.gate_selected_task_ids_snapshot?.some((id) => input.selectedTaskIds.includes(id))),
   );
-  const isNewSession = priorSessionEvents.length === 0;
   if (
     isNewSession &&
     topic.gate_result === "failed" &&

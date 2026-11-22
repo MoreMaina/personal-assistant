@@ -1,3 +1,4 @@
+import { isRetrievalTaskAvailableForNewSessions, isTopicPreparedForPlanner } from "./preparationReadiness";
 import {
   DEFAULT_PLANNER_SETTINGS,
   generateDailyPlan,
@@ -198,6 +199,10 @@ export function buildDailyPlannerTasks(
       .filter((topic) => {
         if (
           isTopicArchived(topic.id) ||
+          !isTopicPreparedForPlanner(
+            topic,
+            unitsById.get(topic.unit_id),
+          ) ||
           topic.status !== "not_started" ||
           topic.gate_passed ||
           topic.gate_result === "passed" ||
@@ -278,7 +283,9 @@ export function buildDailyPlannerTasks(
         : null;
 
     const activeTopicTasks = state.retrieval_tasks.filter(
-      (task) => task.topic_id === topic.id && task.active,
+      (task) =>
+        task.topic_id === topic.id &&
+        isRetrievalTaskAvailableForNewSessions(task, state.retrieval_tasks),
     );
     const selectedIds = unfinishedSession
       ? unfinishedSession.selectedTaskIds

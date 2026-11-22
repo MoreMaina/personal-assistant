@@ -1,3 +1,4 @@
+import { isRetrievalTaskAvailableForNewSessions } from "./preparationReadiness";
 import {
   defaultIdFactory,
   localDateOfTimestamp,
@@ -64,7 +65,7 @@ function getEligibleGuidedPracticeQuestions(
   >();
 
   for (const task of state.retrieval_tasks) {
-    if (!task.active || task.purpose !== purpose) {
+    if (!isRetrievalTaskAvailableForNewSessions(task, state.retrieval_tasks) || task.purpose !== purpose) {
       continue;
     }
 

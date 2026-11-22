@@ -1,5 +1,7 @@
 "use client";
 
+import { isRetrievalTaskAvailableForNewSessions } from "@/lib/studyMvp/preparationReadiness";
+
 import { useAutoDismissMessage } from "@/lib/useAutoDismissMessage";
 
 import {
@@ -53,6 +55,8 @@ import {
 
 import {
   exportStudyMvpJSON,
+  getCurrentStudyTrialPeriod,
+  getStudyTrialPeriods,
   removeUnusedStarterScaffold,
   startStudyTrial,
 } from "@/lib/studyMvp/storage";
@@ -639,26 +643,6 @@ function TopicConsolidationSection({
         topic &&
           item.allocated_minutes > 0 &&
           loggedMinutesFor(topic.id) >= item.allocated_minutes,
-      );
-    });
-
-  const allGuidedQuestionsCompleted =
-    items.length > 0 &&
-    items.every((item) => {
-      const selection = getGuidedPracticeSessionSelection(
-        state,
-        "mixed",
-        item.subject_id,
-        today,
-        item.allocated_minutes,
-      );
-
-      return (
-        selection.selectedTaskIds.length > 0 &&
-        selection.missingTaskIds.length === 0 &&
-        selection.selectedTaskIds.every((id) =>
-          selection.attemptedTaskIds.includes(id),
-        )
       );
     });
 
@@ -3045,6 +3029,12 @@ export default function StudyMvpPage() {
 
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [trialStartDateSelection, setTrialStartDateSelection] = useState<string | null>(null);
+  const [trialReadinessChecks, setTrialReadinessChecks] = useState({
+    backupReviewed: false,
+    preparationReviewed: false,
+    metricsAndPlannerVerified: false,
+    phoneAndRecoveryVerified: false,
+  });
   const starterScaffoldCleanupAttempted = useRef(false);
 
   useEffect(() => {
@@ -3163,37 +3153,30 @@ function openCatalogTools() {
       )
     : "";
 
+  const trialPeriods = state ? getStudyTrialPeriods(state) : [];
+  const currentTrialPeriod = state ? getCurrentStudyTrialPeriod(state) : null;
+  const previousTrialEnd = currentTrialPeriod?.end_date ?? null;
+  const trialHistoryNeedsReview = Boolean(
+    state && trialPeriods.length > 0 && !currentTrialPeriod,
+  );
+  const legacyTrialDatesNeedReview = Boolean(
+    state && trialPeriods.length === 0 && (
+      state.settings.trial_start_date ||
+      state.settings.trial_end_date ||
+      state.settings.week4_evaluation_start ||
+      state.settings.week4_evaluation_end
+    ),
+  );
+  const canConfigureTrialStart = Boolean(
+    state && today && !trialHistoryNeedsReview && !legacyTrialDatesNeedReview &&
+    (!currentTrialPeriod || today > currentTrialPeriod.end_date),
+  );
+  const trialReadinessComplete = Object.values(trialReadinessChecks).every(Boolean);
+  const canStartTrial = canConfigureTrialStart && trialReadinessComplete;
+  const minimumTrialStartDate = previousTrialEnd
+    ? addCalendarDays(previousTrialEnd, 1)
+    : today;
   const chosenTrialStartDate = trialStartDateSelection ?? today;
-  const trialStart = state?.settings.trial_start_date ?? null;
-  const trialEnd = state?.settings.trial_end_date ?? null;
-
-  const isWithinTrial = (date: string) =>
-    Boolean(trialStart && trialEnd && date >= trialStart && date <= trialEnd);
-
-  const trialHasRecordedActivity = Boolean(
-    state && trialStart && trialEnd && (
-      state.task_events.some((event) =>
-        isWithinTrial(localDateOfTimestamp(event.logged_at, state.settings.timezone))
-      ) ||
-      state.work_sessions.some((session) =>
-        isWithinTrial(localDateOfTimestamp(session.logged_at, state.settings.timezone))
-      ) ||
-      (state.daily_plan_history ?? []).some((snapshot) =>
-        isWithinTrial(snapshot.date)
-      ) ||
-      (state.daily_plan_executions ?? []).some((execution) =>
-        isWithinTrial(execution.date)
-      ) ||
-      state.weekly_metrics.some((metric) =>
-        metric.week_start <= trialEnd && metric.week_end >= trialStart
-      )
-    )
-  );
-
-  const canResetTrialSetup = Boolean(
-    trialStart && trialEnd && !trialHasRecordedActivity &&
-    today && today <= trialEnd
-  );
 
   const todaysPlanSnapshots = state && today
     ? (state.daily_plan_history ?? [])
@@ -3523,14 +3506,6 @@ function movePlanningItemTo(
     gateTopics[0] ??
     null;
 
-  const gateTasks = state && selectedGateTopic
-    ? state.retrieval_tasks.filter(
-        (task) =>
-          task.topic_id === selectedGateTopic.id &&
-          task.active,
-      )
-    : [];
-
   const latestGateSession =
     state && selectedGateTopic
       ? getLatestGateSession(state, selectedGateTopic.id)
@@ -3540,6 +3515,16 @@ function movePlanningItemTo(
     latestGateSession && !latestGateSession.complete
       ? latestGateSession
       : null;
+
+  const gateTasks = state && selectedGateTopic
+    ? state.retrieval_tasks.filter(
+        (task) =>
+          task.topic_id === selectedGateTopic.id &&
+          task.active &&
+          (openGateSession?.selectedTaskIds.includes(task.id) ||
+            isRetrievalTaskAvailableForNewSessions(task, state.retrieval_tasks)),
+      )
+    : [];
 
 
   const gateSessionOriginalTasks = state && openGateSession
@@ -3705,7 +3690,7 @@ function movePlanningItemTo(
       ? state.retrieval_tasks.filter(
           (task) =>
             task.topic_id === selectedReview.topic_id &&
-            task.active,
+            isRetrievalTaskAvailableForNewSessions(task, state.retrieval_tasks),
         )
       : [];
 
@@ -3729,7 +3714,9 @@ function movePlanningItemTo(
       latest && !latest.complete ? latest : null;
 
     const topicTasks = state.retrieval_tasks.filter(
-      (task) => task.topic_id === id && task.active,
+      (task) =>
+        task.topic_id === id &&
+        isRetrievalTaskAvailableForNewSessions(task, state.retrieval_tasks),
     );
 
     setGateSelectedTaskIds(
@@ -3760,10 +3747,11 @@ function movePlanningItemTo(
   function startTrial() {
     const startDate = chosenTrialStartDate;
 
-    if (!state || state.settings.trial_start_date) return;
+    if (!state || !canStartTrial) return;
 
-    if (!startDate || !today || startDate > today) {
-      setProblem("Choose the day you actually begin using the Study plan. Future dates cannot start the trial yet.");
+    if (!startDate || !today || startDate > today ||
+        (previousTrialEnd && startDate <= previousTrialEnd)) {
+      setProblem("Choose the actual first-use date after the previous trial has ended. Future dates and overlapping trials are not allowed.");
       return;
     }
 
@@ -3772,12 +3760,22 @@ function movePlanningItemTo(
         state,
         startDate,
         today,
+        { trialReadinessConfirmation: trialReadinessChecks },
       );
 
-      persist(
+      const saved = persist(
         nextState,
         `The four-week trial has started from ${startDate}.`,
       );
+      if (saved) {
+        setTrialStartDateSelection(null);
+        setTrialReadinessChecks({
+          backupReviewed: false,
+          preparationReviewed: false,
+          metricsAndPlannerVerified: false,
+          phoneAndRecoveryVerified: false,
+        });
+      }
     } catch (error) {
       setProblem(
         error instanceof Error
@@ -3787,60 +3785,6 @@ function movePlanningItemTo(
     }
   }
 
-  function resetTrialSetup() {
-    if (!state || !canResetTrialSetup || !trialStart || !trialEnd) return;
-
-    if (!window.confirm(
-      `Reset the trial dates (${trialStart} to ${trialEnd})? No study activity or weekly evidence has been recorded in this period. You can then choose the correct first day.`
-    )) return;
-
-    const changedAt = new Date().toISOString();
-    const reason = "Reset accidentally configured trial dates before any trial activity or weekly evidence existed.";
-    const changedFields = [
-      "trial_start_date",
-      "trial_end_date",
-      "week4_evaluation_start",
-      "week4_evaluation_end",
-    ];
-
-    const changeRecord = {
-      id: newId("settings_change"),
-      changed_at: changedAt,
-      reason,
-      changed_fields: changedFields,
-      previous_values: {
-        trial_start_date: trialStart,
-        trial_end_date: trialEnd,
-        week4_evaluation_start: state.settings.week4_evaluation_start,
-        week4_evaluation_end: state.settings.week4_evaluation_end,
-      },
-      new_values: {
-        trial_start_date: null,
-        trial_end_date: null,
-        week4_evaluation_start: null,
-        week4_evaluation_end: null,
-      },
-    };
-
-    const nextState = {
-      ...state,
-      settings: {
-        ...state.settings,
-        trial_start_date: null,
-        trial_end_date: null,
-        week4_evaluation_start: null,
-        week4_evaluation_end: null,
-      },
-      settings_change_history: [
-        ...state.settings_change_history,
-        changeRecord,
-      ],
-    };
-
-    if (persist(nextState, "Trial dates reset. Choose the actual first day when you are ready to begin.")) {
-      setTrialStartDateSelection(null);
-    }
-  }
 
   function importCountLabels(
     counts: ReturnType<typeof importTopicCatalogText>["counts"],
@@ -4581,14 +4525,16 @@ function movePlanningItemTo(
         </section>
       )}
 
-      {state.courses.length > 0 && !state.settings.trial_start_date && (
+      {state.courses.length > 0 && canConfigureTrialStart && (
         <section className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <div>
             <h2 className="font-extrabold text-amber-950">
-              Start your four-week study trial
+              {currentTrialPeriod ? "Start another four-week study trial" : "Start your four-week study trial"}
             </h2>
             <p className="mt-1 text-sm text-amber-900">
-              Choose the day you actually begin following this study plan.
+              {currentTrialPeriod
+                ? `Your previous trial ended ${formatStudyDateLabel(currentTrialPeriod.end_date)}. Choose the actual first-use date for the next trial.`
+                : "Choose the day you actually begin following this study plan."}
               Selecting a date does not start the trial; it starts only when you confirm below.
             </p>
           </div>
@@ -4599,6 +4545,7 @@ function movePlanningItemTo(
               <input
                 type="date"
                 value={chosenTrialStartDate}
+                min={minimumTrialStartDate || undefined}
                 max={today || undefined}
                 onChange={(event) => setTrialStartDateSelection(event.target.value)}
                 className="mt-2 block w-full rounded-xl border border-amber-300 bg-white px-3 py-3 text-base text-stone-900"
@@ -4625,41 +4572,44 @@ function movePlanningItemTo(
             </div>
           </div>
 
+          <fieldset className="rounded-xl border border-amber-200 bg-white/80 p-4">
+            <legend className="px-1 text-sm font-extrabold text-amber-950">Pre-trial readiness confirmation</legend>
+            <p className="mb-3 text-xs leading-5 text-amber-900">
+              These checks require your own verification. They are not inferred from test fixtures or automatically marked complete.
+            </p>
+            <div className="space-y-3 text-sm text-stone-800">
+              <label className="flex items-start gap-3">
+                <input type="checkbox" checked={trialReadinessChecks.backupReviewed} onChange={(event) => setTrialReadinessChecks((current) => ({ ...current, backupReviewed: event.target.checked }))} className="mt-0.5 h-4 w-4 accent-amber-900" />
+                <span>I have exported a Study JSON backup and inspected the current Study data and any previous trial evidence (or confirmed that no previous trial evidence exists).</span>
+              </label>
+              <label className="flex items-start gap-3">
+                <input type="checkbox" checked={trialReadinessChecks.preparationReviewed} onChange={(event) => setTrialReadinessChecks((current) => ({ ...current, preparationReviewed: event.target.checked }))} className="mt-0.5 h-4 w-4 accent-amber-900" />
+                <span>I have reviewed topic preparation and question banks, resolved readiness blockers, and intentionally excluded any topics or units that should not enter new planning.</span>
+              </label>
+              <label className="flex items-start gap-3">
+                <input type="checkbox" checked={trialReadinessChecks.metricsAndPlannerVerified} onChange={(event) => setTrialReadinessChecks((current) => ({ ...current, metricsAndPlannerVerified: event.target.checked }))} className="mt-0.5 h-4 w-4 accent-amber-900" />
+                <span>I have verified all eight weekly metrics, frozen evidence, the daily time budget and explicit task-disposition requirements.</span>
+              </label>
+              <label className="flex items-start gap-3">
+                <input type="checkbox" checked={trialReadinessChecks.phoneAndRecoveryVerified} onChange={(event) => setTrialReadinessChecks((current) => ({ ...current, phoneAndRecoveryVerified: event.target.checked }))} className="mt-0.5 h-4 w-4 accent-amber-900" />
+                <span>I have completed the required phone logging, persistence, offline/slow-network and recovery checks.</span>
+              </label>
+            </div>
+          </fieldset>
+
           <button
             type="button"
             onClick={startTrial}
-            disabled={!chosenTrialStartDate || !today || chosenTrialStartDate > today}
+            disabled={!canStartTrial || !chosenTrialStartDate || !today || chosenTrialStartDate > today || Boolean(previousTrialEnd && chosenTrialStartDate <= previousTrialEnd)}
             className="rounded-xl bg-amber-900 px-5 py-3 text-sm font-extrabold text-white hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Confirm start and begin four-week trial
           </button>
           <p className="text-xs text-amber-900">
             Your chosen date becomes Day 0. The trial settings are then frozen,
-            except for documented blocking bug fixes.
+            except for documented blocking bug fixes. All four readiness checks
+            must be confirmed before the start button becomes available.
           </p>
-        </section>
-      )}
-
-      {state.courses.length > 0 && state.settings.trial_start_date && canResetTrialSetup && (
-        <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-sky-200 bg-sky-50 p-5">
-          <div>
-            <h2 className="font-extrabold text-sky-950">
-              Trial dates are set, but no study activity is recorded yet
-            </h2>
-            <p className="mt-1 text-sm text-sky-900">
-              Currently set to {formatStudyDateLabel(trialStart!)} –{" "}
-              {formatStudyDateLabel(trialEnd!)}. If you set this by mistake,
-              reset the dates and choose the actual first day before you begin.
-              This option disappears once study activity or weekly evidence is recorded.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={resetTrialSetup}
-            className="rounded-xl border border-sky-300 bg-white px-4 py-2.5 text-sm font-extrabold text-sky-950 hover:bg-sky-100"
-          >
-            Reset trial dates
-          </button>
         </section>
       )}
 
@@ -4696,8 +4646,11 @@ function movePlanningItemTo(
                 </svg>
                 <span className="sr-only">{cloudSyncLabel}</span>
               </span>
+              <Link href="/study/preparation" className="study-page__metrics-link">
+                Topic <span aria-hidden="true">→</span>
+              </Link>
               <Link href="/study/metrics" className="study-page__metrics-link">
-                Metrics &amp; evidence <span aria-hidden="true">→</span>
+                Metrics <span aria-hidden="true">→</span>
               </Link>
             </div>
           </div>

@@ -234,7 +234,7 @@ If an area has no relevant data, say so briefly rather than guessing.
 const TASK_PROPOSAL_INSTRUCTIONS = `
 You draft exactly one calendar task for the user's review. You cannot save or perform actions.
 Return only JSON with exactly these fields:
-{"title":"concise task title","dueDate":"YYYY-MM-DD or null","priority":"low, medium, or high"}.
+{"title":"concise task title","dueDate":"YYYY-MM-DD or empty string","priority":"low, medium, or high"}.
 Use the user's request and recent conversation to understand the task. Keep its title under 120 characters.
 Use a due date only when the user explicitly gives a deadline; resolve clear relative dates using currentDate and the Africa/Nairobi timezone. If no deadline was provided, use an empty string for dueDate. Always include all three required fields.
 Use an explicitly requested priority when supplied; otherwise use medium.
@@ -1711,7 +1711,7 @@ export async function POST(request: Request) {
             { role: "user", content: prompt },
           ],
           stream: false,
-          max_tokens: isTaskProposal ? 250 : MAX_OUTPUT_TOKENS,
+          max_tokens: isTaskProposal ? 700 : MAX_OUTPUT_TOKENS,
           ...(isTaskProposal
             ? {
                 response_format: { type: "json_object" },
@@ -1777,7 +1777,7 @@ export async function POST(request: Request) {
                 parts: [{ text: prompt }],
               }],
               generationConfig: {
-                maxOutputTokens: isTaskProposal ? 250 : isDailyPlan ? 700 : MAX_OUTPUT_TOKENS,
+                maxOutputTokens: isTaskProposal ? 700 : isDailyPlan ? 700 : MAX_OUTPUT_TOKENS,
                 ...(isDailyPlan ? { thinkingConfig: { thinkingLevel: "LOW" } } : {}),
                 ...(isTaskProposal
                   ? {
@@ -2136,12 +2136,18 @@ export async function POST(request: Request) {
   }
 
   if (isTaskProposal) {
+    const trimmedProposal = answer.trim();
+    const firstProposalBrace = trimmedProposal.indexOf("{");
+    const lastProposalBrace = trimmedProposal.lastIndexOf("}");
+    const proposalJson = firstProposalBrace >= 0 && lastProposalBrace > firstProposalBrace
+      ? trimmedProposal.slice(firstProposalBrace, lastProposalBrace + 1)
+      : trimmedProposal;
     let parsedProposal: unknown;
     try {
-      parsedProposal = JSON.parse(answer);
+      parsedProposal = JSON.parse(proposalJson);
     } catch {
       return replyWithPerformance({
-        error: "Gemini returned an unreadable task draft. Please try again.",
+        error: "The assistant returned an unreadable task draft. Please try again.",
       }, 502);
     }
 

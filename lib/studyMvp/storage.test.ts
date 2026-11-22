@@ -44,6 +44,12 @@ class MemoryStorage implements StorageLike {
 }
 
 const NOW = "2026-10-23T09:00:00.000Z";
+const CONFIRMED_TRIAL_READINESS = {
+  backupReviewed: true,
+  preparationReviewed: true,
+  metricsAndPlannerVerified: true,
+  phoneAndRecoveryVerified: true,
+} as const;
 
 function validEvent(
   overrides: Partial<TaskEvent> = {},
@@ -466,6 +472,54 @@ describe("safe local persistence", () => {
     expect(() => saveStudyMvpState(changed, storage)).toThrow(
       /TaskEvent history is immutable/,
     );
+  });
+
+  it("prevents changing question content after it has been selected by a saved review", () => {
+    const storage = new MemoryStorage();
+    const state = createEmptyStudyState({ now: NOW, timezone: "UTC" });
+
+    state.courses.push({
+      id: "course-1", name: "Course", code: "C1", color: "#23412f", created_at: NOW,
+    });
+    state.units.push({
+      id: "unit-1", course_id: "course-1", code: "U1", name: "Unit", order_index: 1,
+    });
+    state.topics.push({
+      id: "topic-1", unit_id: "unit-1", topic_number: 1, title: "Topic",
+      order_index: 1, learning_objective: "Explain the mechanism and its clinical effect.",
+      objective_type: "explain", prerequisite_topic_ids: [], status: "active",
+      planned_consolidation_date: null, consolidation_estimated_duration_min: 35,
+      initial_study_date: "2026-10-20", gate_passed: true, gate_result: "passed",
+      weakness_flag: false, topic_importance: "medium",
+    });
+    state.retrieval_tasks.push({
+      id: "task-1", topic_id: "topic-1", prompt: "Explain the key mechanism.",
+      expected_answer_criteria: "Describe the mechanism and one relevant effect.",
+      task_type: "explanation", purpose: "review", estimated_duration_min: 5,
+      last_used_on: null, active: true,
+    });
+    state.review_events.push({
+      id: "review-1", topic_id: "topic-1", stage: 1,
+      event_kind: "scheduled_review", holds_stage: false,
+      selected_task_ids: ["task-1"], overall_result: null,
+      yellow_gap_severity: null, source_review_id: null,
+      intended_due_date: "2026-10-23", current_due_date: "2026-10-23",
+      completed_at: null, priority_at_scheduling: 2, current_priority: 2,
+      defer_count: 0, moved_from_sunday: false, status: "pending",
+    });
+
+    saveStudyMvpState(state, storage);
+
+    const changedPrompt = structuredClone(state);
+    changedPrompt.retrieval_tasks[0].prompt = "A different question with the same ID.";
+    expect(() => saveStudyMvpState(changedPrompt, storage)).toThrow(
+      /cannot change \"prompt\"|Create a new question version/i,
+    );
+
+    const deactivated = structuredClone(state);
+    deactivated.retrieval_tasks[0].active = false;
+    deactivated.retrieval_tasks[0].available_for_new_sessions = false;
+    expect(() => saveStudyMvpState(deactivated, storage)).not.toThrow();
   });
 
   it("rejects deleting an existing TaskEvent", () => {
@@ -1103,6 +1157,7 @@ describe("settings audit and trial freeze", () => {
       {
         now: NOW,
         idFactory: (prefix) => `${prefix}-trial`,
+        trialReadinessConfirmation: CONFIRMED_TRIAL_READINESS,
       },
     );
 
@@ -1137,8 +1192,23 @@ describe("settings audit and trial freeze", () => {
     });
 
     expect(audit.reason).toContain("2026-10-20");
+    expect(audit.reason).toContain("readiness checks were complete");
     expect(original.settings.trial_start_date).toBeNull();
     expect(original.settings_change_history).toHaveLength(0);
+  });
+
+  it("requires all manual readiness confirmations before starting a trial", () => {
+    const state = createEmptyStudyState({ now: NOW, timezone: "UTC" });
+
+    expect(() => startStudyTrial(state, "2026-10-20", "2026-10-23", {
+      now: NOW,
+      trialReadinessConfirmation: {
+        ...CONFIRMED_TRIAL_READINESS,
+        phoneAndRecoveryVerified: false,
+      },
+    })).toThrow(/cannot start until the user confirms/i);
+    expect(state.settings.trial_start_date).toBeNull();
+    expect(state.trial_periods).toHaveLength(0);
   });
 
   it("rejects a future trial start date", () => {
@@ -1152,7 +1222,7 @@ describe("settings audit and trial freeze", () => {
         state,
         "2026-10-24",
         "2026-10-23",
-        { now: NOW },
+        { now: NOW, trialReadinessConfirmation: CONFIRMED_TRIAL_READINESS },
       ),
     ).toThrow(/Future dates cannot start the trial yet/);
 
@@ -1170,7 +1240,7 @@ describe("settings audit and trial freeze", () => {
       state,
       "2026-10-20",
       "2026-10-23",
-      { now: NOW },
+      { now: NOW, trialReadinessConfirmation: CONFIRMED_TRIAL_READINESS },
     );
 
     expect(() =>
@@ -1393,5 +1463,133 @@ describe("final examination date", () => {
     parsed.courses.push({ id: "external-edit" });
 
     expect(state.courses).toHaveLength(0);
+  });
+});
+
+
+describe("Study repeatable trial history", () => {
+  it("migrates a legacy trial without relabelling its metric snapshots", () => {
+    const storage = new MemoryStorage();
+    const state = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    state.settings.trial_start_date = "2026-10-20";
+    state.settings.trial_end_date = "2026-11-16";
+    state.settings.week4_evaluation_start = "2026-11-10";
+    state.settings.week4_evaluation_end = "2026-11-16";
+
+    const historicalMetric = validMetric();
+    state.weekly_metrics = [historicalMetric];
+
+    storage.setItem(STUDY_MVP_STORAGE_KEY, JSON.stringify({
+      ...state,
+      trial_periods: undefined,
+      current_trial_id: undefined,
+    }));
+
+    const loaded = loadStudyMvpState(storage);
+
+    expect(loaded.trial_periods).toHaveLength(1);
+    expect(loaded.trial_periods?.[0]).toMatchObject({
+      id: "legacy-trial-2026-10-20",
+      start_date: "2026-10-20",
+      end_date: "2026-11-16",
+      source: "legacy",
+    });
+    expect(loaded.current_trial_id).toBe("legacy-trial-2026-10-20");
+    expect(loaded.weekly_metrics[0]).toEqual(historicalMetric);
+    expect(loaded.weekly_metrics[0].trial_id).toBeUndefined();
+  });
+
+  it("appends a second trial while preserving the first period", () => {
+    const original = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+
+    const first = startStudyTrial(
+      original,
+      "2026-10-20",
+      "2026-10-23",
+      {
+        now: "2026-10-23T09:00:00.000Z",
+        idFactory: (prefix) => `${prefix}-first`,
+        trialReadinessConfirmation: CONFIRMED_TRIAL_READINESS,
+      },
+    );
+    const firstRecord = structuredClone(first.trial_periods?.[0]);
+
+    const second = startStudyTrial(
+      first,
+      "2026-11-17",
+      "2026-11-17",
+      {
+        now: "2026-11-17T09:00:00.000Z",
+        idFactory: (prefix) => `${prefix}-second`,
+        trialReadinessConfirmation: CONFIRMED_TRIAL_READINESS,
+      },
+    );
+
+    expect(second.trial_periods).toHaveLength(2);
+    expect(second.trial_periods?.[0]).toEqual(firstRecord);
+    expect(second.trial_periods?.[1]).toMatchObject({
+      id: "trial-second",
+      start_date: "2026-11-17",
+      end_date: "2026-12-14",
+      week4_evaluation_start: "2026-12-08",
+      week4_evaluation_end: "2026-12-14",
+      source: "user_confirmed",
+    });
+    expect(second.current_trial_id).toBe("trial-second");
+    expect(second.settings.trial_start_date).toBe("2026-11-17");
+    expect(first.settings.trial_start_date).toBe("2026-10-20");
+  });
+
+  it("rejects a new trial while the previous period is active", () => {
+    const original = createEmptyStudyState({
+      now: NOW,
+      timezone: "UTC",
+    });
+    const first = startStudyTrial(
+      original,
+      "2026-10-20",
+      "2026-10-23",
+      { now: "2026-10-23T09:00:00.000Z", trialReadinessConfirmation: CONFIRMED_TRIAL_READINESS },
+    );
+
+    expect(() =>
+      startStudyTrial(
+        first,
+        "2026-10-24",
+        "2026-10-24",
+        { now: "2026-10-24T09:00:00.000Z", trialReadinessConfirmation: CONFIRMED_TRIAL_READINESS },
+      ),
+    ).toThrow(/previous trial has not finished/i);
+
+    expect(first.trial_periods).toHaveLength(1);
+  });
+
+  it("allows metric identities to be distinguished by trial ID", () => {
+    const storage = new MemoryStorage();
+    saveStudyMvpState(
+      createEmptyStudyState({ now: NOW, timezone: "UTC" }),
+      storage,
+    );
+
+    appendWeeklyMetricsSnapshot(
+      validMetric({ trial_id: "trial-first" }),
+      storage,
+    );
+    appendWeeklyMetricsSnapshot(
+      validMetric({ trial_id: "trial-second" }),
+      storage,
+    );
+
+    const loaded = loadStudyMvpState(storage);
+    expect(loaded.weekly_metrics).toHaveLength(2);
+    expect(loaded.weekly_metrics.map((metric) => metric.trial_id))
+      .toEqual(["trial-first", "trial-second"]);
   });
 });

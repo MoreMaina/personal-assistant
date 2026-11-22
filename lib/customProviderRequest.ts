@@ -35,7 +35,7 @@ export function buildCustomProviderRequestOptions(input: {
         }
       : {
           max_tokens: isTaskProposal
-            ? 250
+            ? 700
             : isDailyPlan
               ? 700
               : input.maxOutputTokens,

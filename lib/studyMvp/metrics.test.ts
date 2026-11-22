@@ -428,3 +428,31 @@ describe("weekly metric flags", () => {
     expect(flags.map((flag) => flag.code)).toContain("critical_backlog_increasing");
   });
 });
+
+
+describe("trial-linked weekly metrics", () => {
+  it("includes a supplied trial ID in a new snapshot", () => {
+    const result = calculateWeeklyMetrics({
+      trial_id: "trial-current",
+      week_number: 1,
+      week_start: START,
+      week_end: END,
+      timezone: ZONE,
+      events: [],
+    });
+
+    expect(result.snapshot.trial_id).toBe("trial-current");
+  });
+
+  it("leaves the ID absent for legacy-style calculations", () => {
+    const result = calculateWeeklyMetrics({
+      week_number: 1,
+      week_start: START,
+      week_end: END,
+      timezone: ZONE,
+      events: [],
+    });
+
+    expect(result.snapshot.trial_id).toBeUndefined();
+  });
+});

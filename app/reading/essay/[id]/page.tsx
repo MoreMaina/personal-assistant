@@ -574,12 +574,7 @@ function EssayDetailContent() {
 
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="reading-detail-page__eyebrow">Essay workspace</p>
           <h1>{essay.title}</h1>
-          <p className="reading-detail-page__subtitle">
-            {essay.author || "Author not specified"}
-            {essay.source ? ` · ${essay.source}` : ""}
-          </p>
         </div>
         <CardMenu
           title="Essay actions"
@@ -604,6 +599,21 @@ function EssayDetailContent() {
           ]}
         />
       </header>
+
+      <details className="reading-detail-page__metadata">
+        <summary>
+          <span>Essay details</span>
+          <span className="reading-detail-page__metadata-toggle">
+            <span className="group-open:hidden">Show details</span>
+            <span className="hidden group-open:inline">Hide details</span>
+          </span>
+        </summary>
+        <dl>
+          <div><dt>Author</dt><dd>{essay.author || "Not specified"}</dd></div>
+          <div><dt>Source</dt><dd>{essay.source || "Not specified"}</dd></div>
+        </dl>
+      </details>
+
 
       {showNotes && (
         <section className="reading-detail-page__panel space-y-4" id="essay-notes">

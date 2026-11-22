@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { Fredoka, Nunito } from "next/font/google";
 
 import "./globals.css";
@@ -30,7 +31,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#edf6f9",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#edf6f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#101d22" },
+  ],
 };
 
 export default function RootLayout({
@@ -39,7 +43,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script
+          id="pa-theme-bootstrap"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: '(function () { try { var key = "personal-assistant:theme-preference"; var stored = window.localStorage.getItem(key); var preference = stored === "light" || stored === "dark" ? stored : "system"; var dark = preference === "dark" || (preference === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches); document.documentElement.dataset.theme = dark ? "dark" : "light"; document.documentElement.dataset.themePreference = preference; } catch (error) { document.documentElement.dataset.theme = "light"; document.documentElement.dataset.themePreference = "system"; } })();',
+          }}
+        />
+      </head>
       <body
         className={`${fredoka.variable} ${nunito.variable}`}
       >

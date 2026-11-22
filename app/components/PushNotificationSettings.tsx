@@ -437,7 +437,7 @@ export default function PushNotificationSettings() {
           <div className="space-y-3 border-t border-[var(--border)] pt-4">
             <h3 className="font-bold">Daily summary times</h3>
             <p className="text-xs text-[var(--muted)]">
-              Times use this device's saved time zone.
+              Times use this device&apos;s saved time zone.
             </p>
 
             {([
