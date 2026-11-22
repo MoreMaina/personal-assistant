@@ -4,9 +4,11 @@ name: Study Preview CI
 on:
   push:
     branches:
+      - main
       - study-roadmap-preview
   pull_request:
     branches:
+      - main
       - assistant-development
 
 permissions:
