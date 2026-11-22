@@ -77,6 +77,7 @@ export default function StudyPreparationPage() {
   const [objectiveDraft, setObjectiveDraft] = useState("");
   const [objectiveTypeDraft, setObjectiveTypeDraft] = useState<ObjectiveType>("explain");
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [questionDraft, setQuestionDraft] = useState<RetrievalQuestionDraft>(emptyDraft);
   const [formMessage, setFormMessage] = useState("");
   const [formProblem, setFormProblem] = useState("");
@@ -104,6 +105,25 @@ export default function StudyPreparationPage() {
       .sort((a, b) => (a.version_number ?? 1) - (b.version_number ?? 1)),
     [state, selectedTopic],
   );
+
+  const currentQuestions = useMemo(
+  () => questions.filter(
+    (task) => !questions.some(
+      (candidate) => candidate.supersedes_task_id === task.id,
+    ),
+  ),
+  [questions],
+);
+
+const previousQuestions = useMemo(
+  () => questions.filter(
+    (task) => questions.some(
+      (candidate) => candidate.supersedes_task_id === task.id,
+    ),
+  ),
+  [questions],
+);
+
   const readiness = state && selectedTopic
     ? getTopicPreparationReadiness(selectedTopic, state.retrieval_tasks)
     : null;
@@ -113,12 +133,14 @@ export default function StudyPreparationPage() {
       setObjectiveDraft("");
       setObjectiveTypeDraft("explain");
       setEditingQuestionId(null);
+      setIsAddingQuestion(false);
       setQuestionDraft(emptyDraft());
       return;
     }
     setObjectiveDraft(selectedTopic.learning_objective);
     setObjectiveTypeDraft(selectedTopic.objective_type);
     setEditingQuestionId(null);
+    setIsAddingQuestion(false);
     setQuestionDraft(emptyDraft());
     setFormProblem("");
     setFormMessage("");
@@ -186,6 +208,7 @@ export default function StudyPreparationPage() {
 
   function cancelQuestionEdit() {
     setEditingQuestionId(null);
+    setIsAddingQuestion(false);
     setQuestionDraft(emptyDraft());
     setFormProblem("");
     setFormMessage("");
@@ -220,6 +243,14 @@ export default function StudyPreparationPage() {
     }
   }
 
+  function beginNewQuestion() {
+    setEditingQuestionId(null);
+    setQuestionDraft(emptyDraft());
+    setIsAddingQuestion(true);
+    setFormProblem("");
+    setFormMessage("");
+  }
+
   function renderQuestionForm() {
     return (
                 <form onSubmit={submitQuestion} id="question-editor" aria-label="Retrieval question editor" className="question-editor space-y-3">
@@ -250,7 +281,9 @@ export default function StudyPreparationPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button type="submit" className={primaryButton}>{editingQuestionId ? "Save new version" : "Add question"}</button>
-                    {editingQuestionId && <button type="button" onClick={cancelQuestionEdit} className={secondaryButton}>Cancel version edit</button>}
+                    <button type="button" onClick={cancelQuestionEdit} className={secondaryButton}>
+  {editingQuestionId ? "Cancel version edit" : "Cancel"}
+</button>
                   </div>
                 </form>
     );
@@ -323,36 +356,21 @@ export default function StudyPreparationPage() {
         <>
 
 
-          {selectedUnit && (
-            <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4">
-              <div>
-                <h2 className="font-extrabold text-[var(--p6-text)]">Unit planner eligibility</h2>
-                <p className="mt-1 text-sm text-[var(--p6-text-secondary)]">
-                  {selectedUnit.planner_excluded ? "This unit is excluded from new initial-learning selections." : "This unit may contribute eligible topics to new initial-learning plans."}
-                </p>
-                <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">Exclusion does not delete topics, question banks, scheduled reviews or unfinished sessions.</p>
-              </div>
-              <button type="button" onClick={toggleUnitExclusion} className={secondaryButton}>
-                {selectedUnit.planner_excluded ? "Restore unit to planner" : "Exclude unit from planner"}
-              </button>
-            </section>
-          )}
+
 
           {!selectedTopic ? (
             <section className="rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-5 text-sm text-[var(--p6-text-secondary)]">No topics are registered in this unit.</section>
           ) : (
             <>
-              <details open className="study-preparation-section">
-                <summary className="study-preparation-section__summary">
-                  <span className="min-w-0">
-                    <span className="block text-base font-extrabold text-[var(--p6-text)]">Topic preparation</span>
-                    <span className="mt-0.5 block text-sm font-semibold text-[var(--p6-text-secondary)]">{selectedTopic.title}</span>
-                    <span className="mt-0.5 block text-xs text-[var(--p6-text-secondary)]">{displayStatus(selectedTopic.preparation_status)}</span>
-                  </span>
-                  <span className={readiness?.ready ? "prep-readiness-status prep-readiness-status--ready" : "prep-readiness-status"}>
-                    {readiness?.ready ? "Ready" : (readiness?.blockers.length ?? 0) + " blockers"}
-                  </span>
-                </summary>
+              <details className="study-preparation-section">
+  <summary className="study-preparation-section__summary">
+    <span className="text-base font-extrabold text-[var(--p6-text)]">
+      Topic preparation
+    </span>
+    <span className={readiness?.ready ? "prep-readiness-status prep-readiness-status--ready" : "prep-readiness-status"}>
+      {readiness?.ready ? "Ready" : (readiness?.blockers.length ?? 0) + " blockers"}
+    </span>
+  </summary>
                 <div className="study-preparation-section__body">
                 <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px]">
                   <label className="text-sm font-bold text-[var(--p6-text)]">Learning objective
@@ -394,6 +412,21 @@ export default function StudyPreparationPage() {
                 </div>
               </details>
 
+          {selectedUnit && (
+            <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4">
+              <div>
+                <h2 className="font-extrabold text-[var(--p6-text)]">Unit planner eligibility</h2>
+                <p className="mt-1 text-sm text-[var(--p6-text-secondary)]">
+                  {selectedUnit.planner_excluded ? "This unit is excluded from new initial-learning selections." : "This unit may contribute eligible topics to new initial-learning plans."}
+                </p>
+                <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">Exclusion does not delete topics, question banks, scheduled reviews or unfinished sessions.</p>
+              </div>
+              <button type="button" onClick={toggleUnitExclusion} className={secondaryButton}>
+                {selectedUnit.planner_excluded ? "Restore unit to planner" : "Exclude unit from planner"}
+              </button>
+            </section>
+          )}
+
               <details open className="study-preparation-section">
                 <summary className="study-preparation-section__summary">
                   <span className="text-base font-extrabold text-[var(--p6-text)]">Question bank</span>
@@ -401,12 +434,12 @@ export default function StudyPreparationPage() {
                 </summary>
                 <div className="study-preparation-section__body">
                   <div className="mb-3 flex justify-end">
-                    <button type="button" onClick={cancelQuestionEdit} className={secondaryButton}>Add new question</button>
+                    <button type="button" onClick={beginNewQuestion} className={secondaryButton}>Add new question</button>
                   </div>
                 <div className="mt-4 space-y-3">
                   {questions.length === 0 ? (
                     <p className="rounded-xl bg-[var(--p6-surface-subtle)] p-4 text-sm text-[var(--p6-text-secondary)]">No questions have been created for this topic yet.</p>
-                  ) : questions.map((task) => {
+                  ) : currentQuestions.map((task) => {
                     const hasNewerVersion = questions.some((candidate) => candidate.supersedes_task_id === task.id);
                     const availableForNewSessions = isRetrievalTaskAvailableForNewSessions(task, state.retrieval_tasks);
                     const isInUnfinishedReview = state.review_events.some((review) =>
@@ -429,7 +462,7 @@ export default function StudyPreparationPage() {
                         {editingQuestionId === task.id ? (
                           renderQuestionForm()
                         ) : (
-                          <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
                               <span className={availableForNewSessions ? "text-emerald-700" : "text-[var(--p6-text-secondary)]"}>{questionStatus}</span>
@@ -445,7 +478,7 @@ export default function StudyPreparationPage() {
                             {isInUnfinishedGuidedPractice && <p className="mt-1 text-xs font-bold text-amber-800">Selected by unfinished guided practice; its original selection is preserved.</p>}
                             {hasNewerVersion && <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">A newer version exists; this version is retained for history.</p>}
                           </div>
-                          <div className="flex shrink-0 flex-wrap gap-2">
+                          <div className="flex w-full min-w-0 flex-wrap gap-2 sm:w-auto sm:shrink-0">
                             {availableForNewSessions && !hasNewerVersion && <button type="button" onClick={() => beginQuestionVersion(task)} className={secondaryButton}>Edit / replace</button>}
                             {!hasNewerVersion && (
                               <button type="button" onClick={() => toggleQuestionActive(task)} className={secondaryButton}>
@@ -459,8 +492,31 @@ export default function StudyPreparationPage() {
                     );
                   })}
                 </div>
-
-                {editingQuestionId === null && renderQuestionForm()}
+                  {previousQuestions.length > 0 && (
+  <details className="mt-4 rounded-xl border border-[var(--p6-border-decorative)]">
+    <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-[var(--p6-text)]">
+      Previous versions ({previousQuestions.length})
+    </summary>
+    <div className="border-t border-[var(--p6-border-decorative)] px-4">
+      {previousQuestions.map((task) => (
+        <article key={task.id} className="prep-question-row">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-[var(--p6-text-secondary)]">
+            <span>Previous version</span>
+            <span>Version {task.version_number ?? 1}</span>
+            <span>{task.purpose}</span>
+          </div>
+          <h3 className="mt-2 font-bold text-[var(--p6-text)]">
+            {task.prompt}
+          </h3>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--p6-text-secondary)]">
+            {task.expected_answer_criteria}
+          </p>
+        </article>
+      ))}
+    </div>
+  </details>
+)}
+                {isAddingQuestion && editingQuestionId === null && renderQuestionForm()}
                 <p className="mt-4 text-xs leading-5 text-[var(--p6-text-secondary)]">
                   Deactivation affects future question selection only. Scheduled Reviews and unfinished Gate sessions keep their original question IDs. Resuming an unfinished Gate can reactivate its exact original questions; no replacement is substituted automatically.
                 </p>
