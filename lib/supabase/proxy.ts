@@ -7,6 +7,13 @@ import {
 export async function updateSession(
   request: NextRequest,
 ) {
+  // The dispatcher authenticates with PUSH_DISPATCH_SECRET itself.
+  // It must not be redirected by browser-session authentication.
+  if (request.nextUrl.pathname === "/api/push/dispatch") {
+    return NextResponse.next({
+      request,
+    });
+  }  
   let supabaseResponse =
     NextResponse.next({
       request,
