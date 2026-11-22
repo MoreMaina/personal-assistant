@@ -650,7 +650,7 @@ export default function GeneralSettingsPage() {
         <ThemePreferenceControl />
       </section>
 
-      <details className="settings-section group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" open>
+      <details className="settings-section group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" >
         <summary className="settings-section__summary">
           <span className="settings-section-title">Academic details</span>
         </summary>
