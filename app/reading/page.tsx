@@ -1259,7 +1259,7 @@ const [essayTitle, setEssayTitle] =
 
   return (
     <main className="workspace-page min-h-full text-[var(--ink)]">
-      <div className="workspace-page__container mx-auto max-w-5xl px-5 py-8 sm:px-8">
+      <div className="workspace-page__container w-full max-w-6xl py-5">
 
         <div
           role="group"

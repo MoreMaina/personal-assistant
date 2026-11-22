@@ -989,11 +989,11 @@ export default function StudyMetricsPage() {
   }
 
   return (
-    <main className="study-metrics-page mx-auto max-w-6xl space-y-4 px-3 py-4 sm:px-6 sm:py-6">
+    <main className="study-metrics-page mx-auto max-w-6xl space-y-3 px-0 pt-2 pb-8 sm:px-0 sm:pt-3">
       <Link href="/study" className="study-metrics-page__back">
         ← Study workspace
       </Link>
-      <header className="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+      <header className="rounded-2xl bg-[var(--p6-surface)] p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-stone-950">Weekly metrics</h1>
           <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-600">

@@ -72,10 +72,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md py-10">
-      <section className="rounded-[24px] border-2 border-[var(--primary-dark)] bg-[var(--surface)] p-6 shadow-[0_4px_0_var(--primary-dark)] sm:p-8">
+    <main className="login-page mx-auto w-full max-w-md px-4 py-6 sm:py-10">
+      <section className="rounded-3xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-6 shadow-[var(--p6-elevation-card)] sm:p-8">
         <div className="mb-6">
-          <div className="mb-4 grid h-14 w-14 place-items-center rounded-[18px] bg-[var(--primary)] font-[var(--font-heading)] text-xl font-bold text-[var(--surface)]">
+          <div className="mb-4 grid h-14 w-14 place-items-center rounded-[18px] bg-[var(--primary)] font-[var(--font-heading)] text-xl font-bold text-[var(--p6-on-primary)]">
             PA
           </div>
 
@@ -113,7 +113,7 @@ export default function LoginPage() {
               onChange={(event) =>
                 setEmail(event.target.value)
               }
-              className="mt-2 w-full rounded-[14px] border-2 border-[var(--border)] bg-white px-4 py-3 outline-none focus:border-[var(--primary)]"
+              className="mt-2 w-full rounded-xl border border-[var(--p6-border-control)] bg-[var(--p6-surface)] px-4 py-3 text-[var(--p6-text)] outline-none focus:border-[var(--p6-focus)]"
               placeholder="you@example.com"
             />
           </div>
@@ -135,7 +135,7 @@ export default function LoginPage() {
               onChange={(event) =>
                 setPassword(event.target.value)
               }
-              className="mt-2 w-full rounded-[14px] border-2 border-[var(--border)] bg-white px-4 py-3 outline-none focus:border-[var(--primary)]"
+              className="mt-2 w-full rounded-xl border border-[var(--p6-border-control)] bg-[var(--p6-surface)] px-4 py-3 text-[var(--p6-text)] outline-none focus:border-[var(--p6-focus)]"
               placeholder="Your password"
             />
           </div>
@@ -143,7 +143,7 @@ export default function LoginPage() {
           {errorMessage && (
             <p
               role="alert"
-              className="rounded-[12px] bg-[var(--accent-soft)] p-3 text-sm font-bold text-[var(--accent-dark)]"
+              className="rounded-xl bg-[var(--p6-error-bg)] p-3 text-sm font-bold text-[var(--p6-error-text)]"
             >
               {errorMessage}
             </p>
@@ -152,7 +152,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="min-h-[50px] w-full rounded-[14px] border-2 border-[var(--accent-dark)] bg-[var(--accent)] px-5 py-3 font-extrabold text-white shadow-[0_4px_0_var(--accent-dark)] transition active:translate-y-1 active:shadow-none disabled:cursor-wait disabled:opacity-60"
+            className="min-h-12 w-full rounded-xl border border-[var(--p6-primary)] bg-[var(--p6-primary)] px-4 py-3 font-extrabold text-[var(--p6-on-primary)] shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading
               ? "Signing in..."

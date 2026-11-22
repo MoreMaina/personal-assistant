@@ -76,7 +76,7 @@ export function ThemePreferenceControl() {
   return (
     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-center">
       <div>
-        <label htmlFor="app-theme-preference" className="block text-sm font-bold text-[var(--p6-text)]">
+        <label htmlFor="app-theme-preference" className="settings-section-title block text-[var(--p6-text)]">
           Appearance
         </label>
         <p className="mt-1 text-sm text-[var(--p6-text-secondary)]">

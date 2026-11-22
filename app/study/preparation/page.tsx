@@ -62,6 +62,15 @@ export default function StudyPreparationPage() {
     persist,
   } = useCloudStudyState();
 
+  const cloudSyncLabel =
+    cloudSyncStatus === "synced" ? "Synced" :
+    cloudSyncStatus === "syncing" ? "Saving" :
+    cloudSyncStatus === "ready" ? "Cloud ready" :
+    cloudSyncStatus === "loading" ? "Connecting" :
+    cloudSyncStatus === "migration" ? "Migration needs approval" :
+    cloudSyncStatus === "conflict" ? "Sync conflict" :
+    "Sync issue";
+
   const [courseId, setCourseId] = useState("");
   const [unitId, setUnitId] = useState("");
   const [topicId, setTopicId] = useState("");
@@ -213,9 +222,9 @@ export default function StudyPreparationPage() {
 
   function renderQuestionForm() {
     return (
-                <form onSubmit={submitQuestion} id="question-editor" aria-label="Retrieval question editor" className="question-editor mt-4 space-y-3 p-4">
+                <form onSubmit={submitQuestion} id="question-editor" aria-label="Retrieval question editor" className="question-editor space-y-3">
                   <div>
-                    <h3 className="font-extrabold text-[var(--p6-text)]">{editingQuestionId ? "Create a replacement version" : "Add a retrieval question"}</h3>
+                    <h3 className="font-extrabold text-[var(--p6-text)]">{editingQuestionId ? "Replace this question version" : "Add a retrieval question"}</h3>
                     <p className="mt-1 text-xs text-[var(--p6-text-secondary)]">{editingQuestionId ? "Saving creates a new question ID; the previous question remains available for historical and unfinished-session references." : "A useful topic bank contains 3–5 active questions, including at least 3 Gate and 2 Review questions."}</p>
                   </div>
                   <label className="block text-sm font-bold text-[var(--p6-text)]">Question prompt
@@ -248,45 +257,37 @@ export default function StudyPreparationPage() {
   }
 
   if (loadingError) {
-    return <main className="study-preparation-page mx-auto max-w-5xl p-5"><p role="alert" className="text-rose-700">{loadingError}</p><Link href="/study" className="mt-4 inline-block underline">Return to Study</Link></main>;
+    return <main className="study-preparation-page mx-auto w-full max-w-6xl"><p role="alert" className="text-rose-700">{loadingError}</p><Link href="/study" className="mt-4 inline-block underline">Return to Study</Link></main>;
   }
 
   if (!state) {
-    return <main className="study-preparation-page mx-auto max-w-5xl p-5 text-[var(--p6-text-secondary)]">Connecting to your Study workspace…</main>;
+    return <main className="study-preparation-page mx-auto w-full max-w-6xl text-[var(--p6-text-secondary)]">Connecting to your Study workspace…</main>;
   }
 
   return (
-    <main className="study-preparation-page mx-auto max-w-6xl space-y-5 px-3 py-4 pb-12 sm:px-6 sm:py-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/study" className="text-sm font-bold text-[var(--p6-primary)] hover:underline">← Study workspace</Link>
-        <span className="rounded-full bg-[var(--p6-surface-subtle)] px-3 py-1 text-xs font-bold text-[var(--p6-text-secondary)]">
-          {cloudSyncStatus === "synced" ? "Cloud synced" : cloudSyncStatus === "syncing" ? "Syncing" : cloudSyncStatus === "conflict" ? "Sync conflict" : "Study storage"}
-        </span>
-      </div>
-
-      <header className="rounded-3xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-5 shadow-sm sm:p-7">
-        <p className="text-xs font-extrabold uppercase tracking-[0.15em] text-[var(--p6-primary)]">Study system · Preparation</p>
-        <h1 className="mt-2 text-2xl font-extrabold text-[var(--p6-text)] sm:text-3xl">Prepare topics and manage questions</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--p6-text-secondary)]">
-          Define what each topic requires you to retrieve, maintain its question bank, and confirm readiness before new initial-learning work enters the planner.
-        </p>
-      </header>
-
-      {(notice || problem || formMessage || formProblem) && (
-        <div role={problem || formProblem ? "alert" : "status"} className={`rounded-xl border p-3 text-sm font-semibold ${problem || formProblem ? "border-rose-300 bg-rose-50 text-rose-900" : "border-[var(--p6-border-decorative)] bg-[var(--p6-surface-subtle)] text-[var(--p6-text)]"}`}>
-          {problem || formProblem || formMessage || notice}
+    <main className="study-preparation-page mx-auto w-full max-w-6xl space-y-4 pb-10">
+      <section className="study-preparation-toolbar">
+        <div className="study-preparation-toolbar__top">
+          <div className="min-w-0">
+            <Link href="/study" className="text-sm font-bold text-[var(--p6-primary)] hover:underline">← Study workspace</Link>
+            <h1 className="mt-1 text-xl font-extrabold text-[var(--p6-text)]">Topic preparation</h1>
+          </div>
+          <span
+            className="study-sync-status"
+            data-status={cloudSyncStatus}
+            role="status"
+            aria-live="polite"
+            aria-label={"Cloud sync: " + cloudSyncLabel}
+            title={"Cloud sync: " + cloudSyncLabel}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7.5 18a4.5 4.5 0 1 1 .88-8.91A6.5 6.5 0 0 1 21 12.5 4.5 4.5 0 0 1 17 18Z" />
+            </svg>
+            <span className="sr-only">{cloudSyncLabel}</span>
+          </span>
         </div>
-      )}
-
-      {courses.length === 0 ? (
-        <section className="rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-5">
-          <h2 className="font-extrabold text-[var(--p6-text)]">No course catalogue yet</h2>
-          <p className="mt-2 text-sm text-[var(--p6-text-secondary)]">Import courses and topics before preparing the question bank.</p>
-          <Link href="/study#catalog" className={`${primaryButton} mt-4`}>Open course catalogue</Link>
-        </section>
-      ) : (
-        <>
-          <section className="grid gap-3 rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4 sm:grid-cols-3">
+        {courses.length > 0 && (
+          <div className="study-preparation-selectors grid gap-3 sm:grid-cols-3">
             <label className="text-sm font-bold text-[var(--p6-text)]">Course
               <select className={fieldClass} value={selectedCourse?.id ?? ""} onChange={(event) => { setCourseId(event.target.value); setUnitId(""); setTopicId(""); }}>
                 {courses.map((course) => <option key={course.id} value={course.id}>{course.code ? `${course.code} · ` : ""}{course.name}</option>)}
@@ -302,7 +303,25 @@ export default function StudyPreparationPage() {
                 {topics.map((topic) => <option key={topic.id} value={topic.id}>{topic.topic_number}. {topic.title}</option>)}
               </select>
             </label>
-          </section>
+          </div>
+        )}
+      </section>
+
+      {(notice || problem || formMessage || formProblem) && (
+        <div role={problem || formProblem ? "alert" : "status"} className={`rounded-xl border p-3 text-sm font-semibold ${problem || formProblem ? "border-rose-300 bg-rose-50 text-rose-900" : "border-[var(--p6-border-decorative)] bg-[var(--p6-surface-subtle)] text-[var(--p6-text)]"}`}>
+          {problem || formProblem || formMessage || notice}
+        </div>
+      )}
+
+      {courses.length === 0 ? (
+        <section className="rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-5">
+          <h2 className="font-extrabold text-[var(--p6-text)]">No course catalogue yet</h2>
+          <p className="mt-2 text-sm text-[var(--p6-text-secondary)]">Import courses and topics before preparing the question bank.</p>
+          <Link href="/study#catalog" className={`${primaryButton} mt-4`}>Open course catalogue</Link>
+        </section>
+      ) : (
+        <>
+
 
           {selectedUnit && (
             <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4">
@@ -323,18 +342,18 @@ export default function StudyPreparationPage() {
             <section className="rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-5 text-sm text-[var(--p6-text-secondary)]">No topics are registered in this unit.</section>
           ) : (
             <>
-              <section className="rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4 shadow-sm sm:p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--p6-primary)]">Topic preparation</p>
-                    <h2 className="mt-1 text-xl font-extrabold text-[var(--p6-text)]">{selectedTopic.title}</h2>
-                    <p className="mt-1 text-sm text-[var(--p6-text-secondary)]">Status: {displayStatus(selectedTopic.preparation_status)}</p>
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${readiness?.ready ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-950"}`}>
-                    {readiness?.ready ? "Preparation checks passed" : `${readiness?.blockers.length ?? 0} readiness blockers`}
+              <details open className="study-preparation-section">
+                <summary className="study-preparation-section__summary">
+                  <span className="min-w-0">
+                    <span className="block text-base font-extrabold text-[var(--p6-text)]">Topic preparation</span>
+                    <span className="mt-0.5 block text-sm font-semibold text-[var(--p6-text-secondary)]">{selectedTopic.title}</span>
+                    <span className="mt-0.5 block text-xs text-[var(--p6-text-secondary)]">{displayStatus(selectedTopic.preparation_status)}</span>
                   </span>
-                </div>
-
+                  <span className={readiness?.ready ? "prep-readiness-status prep-readiness-status--ready" : "prep-readiness-status"}>
+                    {readiness?.ready ? "Ready" : (readiness?.blockers.length ?? 0) + " blockers"}
+                  </span>
+                </summary>
+                <div className="study-preparation-section__body">
                 <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px]">
                   <label className="text-sm font-bold text-[var(--p6-text)]">Learning objective
                     <textarea className={fieldClass} rows={3} value={objectiveDraft} onChange={(event) => setObjectiveDraft(event.target.value)} placeholder="Describe what you must be able to retrieve, explain, compare or solve." />
@@ -347,7 +366,7 @@ export default function StudyPreparationPage() {
                   </label>
                 </div>
 
-                <div className="mt-5 rounded-xl bg-[var(--p6-surface-subtle)] p-4">
+                <div className="study-preparation-readiness">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="font-extrabold text-[var(--p6-text)]">Readiness assessment</h3>
                     <span className="text-xs font-bold text-[var(--p6-text-secondary)]">{readiness?.activeTaskCount ?? 0} active · {readiness?.activeGateQuestionCount ?? 0} Gate · {readiness?.activeReviewQuestionCount ?? 0} Review</span>
@@ -372,18 +391,18 @@ export default function StudyPreparationPage() {
                 {!selectedTopic.preparation_status && (
                   <p className="mt-3 text-xs text-[var(--p6-text-secondary)]">This is a legacy topic without an explicit preparation status. It remains planner-compatible until you review it; it is not represented as Ready.</p>
                 )}
-              </section>
-
-              <section className="rounded-2xl border border-[var(--p6-border-decorative)] bg-[var(--p6-surface)] p-4 shadow-sm sm:p-5">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-extrabold uppercase tracking-wide text-[var(--p6-primary)]">Question bank</p>
-                    <h2 className="mt-1 text-xl font-extrabold text-[var(--p6-text)]">Retrieval questions</h2>
-                    <p className="mt-1 text-sm text-[var(--p6-text-secondary)]">Versions are appended with new IDs. Existing questions and historical references are retained.</p>
-                  </div>
-                  <button type="button" onClick={cancelQuestionEdit} className={secondaryButton}>Add new question</button>
                 </div>
+              </details>
 
+              <details open className="study-preparation-section">
+                <summary className="study-preparation-section__summary">
+                  <span className="text-base font-extrabold text-[var(--p6-text)]">Question bank</span>
+                  <span className="text-sm font-semibold text-[var(--p6-text-secondary)]">{questions.length} questions</span>
+                </summary>
+                <div className="study-preparation-section__body">
+                  <div className="mb-3 flex justify-end">
+                    <button type="button" onClick={cancelQuestionEdit} className={secondaryButton}>Add new question</button>
+                  </div>
                 <div className="mt-4 space-y-3">
                   {questions.length === 0 ? (
                     <p className="rounded-xl bg-[var(--p6-surface-subtle)] p-4 text-sm text-[var(--p6-text-secondary)]">No questions have been created for this topic yet.</p>
@@ -406,8 +425,11 @@ export default function StudyPreparationPage() {
                           ? "Retained for unfinished session"
                           : "Inactive for new sessions";
                     return (
-                      <article key={task.id} className="rounded-xl border border-[var(--p6-border-decorative)] p-3 sm:p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
+                      <article key={task.id} className="prep-question-row">
+                        {editingQuestionId === task.id ? (
+                          renderQuestionForm()
+                        ) : (
+                          <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
                               <span className={availableForNewSessions ? "text-emerald-700" : "text-[var(--p6-text-secondary)]"}>{questionStatus}</span>
@@ -431,9 +453,9 @@ export default function StudyPreparationPage() {
                               </button>
                             )}
                           </div>
-                        </div>
-                                              {editingQuestionId === task.id && renderQuestionForm()}
-</article>
+                          </div>
+                        )}
+                      </article>
                     );
                   })}
                 </div>
@@ -442,7 +464,8 @@ export default function StudyPreparationPage() {
                 <p className="mt-4 text-xs leading-5 text-[var(--p6-text-secondary)]">
                   Deactivation affects future question selection only. Scheduled Reviews and unfinished Gate sessions keep their original question IDs. Resuming an unfinished Gate can reactivate its exact original questions; no replacement is substituted automatically.
                 </p>
-              </section>
+                </div>
+              </details>
             </>
           )}
         </>

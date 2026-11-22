@@ -653,7 +653,6 @@ export default function GeneralSettingsPage() {
       <details className="settings-section group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5" open>
         <summary className="settings-section__summary">
           <span className="settings-section-title">Academic details</span>
-          <span className="settings-section__chevron" aria-hidden="true">⌄</span>
         </summary>
         <form onSubmit={handleSave} className="mt-4 space-y-6">
           <div className="space-y-5">
