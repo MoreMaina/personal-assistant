@@ -18,6 +18,10 @@ export function isRetrievalTaskAvailableForNewSessions(
   );
 }
 
+export function normalizeRetrievalPrompt(prompt: string): string {
+  return prompt.trim().replace(/\s+/g, " ").toLocaleLowerCase("en");
+}
+
 export interface TopicPreparationBlocker {
   code:
     | "missing_objective"
@@ -27,7 +31,8 @@ export interface TopicPreparationBlocker {
     | "gate_questions"
     | "review_questions"
     | "missing_task_prompt"
-    | "missing_answer_criteria";
+    | "missing_answer_criteria"
+    | "duplicate_prompt";
   message: string;
 }
 
@@ -87,6 +92,22 @@ export function getTopicPreparationReadiness(
       task.topic_id === topic.id &&
       isRetrievalTaskAvailableForNewSessions(task, tasks),
   );
+  const seenPrompts = new Set<string>();
+  const hasDuplicatePrompt = activeTasks.some((task) => {
+    const prompt = normalizeRetrievalPrompt(task.prompt);
+    if (!prompt) return false;
+
+    if (seenPrompts.has(prompt)) return true;
+    seenPrompts.add(prompt);
+    return false;
+  });
+
+  if (hasDuplicatePrompt) {
+    blockers.push({
+      code: "duplicate_prompt",
+      message: "Remove or retire duplicate prompts so each available question is unique.",
+    });
+  }
   const gateTasks = activeTasks.filter(
     (task) => task.purpose === "gate",
   );

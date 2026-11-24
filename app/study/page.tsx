@@ -3796,6 +3796,8 @@ function movePlanningItemTo(
       `Existing topics reused: ${counts.existing_topics_reused}`,
       `Tasks created: ${counts.tasks_created}`,
       `Duplicate tasks skipped: ${counts.duplicate_tasks_skipped}`,
+      `Placeholder topics completed: ${counts.placeholder_topics_completed}`,
+      `Duplicate tasks quarantined: ${counts.duplicate_tasks_quarantined}`,
     ];
   }
 

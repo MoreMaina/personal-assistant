@@ -71,6 +71,8 @@ describe("topic catalog CSV/TSV import", () => {
       existing_topics_reused: 0,
       tasks_created: 3,
       duplicate_tasks_skipped: 0,
+      placeholder_topics_completed: 0,
+      duplicate_tasks_quarantined: 0,
     });
     expect(result.state.topics[0]).toMatchObject({
       status: "not_started",
@@ -224,6 +226,143 @@ describe("topic catalog CSV/TSV import", () => {
     expect(result.ok).toBe(false);
     expect(result.state).toBe(first.state);
     expect(result.state.topics[0].title).toBe("Variables");
+  });
+
+  it("completes an untouched placeholder topic while preserving its ID", () => {
+    const placeholder = row({
+      topic_title: "General",
+      learning_objective: "[Missing information]",
+      objective_type: "recall",
+      task_prompt: "",
+      expected_answer_criteria: "",
+      task_type: "",
+      task_purpose: "",
+      estimated_duration_min: "",
+      task_active: "",
+    });
+
+    const first = importTopicCatalogText(
+      state(),
+      makeCsv([placeholder]),
+      options(),
+    );
+    expect(first.ok).toBe(true);
+
+    const originalTopicId = first.state.topics[0].id;
+
+    const completed = importTopicCatalogText(
+      first.state,
+      makeCsv([row()]),
+      options(),
+    );
+
+    expect(completed.ok).toBe(true);
+    expect(completed.counts.placeholder_topics_completed).toBe(1);
+    expect(completed.state.topics[0]).toMatchObject({
+      id: originalTopicId,
+      title: "Variables",
+      learning_objective: "Explain variables and their role in a program",
+      preparation_status: "draft",
+    });
+  });
+
+  it("does not complete a placeholder once study has started", () => {
+    const placeholder = row({
+      topic_title: "General",
+      learning_objective: "[Missing information]",
+      objective_type: "recall",
+      task_prompt: "",
+      expected_answer_criteria: "",
+      task_type: "",
+      task_purpose: "",
+      estimated_duration_min: "",
+      task_active: "",
+    });
+
+    const first = importTopicCatalogText(
+      state(),
+      makeCsv([placeholder]),
+      options(),
+    );
+    expect(first.ok).toBe(true);
+
+    const usedState = {
+      ...first.state,
+      topics: first.state.topics.map((topic) => ({
+        ...topic,
+        initial_study_date: "2026-10-24",
+      })),
+    };
+
+    const result = importTopicCatalogText(
+      usedState,
+      makeCsv([row()]),
+      options(),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.state).toBe(usedState);
+    expect(result.state.topics[0].title).toBe("General");
+  });
+
+  it("quarantines identical existing duplicate questions without deleting their records", () => {
+    const first = importTopicCatalogText(state(), makeCsv([row()]), options());
+    expect(first.ok).toBe(true);
+
+    const originalTask = first.state.retrieval_tasks[0];
+    const duplicateTask = {
+      ...originalTask,
+      id: "duplicate-task-preserved",
+    };
+
+    const duplicatedState = {
+      ...first.state,
+      retrieval_tasks: [...first.state.retrieval_tasks, duplicateTask],
+    };
+
+    const result = importTopicCatalogText(
+      duplicatedState,
+      makeCsv([row()]),
+      options(),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.counts.duplicate_tasks_quarantined).toBe(1);
+    expect(result.state.retrieval_tasks).toHaveLength(2);
+    expect(result.state.retrieval_tasks.map((task) => task.id)).toContain(originalTask.id);
+    expect(result.state.retrieval_tasks[1]).toMatchObject({
+      id: duplicateTask.id,
+      active: false,
+      available_for_new_sessions: false,
+    });
+  });
+
+  it("rejects existing duplicate prompts when their answer criteria conflict", () => {
+    const first = importTopicCatalogText(state(), makeCsv([row()]), options());
+    expect(first.ok).toBe(true);
+
+    const duplicateTask = {
+      ...first.state.retrieval_tasks[0],
+      id: "conflicting-duplicate",
+      expected_answer_criteria: "A different and conflicting marking standard.",
+    };
+
+    const duplicatedState = {
+      ...first.state,
+      retrieval_tasks: [...first.state.retrieval_tasks, duplicateTask],
+    };
+
+    const result = importTopicCatalogText(
+      duplicatedState,
+      makeCsv([row()]),
+      options(),
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.state).toBe(duplicatedState);
+    expect(result.diagnostics.some(
+      (item) => item.message.includes("conflicting criteria or settings"),
+    )).toBe(true);
   });
 
   it("exports a CSV catalog that can be imported again without duplicate tasks", () => {
