@@ -8,6 +8,8 @@
 
 import { assertStudyStateIntegrity } from "./storage";
 import { defaultIdFactory, type IdFactory } from "./reviewEngine";
+import { isReferencedByUnfinishedSession } from "./preparationManagement";
+import { isRetrievalTaskAvailableForNewSessions } from "./preparationReadiness";
 import type {
   Course,
   EntityId,
@@ -98,6 +100,8 @@ export interface TopicImportCounts {
   existing_topics_reused: number;
   tasks_created: number;
   duplicate_tasks_skipped: number;
+  placeholder_topics_completed: number;
+  duplicate_tasks_quarantined: number;
 }
 
 export interface TopicImportResult {
@@ -141,6 +145,7 @@ interface TopicGroup {
   unitId: EntityId | null;
   topicId: EntityId | null;
   topicExists: boolean;
+  topicNeedsCompletion: boolean;
 }
 
 function emptyCounts(): TopicImportCounts {
@@ -151,11 +156,44 @@ function emptyCounts(): TopicImportCounts {
     existing_topics_reused: 0,
     tasks_created: 0,
     duplicate_tasks_skipped: 0,
+    placeholder_topics_completed: 0;
+    duplicate_tasks_quarantined: 0;
   };
 }
 
 function normalizedKey(value: string): string {
   return value.trim().toLocaleLowerCase("en");
+}
+
+function isUntouchedPlaceholderTopic(
+  topic: Topic,
+  state: StudyMvpState,
+): boolean {
+  const hasStudyHistory =
+    state.retrieval_tasks.some((task) => task.topic_id === topic.id) ||
+    state.lectures.some((lecture) => lecture.topic_id === topic.id) ||
+    state.review_events.some((review) => review.topic_id === topic.id) ||
+    state.work_sessions.some((session) => session.subject_id === topic.id) ||
+    state.task_events.some((event) => event.subject_id === topic.id) ||
+    state.exams.some((exam) => exam.coverage_topics.includes(topic.id)) ||
+    (state.daily_plan_history ?? []).some((snapshot) =>
+      JSON.stringify(snapshot.plan)?.includes(topic.id) ?? false,
+    );
+
+  return (
+    normalizedKey(topic.title) === "general" &&
+    topic.learning_objective.trim() === "[Missing information]" &&
+    topic.objective_type === "recall" &&
+    topic.status === "not_started" &&
+    topic.initial_study_date === null &&
+    topic.planned_consolidation_date === null &&
+    topic.gate_passed === false &&
+    topic.gate_result === "pending" &&
+    topic.weakness_flag === false &&
+    (topic.preparation_status === undefined ||
+      topic.preparation_status === "draft") &&
+    !hasStudyHistory
+  );
 }
 
 function normalizedPrompt(value: string): string {
@@ -518,7 +556,7 @@ export function importTopicCatalogText(
     const key = groupKey(row.courseCode, row.unitCode, row.topicNumber);
     const existing = groups.get(key);
     if (!existing) {
-      groups.set(key, { key, rows: [row], first: row, unitId: null, topicId: null, topicExists: false });
+      groups.set(key, { key, rows: [row], first: row, unitId: null, topicId: null, topicExists: false, topicNeedsCompletion: false });
       continue;
     }
     if (topicMetadataSignature(existing.first) !== topicMetadataSignature(row)) {
@@ -647,16 +685,27 @@ export function importTopicCatalogText(
     }
     if (matches[0]) {
       const topic = matches[0];
-      if (
+      const contentDiffers =
         normalizedKey(topic.title) !== normalizedKey(row.topicTitle) ||
         topic.learning_objective.trim() !== row.learningObjective.trim() ||
-        topic.objective_type !== row.objectiveType
-      ) {
-        addDiagnostic(diagnostics, "error", row.rowNumber, `Existing topic ${row.topicNumber} has different core content; import will not overwrite it.`);
+        topic.objective_type !== row.objectiveType;
+
+      const canCompletePlaceholder =
+        contentDiffers && isUntouchedPlaceholderTopic(topic, state);
+
+      if (contentDiffers && !canCompletePlaceholder) {
+        addDiagnostic(
+          diagnostics,
+          "error",
+          row.rowNumber,
+          `Existing topic ${row.topicNumber} has different core content; import will not overwrite it.`,
+        );
         continue;
       }
+
       group.topicId = topic.id;
       group.topicExists = true;
+      group.topicNeedsCompletion = canCompletePlaceholder;
       counts.existing_topics_reused += 1;
     } else {
       group.topicId = availableId("topic", idFactory, usedIds);
@@ -685,6 +734,49 @@ export function importTopicCatalogText(
         prerequisiteIds.push(resolvedId);
       }
     }
+
+    if (group.topicNeedsCompletion) {
+      const topicIndex = topics.findIndex(
+        (topic) => topic.id === group.topicId,
+      );
+
+      if (topicIndex >= 0) {
+        topics[topicIndex] = {
+          ...topics[topicIndex],
+          title: row.topicTitle,
+          learning_objective: row.learningObjective,
+          objective_type: row.objectiveType,
+          prerequisite_topic_ids: prerequisiteIds,
+          consolidation_estimated_duration_min: row.consolidationEstimate,
+          topic_importance: row.importance,
+        };
+        counts.placeholder_topics_completed += 1;
+      }
+    } else if (group.topicExists && row.prerequisitesSpecified) {
+
+          if (group.topicNeedsCompletion) {
+      const topicIndex = topics.findIndex(
+        (topic) => topic.id === group.topicId,
+      );
+
+      if (topicIndex >= 0) {
+        const existing = topics[topicIndex];
+
+        topics[topicIndex] = {
+          ...existing,
+          title: row.topicTitle,
+          learning_objective: row.learningObjective,
+          objective_type: row.objectiveType,
+          prerequisite_topic_ids: row.prerequisitesSpecified
+            ? prerequisiteIds
+            : existing.prerequisite_topic_ids,
+          consolidation_estimated_duration_min: row.consolidationEstimate,
+          topic_importance: row.importance,
+        };
+
+        counts.placeholder_topics_completed += 1;
+      }
+    } else if (group.topicExists && row.prerequisitesSpecified) {
 
     if (group.topicExists && row.prerequisitesSpecified) {
       const existing = topics.find((topic) => topic.id === group.topicId)!;
@@ -743,26 +835,104 @@ export function importTopicCatalogText(
       }
       importedTaskSignatures.set(promptKey, taskSignature);
 
-      const existingMatches = retrievalTasks.filter((task) =>
-        task.topic_id === group.topicId && normalizedPrompt(task.prompt) === normalizedPrompt(row.taskPrompt),
+      const existingMatches = retrievalTasks.filter(
+        (task) =>
+          task.topic_id === group.topicId &&
+          normalizedPrompt(task.prompt) === normalizedPrompt(row.taskPrompt),
       );
-      if (existingMatches.length > 1) {
-        addDiagnostic(diagnostics, "error", row.rowNumber, `The existing topic contains multiple tasks with the same prompt "${row.taskPrompt}".`);
+
+      const availableMatches = existingMatches.filter((task) =>
+        isRetrievalTaskAvailableForNewSessions(task, retrievalTasks),
+      );
+
+      const matchesCsvRow = (task: RetrievalTask) =>
+        task.expected_answer_criteria.trim() === row.expectedAnswerCriteria.trim() &&
+        task.task_type === row.taskType &&
+        task.purpose === row.taskPurpose &&
+        task.estimated_duration_min === row.taskEstimate &&
+        task.active === row.taskActive;
+
+      if (availableMatches.length > 1) {
+        const canonical = availableMatches[0];
+        const canonicalSignature = JSON.stringify([
+          canonical.expected_answer_criteria.trim(),
+          canonical.task_type,
+          canonical.purpose,
+          canonical.estimated_duration_min,
+        ]);
+
+        const identicalCopies = availableMatches.every((task) =>
+          JSON.stringify([
+            task.expected_answer_criteria.trim(),
+            task.task_type,
+            task.purpose,
+            task.estimated_duration_min,
+          ]) === canonicalSignature,
+        );
+
+        if (!identicalCopies) {
+          addDiagnostic(
+            diagnostics,
+            "error",
+            row.rowNumber,
+            `Existing questions with prompt "${row.taskPrompt}" have conflicting criteria or settings.`,
+          );
+          continue;
+        }
+
+        if (!matchesCsvRow(canonical)) {
+          addDiagnostic(
+            diagnostics,
+            "error",
+            row.rowNumber,
+            `Existing retrieval question "${row.taskPrompt}" has different criteria or settings; import will not overwrite it.`,
+          );
+          continue;
+        }
+
+        const duplicates = availableMatches.slice(1);
+
+        for (const duplicate of duplicates) {
+          const duplicateIndex = retrievalTasks.findIndex(
+            (task) => task.id === duplicate.id,
+          );
+
+          if (duplicateIndex >= 0) {
+            retrievalTasks[duplicateIndex] = {
+              ...retrievalTasks[duplicateIndex],
+              active: isReferencedByUnfinishedSession(state, duplicate.id),
+              available_for_new_sessions: false,
+            };
+          }
+        }
+
+        counts.duplicate_tasks_quarantined += duplicates.length;
+        counts.duplicate_tasks_skipped += 1;
+
+        addDiagnostic(
+          diagnostics,
+          "warning",
+          row.rowNumber,
+          `Quarantined ${duplicates.length} identical duplicate question record(s) for "${row.taskPrompt}". Their history and IDs were preserved.`,
+        );
+
         continue;
       }
-      if (existingMatches[0]) {
-        const existing = existingMatches[0];
-        const matchesExactly =
-          existing.expected_answer_criteria.trim() === row.expectedAnswerCriteria.trim() &&
-          existing.task_type === row.taskType &&
-          existing.purpose === row.taskPurpose &&
-          existing.estimated_duration_min === row.taskEstimate &&
-          existing.active === row.taskActive;
-        if (!matchesExactly) {
-          addDiagnostic(diagnostics, "error", row.rowNumber, `Existing retrieval question "${row.taskPrompt}" has different criteria or settings; import will not overwrite it.`);
+
+      const existing = availableMatches[0] ?? existingMatches[0];
+
+      if (existing) {
+        if (!matchesCsvRow(existing)) {
+          addDiagnostic(
+            diagnostics,
+            "error",
+            row.rowNumber,
+            `Existing retrieval question "${row.taskPrompt}" has different criteria or settings; import will not overwrite it.`,
+          );
         } else {
           counts.duplicate_tasks_skipped += 1;
         }
+
         continue;
       }
 

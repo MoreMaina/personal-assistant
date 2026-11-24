@@ -9,6 +9,7 @@ import {
   updateTopicLearningObjective,
   type RetrievalQuestionDraft,
 } from "./preparationManagement";
+import { getTopicPreparationReadiness } from "./preparationReadiness";
 import type { RetrievalTask, Topic } from "./types";
 
 const draft: RetrievalQuestionDraft = {
@@ -231,6 +232,67 @@ describe("Study preparation management", () => {
     ];
     expect(() => addRetrievalQuestion(state, "topic-1", draft, () => "g4"))
       .toThrow(/3–5 active questions/i);
+  });
+
+  it("rejects a new question when its prompt duplicates an available question", () => {
+    const state = baseState();
+    const existing = makeTask("existing", "gate");
+    existing.prompt = "  compare   THE receptor actions of two drug classes.  ";
+    state.retrieval_tasks.push(existing);
+
+    expect(() => addRetrievalQuestion(state, "topic-1", draft, () => "new-question"))
+      .toThrow(/same prompt/i);
+  });
+
+  it("rejects a replacement that duplicates another available question", () => {
+    const state = baseState();
+    state.retrieval_tasks.push(makeTask("original", "gate"));
+
+    const other = makeTask("other", "review");
+    other.prompt = draft.prompt.toUpperCase();
+    state.retrieval_tasks.push(other);
+
+    expect(() =>
+      createRetrievalQuestionVersion(state, "original", draft, () => "version-2"),
+    ).toThrow(/same prompt/i);
+  });
+
+  it("rejects restoring a question when another available question has its prompt", () => {
+    const state = baseState();
+
+    const toRestore = makeTask("to-restore", "gate");
+    toRestore.prompt = draft.prompt;
+    toRestore.active = false;
+    toRestore.available_for_new_sessions = false;
+
+    const existing = makeTask("existing", "review");
+    existing.prompt = draft.prompt.toUpperCase();
+
+    state.retrieval_tasks.push(toRestore, existing);
+
+    expect(() => setRetrievalQuestionActive(state, "to-restore", true))
+      .toThrow(/same prompt/i);
+  });
+
+  it("blocks Ready status when available questions contain duplicate prompts", () => {
+    const state = baseState();
+    state.retrieval_tasks = [
+      makeTask("g1", "gate"),
+      makeTask("g2", "gate"),
+      makeTask("g3", "gate"),
+      makeTask("r1", "review"),
+      makeTask("r2", "review"),
+    ];
+
+    state.retrieval_tasks[1].prompt = state.retrieval_tasks[0].prompt.toUpperCase();
+
+    const readiness = getTopicPreparationReadiness(
+      state.topics[0],
+      state.retrieval_tasks,
+    );
+
+    expect(readiness.ready).toBe(false);
+    expect(readiness.blockers.some((item) => item.code === "duplicate_prompt")).toBe(true);
   });
 
   it("updates objective fields and supports reversible unit exclusion", () => {

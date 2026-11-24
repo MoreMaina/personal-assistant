@@ -1,5 +1,8 @@
-import { getLatestGateSession } from "./dashboard";
-import { getTopicPreparationReadiness, isRetrievalTaskAvailableForNewSessions } from "./preparationReadiness";
+import {
+  getTopicPreparationReadiness,
+  isRetrievalTaskAvailableForNewSessions,
+  normalizeRetrievalPrompt,
+} from "./preparationReadiness";import { getTopicPreparationReadiness, isRetrievalTaskAvailableForNewSessions } from "./preparationReadiness";
 import type {
   EntityId,
   ObjectiveType,
@@ -60,6 +63,28 @@ function isTaskAvailable(task: RetrievalTask, allTasks: readonly RetrievalTask[]
   return isRetrievalTaskAvailableForNewSessions(task, allTasks);
 }
 
+function assertNoAvailablePromptDuplicate(
+  state: StudyMvpState,
+  topicId: EntityId,
+  prompt: string,
+  ignoredTaskId?: EntityId,
+): void {
+  const normalizedPrompt = normalizeRetrievalPrompt(prompt);
+  const duplicate = state.retrieval_tasks.some(
+    (task) =>
+      task.topic_id === topicId &&
+      task.id !== ignoredTaskId &&
+      isTaskAvailable(task, state.retrieval_tasks) &&
+      normalizeRetrievalPrompt(task.prompt) === normalizedPrompt,
+  );
+
+  if (duplicate) {
+    throw new Error(
+      "This topic already has an available question with the same prompt. Use a distinct prompt.",
+    );
+  }
+}
+
 function reconcileReadyTopics(
   state: StudyMvpState,
   topics: StudyMvpState["topics"],
@@ -87,6 +112,7 @@ export function addRetrievalQuestion(
     throw new Error("A topic supports 3–5 active questions for new sessions. Deactivate or replace an existing question first.");
   }
   const valid = validateQuestionDraft(draft);
+  assertNoAvailablePromptDuplicate(state, topicId, valid.prompt);
   const id = idFactory("retrieval_task");
   assertUniqueId(state, id);
 
@@ -167,6 +193,7 @@ export function createRetrievalQuestionVersion(
   }
 
   const valid = validateQuestionDraft(draft);
+  assertNoAvailablePromptDuplicate(state, previous.topic_id, valid.prompt, previousTaskId);
   const id = idFactory("retrieval_task");
   assertUniqueId(state, id);
 
@@ -221,6 +248,7 @@ export function setRetrievalQuestionActive(
     const currentAvailableCount = state.retrieval_tasks.filter(
       (item) => item.topic_id === task.topic_id && isTaskAvailable(item, state.retrieval_tasks),
     ).length;
+    assertNoAvailablePromptDuplicate(state, task.topic_id, task.prompt, taskId);
     if (currentAvailableCount >= 5) {
       throw new Error("A topic supports at most five active questions for new sessions. Deactivate another question first.");
     }
