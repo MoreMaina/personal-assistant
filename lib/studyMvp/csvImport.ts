@@ -156,8 +156,8 @@ function emptyCounts(): TopicImportCounts {
     existing_topics_reused: 0,
     tasks_created: 0,
     duplicate_tasks_skipped: 0,
-    placeholder_topics_completed: 0;
-    duplicate_tasks_quarantined: 0;
+    placeholder_topics_completed: 0,
+    duplicate_tasks_quarantined: 0,
   };
 }
 
@@ -716,18 +716,28 @@ export function importTopicCatalogText(
   // Resolve prerequisites only after all topic IDs are known.
   for (const group of groups.values()) {
     if (!group.unitId || !group.topicId) continue;
+
     const row = group.first;
     const prerequisiteIds: string[] = [];
+
     for (const number of row.prerequisiteTopicNumbers) {
       if (number === row.topicNumber) {
         addDiagnostic(diagnostics, "error", row.rowNumber, "A topic cannot be its own prerequisite.");
         continue;
       }
-      const importedGroup = [...groups.values()].find((candidate) =>
-        candidate.unitId === group.unitId && candidate.first.topicNumber === number,
+
+      const importedGroup = [...groups.values()].find(
+        (candidate) =>
+          candidate.unitId === group.unitId &&
+          candidate.first.topicNumber === number,
       );
-      const existingTopic = topics.find((topic) => topic.unit_id === group.unitId && topic.topic_number === number);
+      const existingTopic = topics.find(
+        (topic) =>
+          topic.unit_id === group.unitId &&
+          topic.topic_number === number,
+      );
       const resolvedId = importedGroup?.topicId ?? existingTopic?.id;
+
       if (!resolvedId) {
         addDiagnostic(diagnostics, "error", row.rowNumber, `Prerequisite topic number ${number} was not found in unit "${row.unitCode}".`);
       } else {
@@ -736,25 +746,6 @@ export function importTopicCatalogText(
     }
 
     if (group.topicNeedsCompletion) {
-      const topicIndex = topics.findIndex(
-        (topic) => topic.id === group.topicId,
-      );
-
-      if (topicIndex >= 0) {
-        topics[topicIndex] = {
-          ...topics[topicIndex],
-          title: row.topicTitle,
-          learning_objective: row.learningObjective,
-          objective_type: row.objectiveType,
-          prerequisite_topic_ids: prerequisiteIds,
-          consolidation_estimated_duration_min: row.consolidationEstimate,
-          topic_importance: row.importance,
-        };
-        counts.placeholder_topics_completed += 1;
-      }
-    } else if (group.topicExists && row.prerequisitesSpecified) {
-
-          if (group.topicNeedsCompletion) {
       const topicIndex = topics.findIndex(
         (topic) => topic.id === group.topicId,
       );
@@ -777,11 +768,10 @@ export function importTopicCatalogText(
         counts.placeholder_topics_completed += 1;
       }
     } else if (group.topicExists && row.prerequisitesSpecified) {
-
-    if (group.topicExists && row.prerequisitesSpecified) {
       const existing = topics.find((topic) => topic.id === group.topicId)!;
       const left = [...existing.prerequisite_topic_ids].sort();
       const right = [...prerequisiteIds].sort();
+
       if (JSON.stringify(left) !== JSON.stringify(right)) {
         addDiagnostic(diagnostics, "error", row.rowNumber, `Existing topic ${row.topicNumber} has different prerequisite links; import will not overwrite them.`);
       }
@@ -805,6 +795,7 @@ export function importTopicCatalogText(
         weakness_flag: false,
         topic_importance: row.importance,
       });
+
       counts.topics_created += 1;
     }
   }
