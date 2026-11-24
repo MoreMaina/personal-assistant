@@ -1,3 +1,4 @@
+import { getLatestGateSession } from "./dashboard";
 import {
   getTopicPreparationReadiness,
   isRetrievalTaskAvailableForNewSessions,
