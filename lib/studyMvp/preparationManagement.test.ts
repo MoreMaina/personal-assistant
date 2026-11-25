@@ -3,6 +3,7 @@ import { createEmptyStudyState } from "./storage";
 import {
   addRetrievalQuestion,
   createRetrievalQuestionVersion,
+  renameTopic,
   setRetrievalQuestionActive,
   setTopicPreparationStatus,
   setUnitPlannerExcluded,
@@ -66,6 +67,34 @@ function baseState() {
 }
 
 describe("Study preparation management", () => {
+  it("renames a topic while preserving its ID, progress, and linked questions", () => {
+    const state = baseState();
+    state.topics[0].status = "active";
+    state.topics[0].initial_study_date = "2026-11-23";
+    state.retrieval_tasks.push(makeTask("linked-question", "gate"));
+
+    const next = renameTopic(state, "topic-1", "  Updated topic name  ");
+
+    expect(next.topics[0]).toMatchObject({
+      id: "topic-1",
+      title: "Updated topic name",
+      status: "active",
+      initial_study_date: "2026-11-23",
+    });
+    expect(next.retrieval_tasks).toEqual(state.retrieval_tasks);
+    expect(state.topics[0].title).toBe("Autonomic pharmacology");
+  });
+
+  it("rejects a blank topic name", () => {
+    expect(() => renameTopic(baseState(), "topic-1", "   "))
+      .toThrow(/topic name/i);
+  });
+
+  it("rejects a topic name longer than 180 characters", () => {
+    expect(() => renameTopic(baseState(), "topic-1", "x".repeat(181)))
+      .toThrow(/180 characters/i);
+  });
+
   it("adds a new active question without changing existing task IDs", () => {
     const state = baseState();
     state.retrieval_tasks.push(makeTask("existing", "gate"));

@@ -328,3 +328,25 @@ export function updateTopicLearningObjective(
     topics: reconcileReadyTopics(state, topics, state.retrieval_tasks),
   };
 }
+
+/** Rename a topic without changing its identity, preparation, or study history. */
+export function renameTopic(
+  state: StudyMvpState,
+  topicId: EntityId,
+  nextTitle: string,
+): StudyMvpState {
+  const topic = state.topics.find((item) => item.id === topicId);
+  if (!topic) throw new Error("The selected topic could not be found.");
+
+  const title = nextTitle.trim();
+  if (!title) throw new Error("Enter a topic name.");
+  if (title.length > 180) throw new Error("Topic names must be 180 characters or fewer.");
+  if (topic.title === title) return state;
+
+  return {
+    ...state,
+    topics: state.topics.map((item) =>
+      item.id === topicId ? { ...item, title } : item,
+    ),
+  };
+}

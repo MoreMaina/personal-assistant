@@ -68,6 +68,7 @@ describe("topic catalog CSV/TSV import", () => {
       courses_created: 1,
       units_created: 1,
       topics_created: 1,
+      topics_renamed: 0,
       existing_topics_reused: 0,
       tasks_created: 3,
       duplicate_tasks_skipped: 0,
@@ -181,6 +182,7 @@ describe("topic catalog CSV/TSV import", () => {
     expect(second.counts.courses_created).toBe(0);
     expect(second.counts.units_created).toBe(0);
     expect(second.counts.topics_created).toBe(0);
+    expect(second.counts.topics_renamed).toBe(0);
     expect(second.counts.tasks_created).toBe(0);
     expect(second.counts.duplicate_tasks_skipped).toBe(2);
   });
@@ -218,10 +220,40 @@ describe("topic catalog CSV/TSV import", () => {
     expect(result.diagnostics.some((item) => item.message.includes("both task_prompt and expected_answer_criteria"))).toBe(true);
   });
 
-  it("does not overwrite an existing topic with conflicting core content", () => {
+  it("renames a topic from CSV when only its title changes, preserving study history", () => {
     const first = importTopicCatalogText(state(), makeCsv([row()]), options());
     expect(first.ok).toBe(true);
-    const changed = makeCsv([row({ topic_title: "Different title" })]);
+    const studiedState = {
+      ...first.state,
+      topics: first.state.topics.map((topic) => ({
+        ...topic,
+        status: "active" as const,
+        initial_study_date: "2026-11-23",
+      })),
+    };
+
+    const result = importTopicCatalogText(
+      studiedState,
+      makeCsv([row({ topic_title: "Variables and Values" })]),
+      options(),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.counts.topics_renamed).toBe(1);
+    expect(result.state.topics[0]).toMatchObject({
+      id: first.state.topics[0].id,
+      title: "Variables and Values",
+      learning_objective: first.state.topics[0].learning_objective,
+      initial_study_date: "2026-11-23",
+      status: "active",
+    });
+    expect(result.state.retrieval_tasks).toEqual(first.state.retrieval_tasks);
+  });
+
+  it("does not overwrite an existing topic when its learning objective or type differs", () => {
+    const first = importTopicCatalogText(state(), makeCsv([row()]), options());
+    expect(first.ok).toBe(true);
+    const changed = makeCsv([row({ learning_objective: "A different objective that conflicts with existing topic content." })]);
     const result = importTopicCatalogText(first.state, changed, options());
     expect(result.ok).toBe(false);
     expect(result.state).toBe(first.state);
