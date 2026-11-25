@@ -97,6 +97,7 @@ export interface TopicImportCounts {
   courses_created: number;
   units_created: number;
   topics_created: number;
+  topics_renamed: number;
   existing_topics_reused: number;
   tasks_created: number;
   duplicate_tasks_skipped: number;
@@ -146,6 +147,7 @@ interface TopicGroup {
   topicId: EntityId | null;
   topicExists: boolean;
   topicNeedsCompletion: boolean;
+  topicNeedsRename: boolean;
 }
 
 function emptyCounts(): TopicImportCounts {
@@ -153,6 +155,7 @@ function emptyCounts(): TopicImportCounts {
     courses_created: 0,
     units_created: 0,
     topics_created: 0,
+    topics_renamed: 0,
     existing_topics_reused: 0,
     tasks_created: 0,
     duplicate_tasks_skipped: 0,
@@ -499,6 +502,8 @@ function availableId(
  * Import one row per topic/task combination. Topic/catalog fields should be
  * repeated on each row for the same topic. A row may omit all task columns
  * when a topic is being imported before retrieval questions are prepared.
+ * Title-only differences are treated as safe renames; objective/type changes
+ * still require an untouched placeholder or an explicit edit in Preparation.
  */
 export function importTopicCatalogText(
   state: StudyMvpState,
@@ -556,7 +561,7 @@ export function importTopicCatalogText(
     const key = groupKey(row.courseCode, row.unitCode, row.topicNumber);
     const existing = groups.get(key);
     if (!existing) {
-      groups.set(key, { key, rows: [row], first: row, unitId: null, topicId: null, topicExists: false, topicNeedsCompletion: false });
+      groups.set(key, { key, rows: [row], first: row, unitId: null, topicId: null, topicExists: false, topicNeedsCompletion: false, topicNeedsRename: false });
       continue;
     }
     if (topicMetadataSignature(existing.first) !== topicMetadataSignature(row)) {
@@ -685,20 +690,22 @@ export function importTopicCatalogText(
     }
     if (matches[0]) {
       const topic = matches[0];
-      const contentDiffers =
-        normalizedKey(topic.title) !== normalizedKey(row.topicTitle) ||
+      const titleDiffers = topic.title.trim() !== row.topicTitle.trim();
+      const nonTitleContentDiffers =
         topic.learning_objective.trim() !== row.learningObjective.trim() ||
         topic.objective_type !== row.objectiveType;
+      const contentDiffers = titleDiffers || nonTitleContentDiffers;
 
       const canCompletePlaceholder =
-        contentDiffers && isUntouchedPlaceholderTopic(topic, state);
+        nonTitleContentDiffers && isUntouchedPlaceholderTopic(topic, state);
+      const canRenameOnly = titleDiffers && !nonTitleContentDiffers;
 
-      if (contentDiffers && !canCompletePlaceholder) {
+      if (contentDiffers && !canCompletePlaceholder && !canRenameOnly) {
         addDiagnostic(
           diagnostics,
           "error",
           row.rowNumber,
-          `Existing topic ${row.topicNumber} has different core content; import will not overwrite it.`,
+          `Existing topic ${row.topicNumber} has different core content; import will not overwrite it. Edit the topic name separately or reconcile the learning objective/type first.`,
         );
         continue;
       }
@@ -706,6 +713,7 @@ export function importTopicCatalogText(
       group.topicId = topic.id;
       group.topicExists = true;
       group.topicNeedsCompletion = canCompletePlaceholder;
+      group.topicNeedsRename = canRenameOnly;
       counts.existing_topics_reused += 1;
     } else {
       group.topicId = availableId("topic", idFactory, usedIds);
@@ -742,6 +750,26 @@ export function importTopicCatalogText(
         addDiagnostic(diagnostics, "error", row.rowNumber, `Prerequisite topic number ${number} was not found in unit "${row.unitCode}".`);
       } else {
         prerequisiteIds.push(resolvedId);
+      }
+    }
+
+    if (group.topicNeedsRename) {
+      const topicIndex = topics.findIndex(
+        (topic) => topic.id === group.topicId,
+      );
+      if (topicIndex >= 0) {
+        const previousTitle = topics[topicIndex].title;
+        topics[topicIndex] = {
+          ...topics[topicIndex],
+          title: row.topicTitle,
+        };
+        counts.topics_renamed += 1;
+        addDiagnostic(
+          diagnostics,
+          "warning",
+          row.rowNumber,
+          `Topic renamed from "${previousTitle}" to "${row.topicTitle}". Its ID, learning objective, prerequisites, questions, and study history were preserved.`,
+        );
       }
     }
 
